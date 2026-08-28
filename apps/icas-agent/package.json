@@ -1,0 +1,33 @@
+{
+  "name": "@icas/agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "icas-agent": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "tsx src/cli.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@icas/discovery": "workspace:*",
+    "@icas/browser": "workspace:*",
+    "@icas/policy": "workspace:*",
+    "@icas/evidence": "workspace:*",
+    "@icas/handoff": "workspace:*",
+    "@icas/redactor": "workspace:*",
+    "@icas/capability": "workspace:*",
+    "@mastra/core": "latest"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.1",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

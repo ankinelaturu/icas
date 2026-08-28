@@ -1,0 +1,26 @@
+{
+  "name": "icas",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.15.0",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean && rimraf node_modules",
+    "icas-agent": "pnpm --filter @icas/agent start --",
+    "icas-play": "pnpm --filter @icas/play start --",
+    "icas-adapt": "pnpm --filter @icas/adapt start --",
+    "icas-mcp": "pnpm --filter @icas/mcp start --"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "rimraf": "^6.0.1",
+    "tsx": "^4.20.5",
+    "turbo": "^2.5.6",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

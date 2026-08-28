@@ -1,0 +1,32 @@
+{
+  "name": "@icas/play",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "icas-play": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "tsx src/cli.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@icas/replay": "workspace:*",
+    "@icas/browser": "workspace:*",
+    "@icas/policy": "workspace:*",
+    "@icas/evidence": "workspace:*",
+    "@icas/handoff": "workspace:*",
+    "@icas/redactor": "workspace:*",
+    "@icas/capability": "workspace:*"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.1",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
