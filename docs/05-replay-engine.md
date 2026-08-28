@@ -150,6 +150,26 @@ If one step fails:
 
 If the repaired state does not rejoin the known path, stop. Assisted fallback is not open-ended rediscovery.
 
+## Effective capability resolution
+
+`ReplayEngine` remains tenant-agnostic. A `CapabilityResolver` loads the base capability and applicable tenant override, applies the declarative patch, and schema-validates the resulting effective capability. Only then is the effective capability passed to `ReplayEngine`.
+
+```text
+CapabilityRegistry
+      ↓
+base capability + tenant override
+      ↓
+CapabilityResolver
+      ↓
+schema validation
+      ↓
+effective capability
+      ↓
+ReplayEngine
+```
+
+This avoids tenant-specific branching inside replay. Normal precondition/action/postcondition, policy, HITL, error, and evidence handling remain unchanged.
+
 ## Guarded compatibility mode
 
 `icas-adapt` can invoke the same replay engine against another tenant using the same Vendor+Product. The checkpoints determine whether the capability is compatible:
@@ -163,6 +183,8 @@ same Vendor+Product
 ```
 
 The replay engine therefore becomes the authority on whether an artifact actually works in the observed runtime state.
+
+When `icas-adapt` sees a mismatch, it may generate an override. The override is not considered valid merely because it was generated. Resolve base + override, then run the effective capability through `ReplayEngine` again. All normal checkpoints must pass before the tenant specialization is considered verified.
 
 ## HITL
 

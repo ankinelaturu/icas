@@ -22,7 +22,7 @@
     "@icas/handoff": "workspace:*",
     "@icas/redactor": "workspace:*",
     "@icas/capability": "workspace:*",
-    "@mastra/core": "latest"
+    "@mastra/core": "1.63.0"
   },
   "devDependencies": {
     "rimraf": "^6.0.1",

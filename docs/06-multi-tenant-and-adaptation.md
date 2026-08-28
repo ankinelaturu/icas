@@ -104,9 +104,101 @@ specialized capability derived from base
 
 The important design property is that tenant specialization should not require duplicating the entire artifact when only a small region differs.
 
+## Tenant override model
+
+Preferred model:
+
+```text
+Base capability:
+s1 → s2 → s3 → s4 → s5
+
+Tenant B override:
+          s3'
+
+Effective capability:
+s1 → s2 → s3' → s4 → s5
+```
+
+- The Vendor+Product capability is the reusable base.
+- Tenant differences are small declarative patches.
+- Same Vendor+Product means “candidate for reuse,” not “guaranteed compatible.”
+
+Example override:
+
+```json
+{
+  "baseCapability": "loan-payoff@1.0.0",
+  "target": {
+    "tenant": "tenant-b"
+  },
+  "overrides": {
+    "steps": {
+      "s3": {
+        "preconditions": [
+          { "type": "textVisible", "value": "Member Lending" }
+        ],
+        "action": {
+          "type": "click",
+          "target": {
+            "strategies": [
+              { "type": "visibleText", "text": "Loan Servicing" }
+            ]
+          }
+        },
+        "postconditions": [
+          { "type": "textVisible", "value": "Loan Details" }
+        ]
+      }
+    }
+  }
+}
+```
+
+Supported override operations:
+
+- replace a complete step;
+- replace target/locator only;
+- replace preconditions/postconditions;
+- insert steps before/after a known step;
+- disable/remove a step.
+
+Arbitrary `customJavaScript`-style patches are rejected. Overrides are data, not executable code.
+
+Provenance example:
+
+```json
+{
+  "tenant": "tenant-b",
+  "baseCapability": "loan-payoff@1.0.0",
+  "createdBy": "icas-adapt",
+  "reason": "step s3 precondition mismatch",
+  "createdFromRun": "run-..."
+}
+```
+
+### Effective capability resolution
+
+```text
+base capability
+      +
+tenant override
+      ↓
+resolve + validate
+      ↓
+effective capability
+      ↓
+ReplayEngine
+```
+
+### When an override is not enough
+
+`icas-adapt` should use a small override only if it can prove re-entry into the known downstream path. If divergence spans much of the workflow, downstream preconditions cannot be restored, or the business flow is materially different, stop adaptation and require broader rediscovery instead of accumulating a large brittle patch.
+
 ## Drift
 
 Version or tenant drift is detected through checkpoint failure, not through blind execution. A mismatch should fail safely and surface the exact step/state divergence.
+
+Tenant overrides are subject to the same pre/post checkpoint validation as the base capability. Drift in either the base capability or the override should fail at the precise boundary, not silently continue.
 
 ## Repository tenant fixtures
 

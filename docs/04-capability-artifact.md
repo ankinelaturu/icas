@@ -33,6 +33,51 @@ discoveredOn?: {
 
 but a reusable capability must not bake the tenant's concrete origin into every route or target.
 
+## Base capability and tenant specialization
+
+A normal capability remains identified by Vendor+Product. Tenant identity is not part of that reusable identity.
+
+Tenant-specific differences should be represented as a specialization artifact that references a specific base capability and version. Do not duplicate the full capability when only a few steps differ. Overrides must remain serializable, reviewable data — not arbitrary executable JavaScript.
+
+```ts
+interface CapabilityOverride {
+  schemaVersion: string;
+  id: string;
+  baseCapability: string; // e.g. "loan-payoff@1.0.0"
+
+  target: {
+    tenant: string;
+  };
+
+  overrides: {
+    steps?: Record<string, StepOverride>;
+    insertBefore?: Record<string, CapabilityStep[]>;
+    insertAfter?: Record<string, CapabilityStep[]>;
+    disabledSteps?: string[];
+  };
+
+  provenance: {
+    createdBy: "icas-adapt" | "human";
+    createdFromRun?: string;
+    reason: string;
+  };
+}
+```
+
+`StepOverride` may:
+
+- replace a whole step;
+- replace only the target/locator;
+- replace preconditions;
+- replace postconditions.
+
+### Resolution invariant
+
+- base capability + tenant override must be resolved first;
+- the resulting effective capability must be schema-validated;
+- `ReplayEngine` only receives the resolved effective capability;
+- `ReplayEngine` should contain no tenant-specific if/else branches.
+
 ## Inputs
 
 Inputs are typed invocation parameters:
@@ -200,6 +245,8 @@ Keep schema and capability versions separate:
 - `capabilityVersion` changes when the learned business flow or targeting/checkpoint behavior changes.
 
 Exact semantic-version policy can remain simple, but the distinction should exist from the beginning.
+
+An override references a specific base capability version (for example `loan-payoff@1.0.0`). If the base version changes, the override must be revalidated before unattended use. Never silently apply an override authored against an incompatible base version.
 
 ## Reviewability
 
