@@ -403,9 +403,9 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 
 ### Pass 5.14 — Compiler: human actions
 
-- [ ] Recurring approval → explicit `handoff` step
-- [ ] Exceptional manual recovery stays evidence, not happy-path
-- [ ] Tests for both classifications
+- [x] Recurring approval → explicit `handoff` step
+- [x] Exceptional manual recovery stays evidence, not happy-path
+- [x] Tests for both classifications
 
 ### Pass 5.15 — Discovery integration test
 

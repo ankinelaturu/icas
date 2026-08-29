@@ -3,6 +3,7 @@
  *
  * Failed branches stay in evidence. `backtrack` pops the last executed action;
  * `chosen_action` without a following ok `action_result` is never compiled.
+ * Recurring approval inserts a `handoff` step; exceptional HITL does not.
  */
 
 import {
@@ -10,6 +11,7 @@ import {
   type CapabilityAction,
 } from "@icas/capability";
 
+import { classifyHumanIntervention } from "./classify-intervention.js";
 import type { DiscoveryTraceEvent } from "./discovery-types.js";
 
 export interface PathObservation {
@@ -26,6 +28,8 @@ export interface SuccessfulPathStep {
   rationale?: string;
   before?: PathObservation;
   after?: PathObservation;
+  /** Recurring approval to insert as a `handoff` step before this action. */
+  insertHandoff?: string;
 }
 
 /**
@@ -51,6 +55,17 @@ export function extractSuccessfulPath(
       pending = parseChosenAction(event.payload);
       if (pending !== undefined && lastObservation !== undefined) {
         pending.before = lastObservation;
+      }
+      continue;
+    }
+    if (event.type === "intervention") {
+      const reason = interventionReason(event.payload);
+      if (
+        pending !== undefined &&
+        reason !== undefined &&
+        classifyHumanIntervention(reason) === "handoff"
+      ) {
+        pending.insertHandoff = interventionMessage(event.payload, reason);
       }
       continue;
     }
@@ -120,6 +135,24 @@ function parseChosenAction(payload: unknown): SuccessfulPathStep | undefined {
     step.rationale = record.rationale;
   }
   return step;
+}
+
+function interventionReason(payload: unknown): string | undefined {
+  if (payload === null || typeof payload !== "object") {
+    return undefined;
+  }
+  const reason = (payload as { reason?: unknown }).reason;
+  return typeof reason === "string" && reason.length > 0 ? reason : undefined;
+}
+
+function interventionMessage(payload: unknown, fallback: string): string {
+  if (payload !== null && typeof payload === "object") {
+    const message = (payload as { message?: unknown }).message;
+    if (typeof message === "string" && message.length > 0) {
+      return message;
+    }
+  }
+  return fallback;
 }
 
 function actionSucceeded(payload: unknown): boolean {

@@ -70,9 +70,22 @@ export class CapabilityCompiler {
     }
     const inputValues = request.inputValues ?? {};
     const usedIds = new Set<string>();
-    const steps = path.map((step, index) =>
-      toStep(step, path[index - 1], index, inputValues, usedIds),
-    );
+    const steps: CapabilityStep[] = [];
+    for (const [index, step] of path.entries()) {
+      if (step.insertHandoff !== undefined && step.action.type !== "handoff") {
+        const handoff = {
+          type: "handoff" as const,
+          reason: step.insertHandoff,
+        };
+        steps.push({
+          id: uniqueStepId(handoff, index, usedIds),
+          preconditions: [],
+          action: handoff,
+          postconditions: [],
+        });
+      }
+      steps.push(toStep(step, path[index - 1], index, inputValues, usedIds));
+    }
     const version = request.capabilityVersion ?? "1.0.0";
     const artifact: CapabilityArtifact = {
       schemaVersion: "1.0",

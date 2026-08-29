@@ -21,6 +21,7 @@ export {
 export type { CandidateProposer, ProposeContext } from "./candidate-proposer.js";
 export type { CompileRequest, DiscoveredInput } from "./capability-compiler.js";
 export { CapabilityCompiler, loadTraceEvents, persistDiscoveredCapability } from "./capability-compiler.js";
+export { classifyHumanIntervention } from "./classify-intervention.js";
 export type { SuccessfulPathStep } from "./extract-successful-path.js";
 export { extractSuccessfulPath } from "./extract-successful-path.js";
 export type { DiscoveryAgentDependencies } from "./discovery-agent.js";

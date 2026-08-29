@@ -174,7 +174,7 @@ A capability must be decoupled from the raw model transcript. `CapabilityCompile
 9. attach schema/capability version metadata;
 10. write the base artifact through `CapabilityRegistry.save` (refuse if `id@version` already exists unless `capabilityVersion` is bumped) and a header-only tenant override through `saveOverride` (`createdBy: "discovery"`). Tests use a temp registry root, never repo `capabilities/`.
 
-Human actions require classification. A normal reusable approval boundary may become a handoff step. An exceptional manual recovery should usually remain evidence rather than being blindly compiled into the happy-path capability.
+Human actions require classification. A normal reusable approval boundary (`approval_required`) becomes an explicit `handoff` step on the success path. An exceptional manual recovery (`policy_block`, `discovery_stuck`) remains evidence rather than being compiled into the happy-path capability.
 
 ## Mastra's role
 
