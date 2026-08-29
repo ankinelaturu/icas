@@ -82,10 +82,10 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 ### Pass 1.8 — Resolver: partial step patches
 
-- [ ] Replace target/locator only
-- [ ] Replace preconditions only
-- [ ] Replace postconditions only
-- [ ] Tests for each partial patch, including unchanged fields preserved
+- [x] Replace target/locator only
+- [x] Replace preconditions only
+- [x] Replace postconditions only
+- [x] Tests for each partial patch, including unchanged fields preserved
 
 ### Pass 1.9 — Resolver: insert / disable
 

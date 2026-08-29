@@ -139,4 +139,80 @@ describe("CapabilityResolver", () => {
       base.steps.map((step) => step.id),
     );
   });
+
+  it("replaces only the target and preserves the rest of the step", async () => {
+    const base = loadLoanPayoff();
+    const original = base.steps[0];
+    await registry.save(base);
+    await registry.saveOverride({
+      ...headerOverride(),
+      overrides: {
+        steps: {
+          "open-lending": {
+            target: {
+              strategies: [{ type: "visibleText", text: "Member Lending" }],
+            },
+          },
+        },
+      },
+    });
+    const effective = await resolver.resolve({
+      id: "loan-payoff",
+      tenant: "icas",
+    });
+    const step = effective.steps[0];
+    expect(step?.preconditions).toEqual(original?.preconditions);
+    expect(step?.postconditions).toEqual(original?.postconditions);
+    expect(step?.action).toMatchObject({
+      type: "click",
+      intent: original?.action.type === "click" ? original.action.intent : undefined,
+      target: {
+        strategies: [{ type: "visibleText", text: "Member Lending" }],
+      },
+    });
+  });
+
+  it("replaces only preconditions and preserves the action", async () => {
+    const base = loadLoanPayoff();
+    const original = base.steps[0];
+    await registry.save(base);
+    const preconditions = [{ type: "textVisible" as const, value: "Portal Home" }];
+    await registry.saveOverride({
+      ...headerOverride(),
+      overrides: {
+        steps: { "open-lending": { preconditions } },
+      },
+    });
+    const effective = await resolver.resolve({
+      id: "loan-payoff",
+      tenant: "icas",
+    });
+    const step = effective.steps[0];
+    expect(step?.preconditions).toEqual(preconditions);
+    expect(step?.action).toEqual(original?.action);
+    expect(step?.postconditions).toEqual(original?.postconditions);
+  });
+
+  it("replaces only postconditions and preserves the action", async () => {
+    const base = loadLoanPayoff();
+    const original = base.steps[0];
+    await registry.save(base);
+    const postconditions = [
+      { type: "textVisible" as const, value: "Member Lending" },
+    ];
+    await registry.saveOverride({
+      ...headerOverride(),
+      overrides: {
+        steps: { "open-lending": { postconditions } },
+      },
+    });
+    const effective = await resolver.resolve({
+      id: "loan-payoff",
+      tenant: "icas",
+    });
+    const step = effective.steps[0];
+    expect(step?.postconditions).toEqual(postconditions);
+    expect(step?.action).toEqual(original?.action);
+    expect(step?.preconditions).toEqual(original?.preconditions);
+  });
 });
