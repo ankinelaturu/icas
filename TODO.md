@@ -466,9 +466,9 @@ Thin entry points. Packages own behavior.
 
 ### Pass 6.9 — `icas-adapt` abort to rediscovery
 
-- [ ] If divergence is large, downstream preconditions cannot be restored, or the business flow differs, stop
-- [ ] Do not accumulate a large brittle patch
-- [ ] `tests/integration/tenant-adaptation.test.ts` (fixtures; full Loki Bank in Phase 7)
+- [x] If divergence is large, downstream preconditions cannot be restored, or the business flow differs, stop
+- [x] Do not accumulate a large brittle patch
+- [x] `tests/integration/tenant-adaptation.test.ts` (fixtures; full Loki Bank in Phase 7)
 
 ### Pass 6.10 — Pin MCP SDK
 

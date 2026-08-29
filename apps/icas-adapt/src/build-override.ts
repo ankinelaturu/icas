@@ -14,6 +14,9 @@ import type {
 } from "@icas/capability";
 import type { GuardedReplayReport } from "@icas/replay";
 
+/** One step replace is bounded. Extra inserts accumulate a brittle patch. */
+export const MAX_ADAPT_PATCH_STEPS = 1;
+
 /**
  * Propose a declarative patch for the single divergent step.
  *
@@ -69,6 +72,11 @@ export async function buildAdaptOverride(args: {
   }
 
   const mismatch = args.report;
+  if (mismatch.result.stepId === undefined) {
+    throw new Error(
+      "adaptation aborted: checkpoints failed after the last step; rediscover the flow",
+    );
+  }
   if (args.specializer === undefined) {
     throw new Error(
       `step "${mismatch.stepId}" diverged (${mismatch.result.code}); bounded specialization requires a StepSpecializer`,
@@ -81,7 +89,7 @@ export async function buildAdaptOverride(args: {
   }
 
   const patch = await args.specializer.specialize({ step, report: mismatch });
-  return {
+  const override: CapabilityOverride = {
     schemaVersion: "1.0",
     id: `${args.base.id}-${args.tenant}`,
     baseCapability: pin,
@@ -97,4 +105,34 @@ export async function buildAdaptOverride(args: {
       reason: `step ${mismatch.stepId} ${mismatch.result.code}`,
     },
   };
+  assertBoundedAdaptPatch(override);
+  return override;
+}
+
+/**
+ * Refuse a patch that would rewrite most of the workflow.
+ *
+ * Header-only `overrides: {}` is always bounded. More than one step replace,
+ * any insert, or disabled steps means rediscover instead of stacking locators.
+ *
+ * @param override - Candidate enrollment document
+ * @throws {Error} When the patch is too large
+ */
+export function assertBoundedAdaptPatch(override: CapabilityOverride): void {
+  const patch = override.overrides;
+  const stepKeys = Object.keys(patch.steps ?? {});
+  const inserted = [
+    ...Object.values(patch.insertBefore ?? {}).flat(),
+    ...Object.values(patch.insertAfter ?? {}).flat(),
+  ];
+  const disabled = patch.disabledSteps?.length ?? 0;
+  if (
+    stepKeys.length > MAX_ADAPT_PATCH_STEPS ||
+    inserted.length > 0 ||
+    disabled > 0
+  ) {
+    throw new Error(
+      "adaptation aborted: divergence is too large; rediscover instead of accumulating a brittle patch",
+    );
+  }
 }

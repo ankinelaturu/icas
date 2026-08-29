@@ -4,8 +4,9 @@
 
 import { describe, expect, it } from "vitest";
 
-import { buildAdaptOverride } from "../src/build-override.js";
-import type { CapabilityArtifact } from "@icas/capability";
+import type { CapabilityArtifact, CapabilityOverride } from "@icas/capability";
+
+import { assertBoundedAdaptPatch, buildAdaptOverride } from "../src/build-override.js";
 
 const base = {
   schemaVersion: "1.0",
@@ -76,5 +77,62 @@ describe("buildAdaptOverride", () => {
     });
     expect(override.provenance.createdBy).toBe("icas-adapt");
     expect(Object.keys(override.overrides.steps ?? {})).toEqual(["open-lending"]);
+  });
+
+  it("aborts when the mismatch has no step id (whole-flow failure)", async () => {
+    await expect(
+      buildAdaptOverride({
+        base,
+        tenant: "loki-bank",
+        report: {
+          status: "mismatch",
+          stepId: "loan-payoff",
+          expected: "Payoff Statement",
+          observed: false,
+          result: {
+            status: "failure",
+            capabilityId: "loan-payoff",
+            code: "UNEXPECTED_STATE",
+            runId: "run-end",
+          },
+        },
+        specializer: {
+          async specialize() {
+            return { target: { strategies: [{ type: "visibleText", text: "X" }] } };
+          },
+        },
+      }),
+    ).rejects.toThrow(/rediscover the flow/);
+  });
+});
+
+describe("assertBoundedAdaptPatch", () => {
+  it("aborts when the patch would insert extra workflow steps", () => {
+    const oversized: CapabilityOverride = {
+      schemaVersion: "1.0",
+      id: "loan-payoff-loki-bank",
+      baseCapability: "loan-payoff@1.0.0",
+      target: { tenant: "loki-bank" },
+      overrides: {
+        insertBefore: {
+          "open-lending": [
+            {
+              id: "extra-1",
+              preconditions: [],
+              action: {
+                type: "click",
+                target: { strategies: [{ type: "visibleText", text: "A" }] },
+              },
+              postconditions: [],
+            },
+          ],
+        },
+      },
+      provenance: {
+        createdBy: "icas-adapt",
+        reason: "too large",
+      },
+    };
+    expect(() => assertBoundedAdaptPatch(oversized)).toThrow(/too large/);
   });
 });

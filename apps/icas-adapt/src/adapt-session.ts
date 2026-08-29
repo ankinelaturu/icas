@@ -45,6 +45,8 @@ export interface AdaptRunRequest {
   inputs: Record<string, unknown>;
   headed: boolean;
   runId?: string;
+  /** Locator wait budget in ms. Tests pass a small value; production defaults inside PlaywrightSurface. */
+  timeoutMs?: number;
 }
 
 export interface AdaptReplayInvocation {
@@ -172,7 +174,10 @@ async function executePlaywrightReplay(
     stdin: deps.stdin ?? process.stdin,
     ...(deps.stdout === undefined ? {} : { stdout: deps.stdout }),
   });
-  const surface = new PlaywrightSurface({ headed: request.headed });
+  const surface = new PlaywrightSurface({
+    headed: request.headed,
+    ...(request.timeoutMs === undefined ? {} : { timeoutMs: request.timeoutMs }),
+  });
   try {
     await surface.open(request.url);
     const engine = new ReplayEngine(surface, { policy, evidence, handoff });
