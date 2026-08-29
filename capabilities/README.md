@@ -11,7 +11,8 @@ capabilities/
   loan-payoff/
     1.0.0.json           # base CapabilityArtifact (Vendor+Product)
     overrides/
-      tenant-b.json      # CapabilityOverride pinned to loan-payoff@1.0.0
+      icas.json          # header-only enrollment after first discover
+      tenant-b.json      # header-only if compatible, or a declarative patch
 ```
 
 The effective capability (base + override) is never stored here. See `docs/04-capability-artifact.md`.

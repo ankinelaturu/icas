@@ -17,6 +17,8 @@ This directory is the detailed engineering source of truth for ICAS. The root `R
 11. [`11-agent-facing-mcp.md`](11-agent-facing-mcp.md) — `icas-mcp`, capability catalog as tools, MCP adapter design.
 12. [`12-testing-and-demo.md`](12-testing-and-demo.md) — targeted tests and the end-to-end review/demo path.
 
+`brief.pdf` may exist locally as the take-home prompt. It is gitignored and must not be committed.
+
 ## Working rule
 
 When implementation changes an architectural decision, update the relevant design note first or in the same change. Avoid letting the code become the only source of truth for behavior that a reviewer must understand and defend.

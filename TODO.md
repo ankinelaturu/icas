@@ -12,6 +12,9 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 - Model/provider (including vision) is deferred until discovery needs it (Phase 5).
 - Assisted fallback, `icas-adapt`, HITL browser takeover, and MCP are in scope.
 - Tenant specialization is a declarative `CapabilityOverride` resolved by `CapabilityResolver`. `ReplayEngine` stays tenant-agnostic.
+- Every discovered or verified tenant gets an override file (empty patch allowed). `icas-play` / MCP require enrollment.
+- CLI: `--id` is the unique catalog name. `--vendor` / `--product` / `--tenant` default to `icas`. Do not infer them from `--url`.
+- Do not commit `docs/brief.pdf` (gitignored).
 
 **Out of scope**
 
@@ -29,7 +32,7 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 ### Pass 1.1 — Override types
 
-- [ ] Add `CapabilityOverride`, `StepOverride`, override operations (`steps`, `insertBefore`, `insertAfter`, `disabledSteps`), and provenance types
+- [ ] Add `CapabilityOverride`, `StepOverride`, override operations (`steps`, `insertBefore`, `insertAfter`, `disabledSteps`), and provenance types (`createdBy`: `discovery` | `verified` | `icas-adapt` | `human`)
 - [ ] Export from `@icas/capability`
 - [ ] No runtime yet; types only
 
@@ -64,9 +67,10 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 ### Pass 1.6 — Override storage and registry
 
 - [ ] On-disk layout: `capabilities/<id>/overrides/<tenant>.json` pinned to `id@version`
+- [ ] Empty `overrides: {}` is valid (header-only enrollment)
 - [ ] `listOverrides` / `getOverride` / `saveOverride` / `removeOverride`
 - [ ] `saveOverride` rejects if the pinned base version is not stored
-- [ ] Tests for round-trip save/load
+- [ ] Tests for round-trip save/load and header-only override
 
 ### Pass 1.7 — Resolver: version pin + whole-step replace
 
@@ -427,8 +431,10 @@ Thin entry points. Packages own behavior.
 ### Pass 6.3 — `icas-play run` (strict)
 
 - [ ] Parse typed inputs from CLI
-- [ ] `--tenant` / `--url` from runtime flags, not from artifact base URL
-- [ ] Resolve effective capability, then `ReplayEngine` (no LLM)
+- [ ] `--url` required; `--tenant` / `--vendor` / `--product` default to `icas`
+- [ ] Do not infer tenant from the URL
+- [ ] `resolve({ id, tenant })` requires an existing override (not enrolled → fail)
+- [ ] Then `ReplayEngine` (no LLM)
 
 ### Pass 6.4 — `icas-play run --assist`
 
@@ -437,9 +443,11 @@ Thin entry points. Packages own behavior.
 
 ### Pass 6.5 — `icas-agent discover`
 
-- [ ] `discover --vendor --product --tenant --url --goal`
+- [ ] Required: `--id` (unique), `--url`, `--goal`
+- [ ] Optional: `--vendor` `--product` `--tenant` (default `icas`)
+- [ ] Refuse if `--id` already exists unless version bump is explicit
 - [ ] Wire surface, policy, evidence, handoff, compiler
-- [ ] Write capability + discovery evidence on success
+- [ ] On success: `save` base + `saveOverride` header-only for the discovering tenant; write discovery evidence
 
 ### Pass 6.6 — `icas-adapt` guarded replay
 
@@ -449,7 +457,7 @@ Thin entry points. Packages own behavior.
 ### Pass 6.7 — `icas-adapt` override generation
 
 - [ ] Bounded specialization around the divergent region
-- [ ] Write `CapabilityOverride` with provenance (`createdBy: "icas-adapt"`, run id, reason)
+- [ ] Write `CapabilityOverride` with provenance (`createdBy: "icas-adapt"` or `"verified"` if header-only, run id, reason)
 
 ### Pass 6.8 — `icas-adapt` re-verify
 
@@ -475,7 +483,7 @@ Thin entry points. Packages own behavior.
 
 ### Pass 6.12 — MCP invoke → ReplayEngine
 
-- [ ] Tool call delegates to `ReplayEngine` with resolved effective capability
+- [ ] Tool call delegates to `ReplayEngine` with resolved effective capability for an enrolled tenant (default `icas`)
 - [ ] No duplicated browser or replay logic
 
 ---
@@ -484,7 +492,7 @@ Thin entry points. Packages own behavior.
 
 `tenants/tenant-a`, `tenants/tenant-b` — after core runtime exists.
 
-Same fictional Vendor+Product: `demo-vendor` / `demo-core`. No login flow. No real PII.
+Same fictional Vendor+Product: `icas` / `icas`. Tenant catalog ids are `icas` (default demo) and `tenant-b` (second institution). App folders remain `tenants/tenant-a` and `tenants/tenant-b`. No login flow. No real PII.
 
 ### Pass 7.1 — Tenant A app shell
 

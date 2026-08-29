@@ -30,12 +30,10 @@ tests/         Cross-package integration and end-to-end tests
 pnpm install
 pnpm build
 
-# Discover a new capability
+# Discover a new capability (--vendor/--product/--tenant default to icas)
 pnpm icas-agent -- \
   discover \
-  --vendor demo-vendor \
-  --product demo-core \
-  --tenant tenant-a \
+  --id loan-payoff \
   --url http://localhost:4101 \
   --goal "Generate a payoff statement for loan 987654 for 2026-09-30"
 
@@ -43,10 +41,9 @@ pnpm icas-agent -- \
 pnpm icas-play -- list
 pnpm icas-play -- describe loan-payoff
 
-# Deterministic replay
+# Deterministic replay (same defaults; URL + typed params required)
 pnpm icas-play -- \
   run loan-payoff \
-  --tenant tenant-a \
   --url http://localhost:4101 \
   --loanAccountId 987654 \
   --payoffDate 2026-09-30
@@ -55,7 +52,6 @@ pnpm icas-play -- \
 pnpm icas-play -- \
   run loan-payoff \
   --assist \
-  --tenant tenant-a \
   --url http://localhost:4101 \
   --loanAccountId 987654 \
   --payoffDate 2026-09-30

@@ -42,21 +42,29 @@ Home
   → Payoff Statement
 ```
 
-The agent is never allowed to hard-code this path. Discovery begins with the goal, target metadata, and entry URL, observes the actual UI, and determines the path at runtime.
+The agent is never allowed to hard-code this path. Discovery begins with a caller-supplied capability id, a natural-language goal, and a target URL, observes the actual UI, and determines the path at runtime. Vendor, product, and tenant default to `icas` when omitted.
 
 ## Runnable entry points
 
 ### `icas-agent`
 
-Goal-oriented authoring/discovery tool. It always performs genuine LLM-driven discovery. It accepts:
+Goal-oriented authoring/discovery tool. It always performs genuine LLM-driven discovery.
 
-- vendor
-- product
-- tenant
-- URL/entry point
-- natural-language goal
+Required:
 
-It observes the live surface, asks the model to rank/propose actions, executes permitted actions, handles bounded exploration/backtracking, records a discovery trace, and compiles the successful path into a capability artifact.
+- `--id` — unique catalog id for the capability being created (e.g. `loan-payoff`)
+- `--url` — entry point of the live surface
+- `--goal` — natural-language goal
+
+Optional (default `icas` for each):
+
+- `--vendor`
+- `--product`
+- `--tenant`
+
+Do not infer vendor, product, tenant, or capability id from the URL. `--id` is unique in the catalog: a second discover with the same id is rejected unless the caller explicitly bumps `capabilityVersion`. Tenants share that id; they do not get a second capability.
+
+It observes the live surface, asks the model to rank/propose actions, executes permitted actions, handles bounded exploration/backtracking, records a discovery trace, and compiles the successful path into a capability artifact plus a header-only tenant override for the discovering tenant.
 
 ### `icas-play`
 
@@ -65,10 +73,14 @@ Capability-oriented human CLI. It provides a capability catalog and deterministi
 ```text
 icas-play list
 icas-play describe <capability>
-icas-play run <capability> ...typed inputs...
+icas-play run <capability> --url <url> ...typed inputs...
 ```
 
+`--tenant` / `--vendor` / `--product` default to `icas`. Replay is selected by **capability id**, not by URL. `--url` is only where to open the browser. Typed params (e.g. `--loanAccountId`) are required per the artifact contract.
+
 Strict replay is model-free. An explicit assisted mode may perform one bounded, policy-checked LLM repair at a failed step, then must verify that execution has rejoined the original deterministic path.
+
+Production replay (`run` without going through adapt) requires the tenant to already be enrolled (an override file must exist, even if the patch is empty). Missing override means not enrolled — do not silently replay the bare Vendor+Product base.
 
 ### `icas-adapt`
 

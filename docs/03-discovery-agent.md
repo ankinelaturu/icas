@@ -8,17 +8,25 @@
 
 ```ts
 interface DiscoveryRequest {
+  id: string; // unique catalog id, e.g. "loan-payoff"
   target: {
-    vendor: string;
-    product: string;
-    tenant: string;
+    vendor: string; // CLI default "icas"
+    product: string; // CLI default "icas"
+    tenant: string; // CLI default "icas"
     url: string;
   };
   goal: string;
 }
 ```
 
-Vendor/Product/Tenant identity is supplied by the caller. ICAS is not responsible for inferring which commercial banking application it landed on.
+`--id`, `--url`, and `--goal` are required. Vendor, product, and tenant may be omitted on the CLI; each defaults to `icas`. ICAS is not responsible for inferring vendor, product, tenant, or capability id from the URL.
+
+`--id` is unique in the catalog. It names the Vendor+Product capability, not a tenant copy. A later institution uses `icas-adapt --id loan-payoff --tenant tenant-b`, not a second discover with a new id.
+
+On success the compiler:
+
+1. `save`s the base artifact under that id (refuse if the id already exists, unless the caller explicitly bumps `capabilityVersion`);
+2. `saveOverride`s a header-only tenant override for `target.tenant` with `overrides: {}` and `createdBy: "discovery"`.
 
 ## Observation model
 
@@ -150,7 +158,7 @@ A capability must be decoupled from the raw model transcript. `CapabilityCompile
 7. derive output extraction rules;
 8. derive final success conditions;
 9. attach schema/capability version metadata;
-10. write the artifact to `capabilities/`.
+10. write the base artifact through `CapabilityRegistry.save` and a header-only tenant override through `saveOverride`.
 
 Human actions require classification. A normal reusable approval boundary may become a handoff step. An exceptional manual recovery should usually remain evidence rather than being blindly compiled into the happy-path capability.
 

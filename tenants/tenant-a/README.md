@@ -6,7 +6,8 @@ Planned role:
 
 - synthetic bank/credit-union back-office application;
 - authenticated-session assumption (no login flow in the prototype);
-- same fictional **Vendor + Product** as Tenant B;
+- same fictional **Vendor + Product** as Tenant B (`icas` / `icas`);
+- catalog tenant id for the default demo is `icas` (CLI default); this app folder is the baseline UI;
 - deterministic fixture data;
 - loan-payoff workflow;
 - legacy-ish UI characteristics (e.g. imperfect semantics, nested/table layouts, inconsistent labels, possibly iframe/panel behavior);

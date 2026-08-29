@@ -62,7 +62,7 @@ tests/integration/
 ### 1. Real discovery
 
 - start Tenant A;
-- launch `icas-agent` with loan-payoff goal;
+- launch `icas-agent discover --id loan-payoff --url … --goal …`;
 - model navigates the real UI;
 - capability is written;
 - discovery trace + observations are written.

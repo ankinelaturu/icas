@@ -48,23 +48,25 @@ same Vendor+Product ≠ identical UI
 
 ## Reuse model
 
-For Tenant A:
+For Tenant A (CLI defaults, tenant id `icas`):
 
 ```text
-icas-agent
-→ discover loan-payoff
-→ capability C
-→ mark discovery/verification evidence for Tenant A
+icas-agent discover --id loan-payoff --url … --goal …
+→ base capability C
+→ header-only override for tenant icas
+→ discovery evidence
 ```
 
 For Tenant B with same Vendor+Product:
 
 ```text
-capability C
-→ guarded ReplayEngine verification
-→ success: C is compatible with Tenant B
-→ mismatch: adaptation required
+icas-adapt loan-payoff --tenant tenant-b --url …
+→ guarded ReplayEngine verification against C
+→ success: write header-only override for tenant-b (createdBy: "verified")
+→ mismatch: write a small declarative patch and re-verify
 ```
+
+A tenant with no override file is not enrolled. `icas-play run` / MCP must not silently use the bare base.
 
 ## `icas-adapt`
 
@@ -73,9 +75,9 @@ capability C
 Input:
 
 - existing capability ID;
-- new tenant identity;
+- new tenant identity (`--tenant` required here; do not default this to `icas` when specializing a second institution);
 - URL/entry point;
-- Vendor+Product compatibility context.
+- Vendor+Product compatibility context (CLI `--vendor` / `--product` default to `icas`).
 
 Behavior:
 
@@ -84,7 +86,7 @@ Behavior:
 3. capture expected vs observed state;
 4. invoke bounded discovery/adaptation around the divergent region;
 5. prove re-entry into the known downstream path via pre/post conditions;
-6. produce a specialized/overridden capability representation;
+6. produce a specialized/overridden capability representation (header-only if compatible, patch if a small region drifted);
 7. record evidence.
 
 ## Base + specialization concept
@@ -122,8 +124,26 @@ s1 → s2 → s3' → s4 → s5
 ```
 
 - The Vendor+Product capability is the reusable base.
-- Tenant differences are small declarative patches.
+- Every enrolled tenant has an override file. If the base works unchanged, the file is **header only** (`overrides: {}`).
+- Tenant differences are small declarative patches on that file — never a second full capability.
 - Same Vendor+Product means “candidate for reuse,” not “guaranteed compatible.”
+
+Header-only override (compatible or first discovery):
+
+```json
+{
+  "schemaVersion": "1.0",
+  "id": "loan-payoff-icas",
+  "baseCapability": "loan-payoff@1.0.0",
+  "target": { "tenant": "icas" },
+  "overrides": {},
+  "provenance": {
+    "createdBy": "discovery",
+    "reason": "enrolled discovering tenant",
+    "createdFromRun": "run-..."
+  }
+}
+```
 
 Example override:
 
