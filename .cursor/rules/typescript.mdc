@@ -1,0 +1,53 @@
+---
+description: TypeScript language and style standards for this ESM/NodeNext monorepo
+globs: "**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# TypeScript
+
+Match `tsconfig.base.json`: `strict`, `NodeNext`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`.
+
+Write straightforward, readable code. Prefer small modules and composition over cleverness.
+
+## Naming
+
+- Classes, types, interfaces: PascalCase
+- Variables, functions, methods: camelCase; functions are verb + noun (`getCapability`, `saveOverride`)
+- Files and directories: kebab-case (`capability-resolver.ts`)
+- Constants and env names: UPPER_SNAKE_CASE (`ICAS_MODEL`)
+
+## Types
+
+- ESM only. Use `.js` in relative imports when NodeNext requires it.
+- `import type` when the import is types-only.
+- Named exports from packages. No default exports in `packages/`.
+- Explicit return types on exported functions, methods, and public class APIs.
+- `unknown` over `any`. Never `as any` to silence the compiler.
+- Discriminated unions over optional overlapping fields.
+- `satisfies` for object literals that must match a type without widening.
+- No TypeScript `enum`. Use string-literal unions or `as const` objects.
+- `readonly` on properties that must not be reassigned.
+- New **runtime-validated** public contracts (artifacts, CLI/MCP input): define a Zod schema and `z.infer<typeof Schema>`. Do not add Lodash; this repo does not use it.
+- No `!` non-null assertions unless a guard still leaves the checker stuck.
+- Handle `T | undefined` from index access. Do not pass `undefined` where `exactOptionalPropertyTypes` forbids it.
+
+## Functions and control flow
+
+- Prefer parameter object destructuring and default values over long positional lists.
+- Arrow functions for short callbacks; class methods stay methods on ICAS classes.
+- Await every `async` call or explicitly void it. No floating promises.
+- Independent I/O: `Promise.all` (or `Promise.allSettled`). Do not sequential-await when work is independent.
+- Throw `Error` subclasses with `cause` when useful. Do not swallow catches.
+
+```ts
+// ❌
+export async function load(id: string) {
+  return registry.get(id) as any;
+}
+
+// ✅
+export async function load(id: string): Promise<CapabilityArtifact | undefined> {
+  return await registry.get(id);
+}
+```

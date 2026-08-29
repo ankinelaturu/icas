@@ -1,0 +1,40 @@
+---
+description: File headers, TSDoc, and technical writing for TypeScript and markdown
+globs: "**/*.{ts,tsx,md}"
+alwaysApply: false
+---
+
+# File headers and TSDoc
+
+Follow [Google’s technical writing style](https://developers.google.com/tech-writing): active voice, present tense, short sentences, define terms once, lists/tables when they clarify. Restate the change objective in one sentence before editing.
+
+Every new `.ts` file starts with a file header (purpose, not a changelog):
+
+```ts
+/**
+ * @file CapabilityResolver — apply a tenant override onto a base capability artifact.
+ */
+```
+
+Document **exported** classes, functions, methods, and public types with TSDoc. Use only [TypeDoc-compatible](https://typedoc.org/documents/Tags.html) tags (`@param`, `@returns`, `@throws`, `@example`, `@file`, `@see`).
+
+- Summary line: imperative mood (“Load the capability by id.”).
+- `@param` / `@returns` / `@throws` when the signature is not enough.
+- `@example` only for non-obvious call patterns.
+- Do not TSDoc trivial private one-liners.
+- Do not restate the type in prose (`@param id - a string`).
+- Keep comments current. Prefer why over what.
+
+```ts
+/**
+ * Load the latest capability version for `id`, or a specific version when given.
+ *
+ * @param id - Catalog capability id (e.g. `loan-payoff`)
+ * @param version - Semver capability version; omitted means latest
+ * @returns The artifact, or `undefined` if it is not in the catalog
+ */
+export async function get(
+  id: string,
+  version?: string,
+): Promise<CapabilityArtifact | undefined> {
+```

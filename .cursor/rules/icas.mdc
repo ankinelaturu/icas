@@ -1,0 +1,43 @@
+---
+description: ICAS architecture and take-home constraints from docs/ and the assignment brief
+alwaysApply: true
+---
+
+# ICAS
+
+Follow the user's request to the letter. Before editing, restate the objective in one short summary. Do not implement the next `TODO.md` pass unasked.
+
+Design source of truth is `docs/`. If an architectural decision changes, update the relevant design note in the same change. `REPORT.md` stays short (seven Interface.AI headings). Do not commit `docs/brief.pdf`.
+
+## Shortcuts
+
+- `CURSOR:PAIR` — pair as a senior engineer: alternatives, trade-offs, recommend one path. Do not start a large unasked rewrite.
+- `RFC` — refactor only as specified in that message.
+- `RFP` — rewrite the user's prompt: smaller steps, issue stated first, Google technical-writing style (active voice, present tense, lists).
+
+## Core invariant
+
+The model discovers. The artifact is the reusable capability. Replay executes it with **no LLM** (unless `--assist`). Never re-run a natural-language goal as “replay.”
+
+## Boundaries
+
+- `apps/` stay thin. Behavior lives in `packages/`. No package imports a CLI.
+- `@icas/capability` owns artifact schema, validation, CRUD, overrides, resolve. Callers must not glob `capabilities/`.
+- `FileSystemCapabilityRegistry({ root })` is the only catalog backend. Do not add REST/DB registries.
+- `ReplayEngine` is tenant-agnostic. It only receives the **effective** capability from `CapabilityResolver`.
+- `Surface` is the observation/action seam. Playwright is the first implementation, not the artifact model.
+- Policy, redaction, and evidence are separate packages. Redact before persist. No secrets/PII in artifacts or logs.
+
+## CLI and catalog
+
+- Discover requires `--id` (unique), `--url`, `--goal`. `--vendor` / `--product` / `--tenant` default to `icas`. Do not infer them from the URL.
+- Replay: `icas-play run <id> --url …` plus typed params. Id selects the capability; URL only opens the surface.
+- First discover writes base **and** a header-only tenant override (`overrides: {}`). Compatible adapt still enrolls. `icas-play` / MCP fail if the tenant is not enrolled.
+- Do not hand-author `capabilities/` to fake a demo. Submission artifacts come from a real LLM discovery run.
+
+## Scope
+
+- Synthetic tenants only. No real bank credentials or PII.
+- HITL is control transfer of the **same** headed session. No co-browsing console.
+- Stretch (adapt, MCP, `--assist`) is in-repo by design; do not skip the must-have slice (discover → artifact → replay + errors → HITL → evidence) to polish extras.
+- Follow `TODO.md` one pass at a time. Do not implement the next pass unasked.

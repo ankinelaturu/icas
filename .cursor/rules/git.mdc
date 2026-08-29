@@ -1,0 +1,31 @@
+---
+description: Git safety — never commit until the user reviews; conventional commits when they ask
+alwaysApply: true
+---
+
+# Git
+
+**Do not commit, stage-for-commit, amend, push, or create PRs unless the user explicitly asks in that message.** Implementing a pass is not permission to commit. Wait until they have reviewed and said to commit.
+
+- Never `git commit` “because the pass is done.”
+- Never `--no-verify`, `--no-gpg-sign`, force-push to `main`/`master`, or `reset --hard` unless they request that exact action.
+- Never `git add .` blindly. Do not stage `.env`, credentials, or `docs/brief.pdf`.
+- Do not update git config. Do not use interactive git (`-i`).
+- Do not push or open a PR unless they ask.
+
+When they **do** ask to commit:
+
+- One TODO pass per commit. Do not squash unrelated passes.
+- Follow the repo protocol: status, diff, log; HEREDOC message; no secrets.
+- [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): short summary` (e.g. `feat(capability): add filesystem registry`).
+- Title is brief. Then **two blank lines**. Then a body that explains why.
+- Types: `feat`, `fix`, `docs`, `test`, `refactor`, `chore` as appropriate.
+
+```text
+feat(capability): persist tenant overrides on disk
+
+
+Header-only overrides enroll a tenant without duplicating the base artifact.
+```
+
+If asked to “finish the pass,” stop at working tree changes and say the diff is ready for review.
