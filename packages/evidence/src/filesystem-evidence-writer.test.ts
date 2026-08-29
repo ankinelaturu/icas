@@ -7,11 +7,15 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { EvidenceError } from "./evidence-error.js";
 import { FileSystemEvidenceWriter } from "./filesystem-evidence-writer.js";
+import {
+  ASSISTED_FALLBACK_EVENT,
+  DETERMINISTIC_ACTION_EVENT,
+} from "./evidence-types.js";
 import type { EvidenceEvent, RunSummary } from "./evidence-types.js";
 
 function createWriter(
   root: string,
-  runType: "discovery" | "replay" = "discovery",
+  runType: "discovery" | "replay" | "adaptation" = "discovery",
   runId = "run-001",
 ): FileSystemEvidenceWriter {
   return new FileSystemEvidenceWriter({
@@ -39,12 +43,14 @@ describe("FileSystemEvidenceWriter", () => {
     const first: EvidenceEvent = {
       timestamp: "2026-08-28T00:00:00.000Z",
       runId: "run-001",
+      runType: "discovery",
       type: "observation",
       payload: { page: "home" },
     };
     const second: EvidenceEvent = {
       timestamp: "2026-08-28T00:00:01.000Z",
       runId: "run-001",
+      runType: "discovery",
       type: "action_result",
       payload: { status: "success" },
     };
@@ -78,6 +84,7 @@ describe("FileSystemEvidenceWriter", () => {
     await writer.append({
       timestamp: "2026-08-28T00:00:00.000Z",
       runId: "run-002",
+      runType: "replay",
       type: "action",
       actor: "replay",
     });
@@ -104,6 +111,7 @@ describe("FileSystemEvidenceWriter", () => {
     await writer.append({
       timestamp: "2026-08-28T00:00:00.000Z",
       runId: "run-001",
+      runType: "discovery",
       type: "observation",
       payload: { note: "SSN 123-45-6789" },
     });
@@ -137,5 +145,65 @@ describe("FileSystemEvidenceWriter", () => {
     expect(
       JSON.parse(await readFile(join(writer.runDirectory(), relative), "utf8")),
     ).toEqual({ html: "contact [REDACTED_EMAIL]" });
+  });
+
+  it("tags discovery events with runType discovery and actor agent", async () => {
+    const writer = createWriter(root, "discovery");
+    await writer.append({
+      timestamp: "2026-08-28T00:00:00.000Z",
+      runId: "run-001",
+      runType: "replay",
+      type: "observation",
+      actor: "agent",
+    });
+    expect(JSON.parse((await readFile(writer.eventsPath(), "utf8")).trimEnd())).toMatchObject({
+      runType: "discovery",
+      actor: "agent",
+    });
+  });
+
+  it("distinguishes assisted-fallback events from deterministic replay actions", async () => {
+    const writer = createWriter(root, "replay");
+    await writer.append({
+      timestamp: "2026-08-28T00:00:00.000Z",
+      runId: "run-001",
+      runType: "replay",
+      type: DETERMINISTIC_ACTION_EVENT,
+      actor: "replay",
+    });
+    await writer.append({
+      timestamp: "2026-08-28T00:00:01.000Z",
+      runId: "run-001",
+      runType: "replay",
+      type: ASSISTED_FALLBACK_EVENT,
+      actor: "agent",
+    });
+    const lines = (await readFile(writer.eventsPath(), "utf8")).trimEnd().split("\n");
+    expect(JSON.parse(lines[0] ?? "")).toMatchObject({
+      runType: "replay",
+      type: "action",
+      actor: "replay",
+    });
+    expect(JSON.parse(lines[1] ?? "")).toMatchObject({
+      runType: "replay",
+      type: "assisted_fallback",
+      actor: "agent",
+    });
+    expect(DETERMINISTIC_ACTION_EVENT).not.toBe(ASSISTED_FALLBACK_EVENT);
+  });
+
+  it("tags adaptation runs separately from discovery and replay", async () => {
+    const writer = createWriter(root, "adaptation");
+    await writer.append({
+      timestamp: "2026-08-28T00:00:00.000Z",
+      runId: "run-001",
+      runType: "adaptation",
+      type: "override_saved",
+      actor: "agent",
+    });
+    expect(JSON.parse((await readFile(writer.eventsPath(), "utf8")).trimEnd())).toMatchObject({
+      runType: "adaptation",
+    });
+    expect(writer.eventsPath()).toMatch(/log\.jsonl$/);
   });
 });

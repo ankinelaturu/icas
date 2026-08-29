@@ -3,10 +3,15 @@
  */
 
 export type {
+  EvidenceActor,
   EvidenceEvent,
   EvidenceWriter,
   RunSummary,
   RunType,
+} from "./evidence-types.js";
+export {
+  ASSISTED_FALLBACK_EVENT,
+  DETERMINISTIC_ACTION_EVENT,
 } from "./evidence-types.js";
 export { EvidenceError, assertEvidenceSegment } from "./evidence-error.js";
 export {

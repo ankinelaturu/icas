@@ -22,13 +22,29 @@ export interface RunSummary {
 }
 
 /**
+ * Who produced an evidence event.
+ */
+export type EvidenceActor = "agent" | "replay" | "human";
+
+/**
+ * Event `type` for a compiled-capability action during replay.
+ */
+export const DETERMINISTIC_ACTION_EVENT = "action";
+
+/**
+ * Event `type` for a bounded LLM repair during replay. Not a deterministic action.
+ */
+export const ASSISTED_FALLBACK_EVENT = "assisted_fallback";
+
+/**
  * One append-only JSONL event.
  */
 export interface EvidenceEvent {
   timestamp: string;
   runId: string;
+  runType: RunType;
   type: string;
-  actor?: "agent" | "replay" | "human";
+  actor?: EvidenceActor;
   payload?: unknown;
 }
 

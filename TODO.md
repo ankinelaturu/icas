@@ -205,10 +205,10 @@ Cross-cutting runtime used by replay and discovery.
 
 ### Pass 3.8 — Evidence run typing
 
-- [ ] Tag `discovery` | `replay` | `adaptation`
-- [ ] Tag actor `agent` | `replay` | `human`
-- [ ] Distinct event type for assisted-fallback vs deterministic replay
-- [ ] Tests for tags on sample events
+- [x] Tag `discovery` | `replay` | `adaptation`
+- [x] Tag actor `agent` | `replay` | `human`
+- [x] Distinct event type for assisted-fallback vs deterministic replay
+- [x] Tests for tags on sample events
 
 ### Pass 3.9 — Handoff ownership
 

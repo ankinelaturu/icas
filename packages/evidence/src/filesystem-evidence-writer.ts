@@ -84,7 +84,7 @@ export class FileSystemEvidenceWriter implements EvidenceWriter {
     await mkdir(this.runDirectory(), { recursive: true });
     await appendFile(
       this.eventsPath(),
-      `${JSON.stringify(this.redactEvent(event))}\n`,
+      `${JSON.stringify(this.redactEvent(this.stamp(event)))}\n`,
       "utf8",
     );
   }
@@ -117,6 +117,7 @@ export class FileSystemEvidenceWriter implements EvidenceWriter {
       await this.append({
         timestamp: new Date().toISOString(),
         runId: this.runId,
+        runType: this.runType,
         type: "rich_signal",
         payload: { kind, path: relative },
       });
@@ -135,9 +136,14 @@ export class FileSystemEvidenceWriter implements EvidenceWriter {
     await this.append({
       timestamp: new Date().toISOString(),
       runId: this.runId,
+      runType: this.runType,
       type: "rich_signal",
       payload: { kind, path: relative },
     });
+  }
+
+  private stamp(event: EvidenceEvent): EvidenceEvent {
+    return { ...event, runId: this.runId, runType: this.runType };
   }
 
   private redactEvent(event: EvidenceEvent): EvidenceEvent {
