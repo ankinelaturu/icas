@@ -9,6 +9,7 @@ The first implementation is browser-based, but the capability model should not f
 ```ts
 interface Surface {
   open(url: string): Promise<void>;
+  close(): Promise<void>;
   observe(): Promise<Observation>;
   execute(action: CapabilityAction): Promise<SurfaceActionResult>;
   assert(assertion: Assertion): Promise<boolean>;
@@ -16,6 +17,8 @@ interface Surface {
   handoffToHuman(): Promise<void>;
 }
 ```
+
+`close` is explicit teardown and must be safe to call twice.
 
 ## Implemented surface
 

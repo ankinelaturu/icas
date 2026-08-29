@@ -108,9 +108,9 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 ### Pass 2.2 — Browser lifecycle
 
-- [ ] `PlaywrightSurface.open(url)` launches headed browser and navigates
-- [ ] Close/teardown is explicit and safe to call twice
-- [ ] Test: open fixture page, read URL, close
+- [x] `PlaywrightSurface.open(url)` launches headed browser and navigates
+- [x] Close/teardown is explicit and safe to call twice
+- [x] Test: open fixture page, read URL, close
 
 ### Pass 2.3 — Target resolution (semantic)
 

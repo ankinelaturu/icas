@@ -1,5 +1,16 @@
-import type { CapabilityAction, Assertion, TargetDescriptor } from "@icas/capability";
+/**
+ * @file Surface — observation/action seam independent of Playwright.
+ */
 
+import type {
+  Assertion,
+  CapabilityAction,
+  TargetDescriptor,
+} from "@icas/capability";
+
+/**
+ * One captured view of the live surface (screenshot plus optional extras).
+ */
 export interface Observation {
   id: string;
   url?: string;
@@ -8,13 +19,29 @@ export interface Observation {
   metadata?: Record<string, unknown>;
 }
 
+/**
+ * Result of executing one semantic action.
+ */
 export interface SurfaceActionResult {
   status: "ok" | "blocked" | "failed";
   details?: unknown;
 }
 
+/**
+ * How a capability observes and acts on a UI. Playwright is the first
+ * implementation, not the artifact model.
+ */
 export interface Surface {
+  /**
+   * Launch the surface session and navigate to `url`.
+   */
   open(url: string): Promise<void>;
+
+  /**
+   * Close the session. Safe to call more than once.
+   */
+  close(): Promise<void>;
+
   observe(): Promise<Observation>;
   execute(action: CapabilityAction): Promise<SurfaceActionResult>;
   assert(assertion: Assertion): Promise<boolean>;
