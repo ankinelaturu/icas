@@ -355,9 +355,9 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 
 ### Pass 5.6 — Ranked bounded search
 
-- [ ] Try highest-ranked untried candidate first
-- [ ] Enforce max steps/depth/candidates
-- [ ] Tests: rank order; depth limit stops expansion
+- [x] Try highest-ranked untried candidate first
+- [x] Enforce max steps/depth/candidates
+- [x] Tests: rank order; depth limit stops expansion
 
 ### Pass 5.7 — Repeated state and backtrack accounting
 

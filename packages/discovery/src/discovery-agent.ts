@@ -1,19 +1,29 @@
 /**
- * @file DiscoveryAgent — always discovers; never silently replays a catalog artifact.
+ * @file DiscoveryAgent — confidence-ordered DFS over a live surface.
  *
- * Loop (this pass): observe → propose → policy → execute → record → stop on
- * budget. Ranked DFS, backtrack, HITL, and the compiler are later passes.
+ * Try the lowest-rank untried sibling first (docs/03). Backtrack to the next
+ * sibling is a later pass; this pass stops when a node is exhausted.
  */
 
 import { randomUUID } from "node:crypto";
 
 import type { CapabilityAction } from "@icas/capability";
 import type { PolicyGuard } from "@icas/policy";
-import type { Surface } from "@icas/surface";
+import type { Observation, Surface } from "@icas/surface";
 
+import {
+  assignCandidateIds,
+  sortCandidatesByRank,
+  type CandidateAction,
+} from "./candidate-action.js";
 import type { CandidateProposer } from "./candidate-proposer.js";
 import type { DiscoveryRequest, DiscoveryResult, DiscoveryTraceEvent } from "./discovery-types.js";
-import { resolveSearchBudget } from "./search-state.js";
+import {
+  createSearchNode,
+  resolveSearchBudget,
+  type SearchBudget,
+  type SearchNode,
+} from "./search-state.js";
 
 export interface DiscoveryAgentDependencies {
   /** Required so tests inject a fake and production injects Mastra. */
@@ -61,6 +71,8 @@ export class DiscoveryAgent {
     let steps = 0;
 
     await this.surface.open(request.target.url);
+    let current = createSearchNode({ observation: await this.surface.observe() });
+    events.push(observationEvent(current.observation));
 
     while (true) {
       if (this.now() - startedAt >= budget.timeoutMs) {
@@ -70,37 +82,28 @@ export class DiscoveryAgent {
         return stuck(runId, events, "maxSteps");
       }
 
-      const observation = await this.surface.observe();
-      events.push({ type: "observation", payload: { id: observation.id, url: observation.url } });
-
-      const proposal = await this.proposer.propose({
-        goal: request.goal,
-        observation,
-        history: events
-          .filter((event) => event.type === "chosen_action")
-          .map((event) => JSON.stringify(event.payload)),
-        ...(this.promptPolicy === undefined ? {} : { promptPolicy: this.promptPolicy }),
-      });
-      events.push({
-        type: "candidates",
-        payload: { status: proposal.status, count: proposal.candidates.length },
-      });
-
-      if (proposal.status === "success") {
-        events.push({ type: "success" });
-        return { status: "success", runId, events };
-      }
-      if (proposal.status === "stuck") {
-        return stuck(runId, events, proposal.rationale ?? "proposer stuck");
+      const filled = await this.fillCandidates(current, request, budget, events);
+      if (filled !== undefined) {
+        return filled.status === "success"
+          ? { status: "success", runId, events }
+          : stuck(runId, events, filled.reason ?? "proposer stuck");
       }
 
-      const candidate = proposal.candidates[0];
-      if (candidate === undefined) {
-        return stuck(runId, events, "no candidate");
+      if (current.depth >= budget.maxDepth) {
+        return stuck(runId, events, "maxDepth");
       }
+
+      const candidate = nextUntried(current);
+      if (candidate === undefined || candidate.id === undefined) {
+        return stuck(runId, events, "exhausted");
+      }
+      current.triedCandidateIds.add(candidate.id);
 
       const action = candidate.action;
-      events.push({ type: "chosen_action", payload: { rank: candidate.rank, action } });
+      events.push({
+        type: "chosen_action",
+        payload: { id: candidate.id, rank: candidate.rank, action },
+      });
 
       const destinationUrl = await this.peekDestination(action);
       const decision = this.policy?.check(
@@ -128,7 +131,52 @@ export class DiscoveryAgent {
           events,
         };
       }
+
+      current = createSearchNode({
+        observation: await this.surface.observe(),
+        parent: current,
+      });
+      events.push(observationEvent(current.observation));
     }
+  }
+
+  /**
+   * Ask the proposer once per node. `success` / `stuck` end the run.
+   */
+  private async fillCandidates(
+    node: SearchNode,
+    request: DiscoveryRequest,
+    budget: SearchBudget,
+    events: DiscoveryTraceEvent[],
+  ): Promise<{ status: "success" } | { status: "stuck"; reason?: string } | undefined> {
+    if (node.candidates.length > 0) {
+      return undefined;
+    }
+    const proposal = await this.proposer.propose({
+      goal: request.goal,
+      observation: node.observation,
+      history: events
+        .filter((event) => event.type === "chosen_action")
+        .map((event) => JSON.stringify(event.payload)),
+      ...(this.promptPolicy === undefined ? {} : { promptPolicy: this.promptPolicy }),
+    });
+    events.push({
+      type: "candidates",
+      payload: { status: proposal.status, count: proposal.candidates.length },
+    });
+    if (proposal.status === "success") {
+      events.push({ type: "success" });
+      return { status: "success" };
+    }
+    if (proposal.status === "stuck") {
+      return proposal.rationale === undefined
+        ? { status: "stuck" }
+        : { status: "stuck", reason: proposal.rationale };
+    }
+    node.candidates = sortCandidatesByRank(
+      assignCandidateIds(proposal.candidates),
+    ).slice(0, budget.maxCandidatesPerState);
+    return undefined;
   }
 
   private async peekDestination(
@@ -143,6 +191,16 @@ export class DiscoveryAgent {
       return undefined;
     }
   }
+}
+
+function nextUntried(node: SearchNode): CandidateAction | undefined {
+  return node.candidates.find((candidate) => {
+    return candidate.id !== undefined && !node.triedCandidateIds.has(candidate.id);
+  });
+}
+
+function observationEvent(observation: Observation): DiscoveryTraceEvent {
+  return { type: "observation", payload: { id: observation.id, url: observation.url } };
 }
 
 function stuck(

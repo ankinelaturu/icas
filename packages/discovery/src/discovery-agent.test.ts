@@ -102,4 +102,63 @@ describe("DiscoveryAgent.run", () => {
     await agent.run(request);
     expect(seenPolicy).toBe("Do not transfer funds.");
   });
+
+  it("tries rank 1 before rank 2 on the same node", async () => {
+    const surface = new FakeSurface();
+    surface.observation = { id: "home" };
+    surface.executeHandler = () => {
+      surface.observation = { id: "lending" };
+      return { status: "ok" };
+    };
+    const agent = new DiscoveryAgent(surface, {
+      proposer: new FakeProposer([
+        {
+          status: "continue",
+          candidates: [
+            clickOn("Documents", 2),
+            clickOn("Lending", 1),
+          ],
+        },
+        { status: "success", candidates: [] },
+      ]),
+    });
+    const result = await agent.run(request);
+    expect(result.status).toBe("success");
+    const clicked = surface.executed[0];
+    expect(clicked?.type).toBe("click");
+    if (clicked?.type === "click") {
+      expect(clicked.target.strategies[0]).toMatchObject({ text: "Lending" });
+    }
+  });
+
+  it("stops expansion when maxDepth is reached", async () => {
+    const surface = new FakeSurface();
+    surface.observation = { id: "home" };
+    surface.executeHandler = () => {
+      surface.observation = { id: "lending" };
+      return { status: "ok" };
+    };
+    const agent = new DiscoveryAgent(surface, {
+      proposer: new FakeProposer([
+        clickLending,
+        clickLending,
+      ]),
+    });
+    const result = await agent.run({ ...request, maxDepth: 1 });
+    expect(result.status).toBe("stuck");
+    expect(result.reason).toBe("maxDepth");
+    expect(surface.executed).toHaveLength(1);
+  });
 });
+
+function clickOn(text: string, rank: number) {
+  return {
+    action: {
+      type: "click" as const,
+      target: { strategies: [{ type: "visibleText" as const, text }] },
+      risk: "safe" as const,
+    },
+    rationale: text,
+    rank,
+  };
+}
