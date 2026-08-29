@@ -218,9 +218,9 @@ Cross-cutting runtime used by replay and discovery.
 
 ### Pass 3.10 — CLI approval / input
 
-- [ ] Prompt for approval or a required value over stdin
-- [ ] Record the answer as evidence (`actor: human`)
-- [ ] Test with a stubbed stdin
+- [x] Prompt for approval or a required value over stdin
+- [x] Record the answer as evidence (`actor: human`)
+- [x] Test with a stubbed stdin
 
 ### Pass 3.11 — Browser takeover recording
 

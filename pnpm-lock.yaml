@@ -237,6 +237,10 @@ importers:
         version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(tsx@4.23.12)
 
   packages/handoff:
+    dependencies:
+      '@icas/evidence':
+        specifier: workspace:*
+        version: link:../evidence
     devDependencies:
       rimraf:
         specifier: ^6.0.1
