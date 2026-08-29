@@ -1,6 +1,7 @@
 import type { EvidenceEvent, EvidenceWriter } from "@icas/evidence";
+import { SessionHandoffController } from "@icas/handoff";
 import { PolicyGuard } from "@icas/policy";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { ReplayEngine } from "./replay-engine.js";
 import { FakeSurface } from "./test-support/fake-surface.js";
@@ -548,6 +549,44 @@ describe("ReplayEngine hard failures and evidence", () => {
       expect(events.some((event) => event.type === "failure")).toBe(true);
       expect(signals.some((signal) => signal.kind === "screenshot")).toBe(true);
     }
+  });
+});
+
+describe("ReplayEngine HITL", () => {
+  it("pauses a risky encoded action and continues the same step after resume", async () => {
+    const surface = new FakeSurface();
+    const handoff = new SessionHandoffController();
+    const policy = new PolicyGuard({
+      allowedOrigins: ["https://bank.example"],
+      allowedActionTypes: ["click", "fill", "read"],
+    });
+    const engine = new ReplayEngine(surface, { policy, handoff });
+    const pending = engine.run(
+      testCapability({
+        steps: [
+          clickStep("confirm", {
+            action: {
+              type: "click",
+              target: { strategies: [{ type: "visibleText", text: "Continue" }] },
+              risk: "risky",
+            },
+          }),
+        ],
+      }),
+      {},
+      { runId: "run-hitl" },
+    );
+    await vi.waitFor(() => {
+      expect(handoff.owner()).toBe("human");
+    });
+    expect(surface.executed).toEqual([]);
+    expect(surface.humanTakes).toBe(1);
+    handoff.signalResume();
+    const result = await pending;
+    expect(result.status).toBe("success");
+    expect(handoff.owner()).toBe("automation");
+    expect(surface.automationResumes).toBe(1);
+    expect(surface.executed).toHaveLength(1);
   });
 });
 

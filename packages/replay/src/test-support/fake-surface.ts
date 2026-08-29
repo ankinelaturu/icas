@@ -52,7 +52,14 @@ export class FakeSurface implements Surface {
     return undefined;
   }
 
-  async handoffToHuman(): Promise<void> {}
+  humanTakes = 0;
+  automationResumes = 0;
 
-  async resumeFromHuman(): Promise<void> {}
+  async handoffToHuman(): Promise<void> {
+    this.humanTakes += 1;
+  }
+
+  async resumeFromHuman(): Promise<void> {
+    this.automationResumes += 1;
+  }
 }

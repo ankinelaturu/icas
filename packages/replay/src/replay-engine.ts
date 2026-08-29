@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 
 import type { CapabilityAction, CapabilityArtifact, CapabilityStep } from "@icas/capability";
 import type { EvidenceWriter } from "@icas/evidence";
+import type { HandoffController } from "@icas/handoff";
 import type { PolicyGuard } from "@icas/policy";
 import type { Surface } from "@icas/surface";
 
@@ -26,6 +27,7 @@ import { hasSurfaceCode } from "./surface-code.js";
 export interface ReplayEngineDependencies {
   policy?: PolicyGuard;
   evidence?: EvidenceWriter;
+  handoff?: HandoffController;
 }
 
 /**
@@ -35,6 +37,7 @@ export interface ReplayEngineDependencies {
 export class ReplayEngine {
   private readonly policy: PolicyGuard | undefined;
   private readonly evidence: EvidenceWriter | undefined;
+  private readonly handoff: HandoffController | undefined;
   private maxAttempts = 2;
   private startedAt = "";
 
@@ -44,6 +47,7 @@ export class ReplayEngine {
   ) {
     this.policy = deps.policy;
     this.evidence = deps.evidence;
+    this.handoff = deps.handoff;
   }
 
   /**
@@ -184,7 +188,26 @@ export class ReplayEngine {
     const decision = this.policy?.check(action, destinationUrl === undefined
       ? {}
       : { destinationUrl }) ?? { decision: "allow" as const };
-    if (decision.decision !== "allow") {
+    if (decision.decision === "require-human") {
+      const paused = await this.pauseForHuman({
+        runId,
+        capabilityId,
+        stepId: step.id,
+        reason: "approval_required",
+        message: decision.reason,
+      });
+      if (!paused) {
+        return {
+          status: "failure",
+          capabilityId,
+          code: ReplayFailureCode.policyBlocked,
+          stepId: step.id,
+          expected: action,
+          observed: decision,
+          runId,
+        };
+      }
+    } else if (decision.decision !== "allow") {
       return {
         status: "failure",
         capabilityId,
@@ -307,6 +330,29 @@ export class ReplayEngine {
       }
     }
     return undefined;
+  }
+
+  private async pauseForHuman(args: {
+    runId: string;
+    capabilityId: string;
+    stepId: string;
+    reason: "approval_required" | "unexpected_state" | "policy_block" | "hard_failure_recovery";
+    message: string;
+  }): Promise<boolean> {
+    if (this.handoff === undefined) {
+      return false;
+    }
+    await this.handoff.request({
+      runId: args.runId,
+      reason: args.reason,
+      message: args.message,
+      capabilityId: args.capabilityId,
+      stepId: args.stepId,
+    });
+    await this.surface.handoffToHuman();
+    await this.handoff.waitForResume();
+    await this.surface.resumeFromHuman();
+    return true;
   }
 
   private async peekDestination(

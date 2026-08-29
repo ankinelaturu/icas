@@ -289,9 +289,9 @@ Callers resolve with `CapabilityResolver` first. `ReplayEngine` never branches o
 
 ### Pass 4.9 — Replay HITL
 
-- [ ] Emit intervention when policy requires human, state is unrecoverable, or assist is disabled/exhausted
-- [ ] Same browser session stays alive
-- [ ] Tests: risky encoded action pauses; resume continues from the same step contract
+- [x] Emit intervention when policy requires human, state is unrecoverable, or assist is disabled/exhausted
+- [x] Same browser session stays alive
+- [x] Tests: risky encoded action pauses; resume continues from the same step contract
 
 ### Pass 4.10 — Assisted fallback (repair)
 

@@ -291,6 +291,9 @@ importers:
       '@icas/evidence':
         specifier: workspace:*
         version: link:../evidence
+      '@icas/handoff':
+        specifier: workspace:*
+        version: link:../handoff
       '@icas/policy':
         specifier: workspace:*
         version: link:../policy
