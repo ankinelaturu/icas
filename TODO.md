@@ -323,9 +323,9 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 
 ### Pass 5.1 — Candidate action schema
 
-- [ ] `CandidateAction` type: action, rationale, rank, optional expectation/risk
-- [ ] Schema-validate model output; reject free-form prose
-- [ ] Tests: valid candidate; malformed payload rejected
+- [x] `CandidateAction` type: action, rationale, rank, optional expectation/risk
+- [x] Schema-validate model output; reject free-form prose
+- [x] Tests: valid candidate; malformed payload rejected
 
 ### Pass 5.2 — Search state and budgets
 

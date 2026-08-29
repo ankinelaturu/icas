@@ -1,5 +1,26 @@
+/**
+ * @file @icas/discovery — LLM-driven discovery, bounded DFS, trace, and compiler.
+ *
+ * Model output is {@link CandidateProposal}, never free-form prose. Search
+ * state stays in ICAS; Mastra is wired in a later pass as the proposer only.
+ */
+
 import type { CapabilityArtifact } from "@icas/capability";
 import type { Surface } from "@icas/surface";
+
+export type {
+  CandidateAction,
+  CandidateProposal,
+  CapabilityAction,
+} from "./candidate-action.js";
+export {
+  assignCandidateIds,
+  CandidateActionSchema,
+  CandidateProposalSchema,
+  CandidateValidationError,
+  sortCandidatesByRank,
+  validateCandidateProposal,
+} from "./candidate-action.js";
 
 export interface DiscoveryTarget {
   vendor: string;
@@ -9,6 +30,8 @@ export interface DiscoveryTarget {
 }
 
 export interface DiscoveryRequest {
+  /** Unique catalog id, e.g. `loan-payoff`. */
+  id: string;
   target: DiscoveryTarget;
   goal: string;
   maxSteps?: number;

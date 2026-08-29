@@ -60,19 +60,30 @@ The discovery process is not a pre-programmed flow. At each state:
 
 ## Structured model output
 
-Avoid parsing free-form prose. The model should return schema-validated output such as:
+Avoid parsing free-form prose. Every proposer call (Mastra `Agent.generate` with `structuredOutput`, or a test fake) must return **one JSON object** matching `CandidateProposal`:
 
 ```ts
+type CandidateProposal = {
+  status: "continue" | "success" | "stuck";
+  candidates: CandidateAction[];
+  rationale?: string;
+};
+
 interface CandidateAction {
-  action: Action;
+  id?: string; // assigned by ICAS when omitted
+  action: Action; // click | fill | select | navigate | read | handoff
   rationale: string;
-  rank: number;
+  rank: number; // 1 is tried before 2
   expectation?: string;
   risk?: "safe" | "risky";
 }
 ```
 
-Numeric confidence may be recorded but should not be treated as a calibrated probability. Ranking is the useful property.
+- `continue` — try `candidates` in rank order (at least one required).
+- `success` — the current observation already satisfies the goal; `candidates` may be empty.
+- `stuck` — do not improvise; the search controller requests HITL.
+
+A string transcript, an unknown `action.type`, or `continue` with zero candidates is a validation error. Numeric confidence may be recorded but is not a calibrated probability. Ranking is the useful property.
 
 ## Bounded graph search
 

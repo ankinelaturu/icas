@@ -8,7 +8,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "lint": "tsc -p tsconfig.json --noEmit",
     "clean": "rimraf dist"
   },
@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@icas/capability": "workspace:*",
-    "@icas/surface": "workspace:*"
+    "@icas/surface": "workspace:*",
+    "zod": "^4.5.2"
   }
 }
