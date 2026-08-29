@@ -166,7 +166,7 @@ A capability must be decoupled from the raw model transcript. `CapabilityCompile
 1. identify the successful path;
 2. remove failed exploration branches from the executable artifact;
 3. retain failed branches only in evidence;
-4. replace concrete discovery values with typed input references;
+4. replace concrete discovery values with typed input references (`inputValues` maps e.g. `987654` → `{ input: "loanAccountId" }`);
 5. derive semantic target descriptors from successful actions;
 6. derive preconditions and postconditions from meaningful observed state;
 7. derive output extraction rules;

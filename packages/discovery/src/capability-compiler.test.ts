@@ -48,4 +48,41 @@ describe("CapabilityCompiler", () => {
       { type: "textVisible", value: "Lending Services" },
     ]);
   });
+
+  it("replaces loan id 987654 with an input reference", async () => {
+    const compiler = new CapabilityCompiler();
+    const artifact = await compiler.compile({
+      id: "loan-payoff",
+      target: { vendor: "icas-bank", product: "icas-bank" },
+      inputValues: {
+        loanAccountId: { type: "string", value: "987654", description: "Loan account identifier" },
+      },
+      events: [
+        {
+          type: "chosen_action",
+          payload: {
+            id: "cand-1-0",
+            rank: 1,
+            action: {
+              type: "fill",
+              target: { strategies: [{ type: "label", label: "Loan Account" }] },
+              value: { literal: "987654" },
+              risk: "safe",
+            },
+          },
+        },
+        { type: "action_result", payload: { status: "ok" } },
+        { type: "success" },
+      ],
+    });
+    expect(artifact.steps[0]?.action).toMatchObject({
+      type: "fill",
+      value: { input: "loanAccountId" },
+    });
+    expect(artifact.inputs.loanAccountId).toEqual({
+      type: "string",
+      required: true,
+      description: "Loan account identifier",
+    });
+  });
 });

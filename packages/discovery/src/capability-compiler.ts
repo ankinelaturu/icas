@@ -2,7 +2,7 @@
  * @file CapabilityCompiler — trace → base artifact (successful path only).
  *
  * Failed exploration stays in the JSONL evidence. Later passes add
- * parameterization, checkpoints, registry writes, and human-action classification.
+ * checkpoints, registry writes, and human-action classification.
  */
 
 import { readFile } from "node:fs/promises";
@@ -14,6 +14,13 @@ import {
   extractSuccessfulPath,
   type SuccessfulPathStep,
 } from "./extract-successful-path.js";
+import {
+  inputsFromActions,
+  parameterizeAction,
+  type DiscoveredInput,
+} from "./parameterize-inputs.js";
+
+export type { DiscoveredInput };
 
 export interface CompileRequest {
   /** Unique catalog id, e.g. `loan-payoff`. */
@@ -25,6 +32,10 @@ export interface CompileRequest {
   tracePath?: string;
   name?: string;
   capabilityVersion?: string;
+  /**
+   * Discovery-time values to replace with `{ input: name }` on fill/select.
+   */
+  inputValues?: Record<string, DiscoveredInput>;
 }
 
 /**
@@ -38,7 +49,8 @@ export class CapabilityCompiler {
     if (path.length === 0) {
       throw new Error("CapabilityCompiler: trace has no successful executable path");
     }
-    const steps = path.map((step, index) => toStep(step, index));
+    const inputValues = request.inputValues ?? {};
+    const steps = path.map((step, index) => toStep(step, index, inputValues));
     const last = path[path.length - 1];
     const successValue = last?.expectation ?? "completed";
     return {
@@ -50,7 +62,10 @@ export class CapabilityCompiler {
         vendor: request.target.vendor,
         product: request.target.product,
       },
-      inputs: {},
+      inputs: inputsFromActions(
+        steps.map((step) => step.action),
+        inputValues,
+      ),
       outputs: {},
       steps,
       success: [{ type: "textVisible", value: successValue }],
@@ -75,11 +90,15 @@ export async function loadTraceEvents(
     .map((line) => JSON.parse(line) as DiscoveryTraceEvent);
 }
 
-function toStep(step: SuccessfulPathStep, index: number): CapabilityStep {
+function toStep(
+  step: SuccessfulPathStep,
+  index: number,
+  inputValues: Record<string, DiscoveredInput>,
+): CapabilityStep {
   return {
     id: stepId(step.action, index),
     preconditions: [],
-    action: step.action,
+    action: parameterizeAction(step.action, inputValues),
     postconditions: [],
   };
 }

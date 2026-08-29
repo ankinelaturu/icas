@@ -391,8 +391,8 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 
 ### Pass 5.12 — Compiler: parameterize inputs
 
-- [ ] Replace concrete discovery values with `ValueRef` input references
-- [ ] Test: loan id `987654` in the trace becomes `{ "input": "loanAccountId" }`
+- [x] Replace concrete discovery values with `ValueRef` input references
+- [x] Test: loan id `987654` in the trace becomes `{ "input": "loanAccountId" }`
 
 ### Pass 5.13 — Compiler: targets, checkpoints, outputs, versions
 
