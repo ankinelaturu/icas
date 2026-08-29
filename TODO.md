@@ -224,9 +224,9 @@ Cross-cutting runtime used by replay and discovery.
 
 ### Pass 3.11 — Browser takeover recording
 
-- [ ] Pause automation, keep headed session, wait for ENTER
-- [ ] Record handoff start/end and observable state before/after
-- [ ] Test: ownership + evidence events (browser interaction can be stubbed)
+- [x] Pause automation, keep headed session, wait for ENTER
+- [x] Record handoff start/end and observable state before/after
+- [x] Test: ownership + evidence events (browser interaction can be stubbed)
 
 ---
 

@@ -26,7 +26,7 @@ export async function promptForApproval(
   question: string,
   options: CliPromptOptions,
 ): Promise<boolean> {
-  const answer = await readLine(question, options);
+  const answer = await readStdinLine(question, options);
   const approved = /^(y|yes)$/i.test(answer.trim());
   await options.evidence.append({
     timestamp: new Date().toISOString(),
@@ -46,7 +46,7 @@ export async function promptForValue(
   question: string,
   options: CliPromptOptions,
 ): Promise<string> {
-  const answer = (await readLine(question, options)).trim();
+  const answer = (await readStdinLine(question, options)).trim();
   await options.evidence.append({
     timestamp: new Date().toISOString(),
     runId: options.runId,
@@ -58,10 +58,16 @@ export async function promptForValue(
   return answer;
 }
 
-async function readLine(question: string, options: CliPromptOptions): Promise<string> {
-  const output = options.stdout ?? process.stdout;
+/**
+ * Read one line from stdin. Used by CLI prompts and browser-takeover ENTER waits.
+ */
+export async function readStdinLine(
+  question: string,
+  io: Pick<CliPromptOptions, "stdin" | "stdout">,
+): Promise<string> {
+  const output = io.stdout ?? process.stdout;
   const rl = createInterface({
-    input: options.stdin,
+    input: io.stdin,
     output,
     terminal: false,
   });

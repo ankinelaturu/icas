@@ -241,6 +241,9 @@ importers:
       '@icas/evidence':
         specifier: workspace:*
         version: link:../evidence
+      '@icas/surface':
+        specifier: workspace:*
+        version: link:../surface
     devDependencies:
       rimraf:
         specifier: ^6.0.1
