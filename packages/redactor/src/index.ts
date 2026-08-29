@@ -1,21 +1,14 @@
-export interface RedactionRule {
-  id: string;
-  pattern: RegExp;
-  replacement: string;
-}
+/**
+ * @file @icas/redactor — independently configurable redaction profiles.
+ */
 
-export interface RedactionProfile {
-  name: string;
-  rules: RedactionRule[];
-}
-
-export class Redactor {
-  constructor(private readonly profile: RedactionProfile) {}
-
-  redactText(value: string): string {
-    return this.profile.rules.reduce(
-      (result, rule) => result.replace(rule.pattern, rule.replacement),
-      value,
-    );
-  }
-}
+export type { RedactionProfile, RedactionRule } from "./redactor.js";
+export { Redactor } from "./redactor.js";
+export type { RedactionProfileName } from "./redaction-profiles.js";
+export {
+  EVIDENCE_PROFILE,
+  MODEL_PROFILE,
+  TERMINAL_PROFILE,
+  redactionProfile,
+} from "./redaction-profiles.js";
+export { createRedactor } from "./create-redactor.js";

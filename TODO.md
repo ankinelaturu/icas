@@ -186,9 +186,9 @@ Cross-cutting runtime used by replay and discovery.
 
 ### Pass 3.5 — Redactor profiles
 
-- [ ] Profiles for model payload, evidence persistence, terminal/error output
-- [ ] Pattern/value masking; unconfigured content preserved
-- [ ] Tests: independent profiles; no cross-profile leakage
+- [x] Profiles for model payload, evidence persistence, terminal/error output
+- [x] Pattern/value masking; unconfigured content preserved
+- [x] Tests: independent profiles; no cross-profile leakage
 
 ### Pass 3.6 — Evidence writer core
 
