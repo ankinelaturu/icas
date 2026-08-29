@@ -32,6 +32,23 @@ export type {
 } from "./capability-override.js";
 
 export {
+  CapabilityOverridePatchSchema,
+  CapabilityOverrideSchema,
+  OverrideProvenanceSchema,
+  StepOverrideSchema,
+} from "./override-schema.js";
+
+export {
+  CapabilityOverrideValidationError,
+  validateCapabilityOverride,
+} from "./validate-override.js";
+
+export {
+  CapabilityValidationError,
+  validateCapabilityArtifact,
+} from "./validate-capability.js";
+
+export {
   CapabilityTypeError,
   resolveValueRef,
   validateInputValues,

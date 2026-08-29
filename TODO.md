@@ -52,9 +52,9 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 ### Pass 1.4 — Override schema validation
 
-- [ ] Validate override shape, required `baseCapability` version pin, tenant target, provenance
-- [ ] Reject executable / `customJavaScript`-style patches
-- [ ] Tests: valid override fixture; JS-patch rejection; missing base version pin
+- [x] Validate override shape, required `baseCapability` version pin, tenant target, provenance
+- [x] Reject executable / `customJavaScript`-style patches
+- [x] Tests: valid override fixture; JS-patch rejection; missing base version pin
 
 ### Pass 1.5 — Filesystem capability registry
 

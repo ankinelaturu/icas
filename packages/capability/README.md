@@ -3,7 +3,7 @@
 Capability artifacts as data: schema/types, validation, catalog CRUD, tenant overrides, and resolution.
 
 - `validatePrimitiveValue` / `validateInputValues` / `validateOutputValues` — check runtime values against `string` | `number` | `boolean` | `date` | `money`.
-- `resolveValueRef(ref, inputs)` — resolve `{ input }` or `{ literal }` (exactly one).
+- `validateCapabilityOverride(value)` — schema-validate a tenant override. Empty `overrides: {}` is valid. Executable / `customJavaScript` patches are rejected. `baseCapability` must pin `id@version`.
 
 - `CapabilityRegistry` — abstract repository API (list/get/save/remove, including overrides).
 - `FileSystemCapabilityRegistry({ root })` — the implemented backend. Production root is repo `capabilities/`; tests pass a temp directory.

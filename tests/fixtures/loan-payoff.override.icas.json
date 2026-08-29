@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1.0",
+  "id": "loan-payoff-icas",
+  "baseCapability": "loan-payoff@1.0.0",
+  "target": { "tenant": "icas" },
+  "overrides": {},
+  "provenance": {
+    "createdBy": "discovery",
+    "reason": "enrolled discovering tenant",
+    "createdFromRun": "run-test-fixture"
+  }
+}
