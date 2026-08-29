@@ -409,8 +409,8 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 
 ### Pass 5.15 — Discovery integration test
 
-- [ ] `tests/integration/discovery-to-capability.test.ts`
-- [ ] Fake or recorded model + HTML fixtures → validated capability file
+- [x] `tests/integration/discovery-to-capability.test.ts`
+- [x] Fake or recorded model + HTML fixtures → validated capability file
 
 ---
 

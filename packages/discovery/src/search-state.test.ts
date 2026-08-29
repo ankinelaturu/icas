@@ -61,5 +61,18 @@ describe("createSearchNode", () => {
     expect(child.depth).toBe(1);
     expect(child.parent).toBe(root);
     expect(stateIdFromObservation(root.observation)).toBe("http://localhost/home");
+    expect(
+      stateIdFromObservation({
+        id: "obs-a",
+        url: "http://localhost/search",
+        accessibilitySnapshot: "textbox empty",
+      }),
+    ).not.toBe(
+      stateIdFromObservation({
+        id: "obs-b",
+        url: "http://localhost/search",
+        accessibilitySnapshot: "textbox 987654",
+      }),
+    );
   });
 });

@@ -63,13 +63,33 @@ export function resolveSearchBudget(
 }
 
 /**
- * Identity used for repeated-state detection. URL first; else observation id.
+ * Identity used for repeated-state detection.
+ *
+ * URL alone is too coarse (fill/select stay on the same page). When an
+ * accessibility snapshot is present, fingerprint it so form mutations are
+ * distinct states and true cycles still match.
  */
 export function stateIdFromObservation(observation: Observation): string {
-  if (observation.url !== undefined && observation.url.length > 0) {
-    return observation.url;
+  const url = observation.url ?? "";
+  const snap = snapshotFingerprint(observation.accessibilitySnapshot);
+  if (snap !== undefined) {
+    return url.length > 0 ? `${url}::${snap}` : snap;
+  }
+  if (url.length > 0) {
+    return url;
   }
   return observation.id;
+}
+
+function snapshotFingerprint(snapshot: unknown): string | undefined {
+  if (typeof snapshot !== "string" || snapshot.length === 0) {
+    return undefined;
+  }
+  let hash = 0;
+  for (let index = 0; index < snapshot.length; index += 1) {
+    hash = (Math.imul(hash, 31) + snapshot.charCodeAt(index)) | 0;
+  }
+  return String(hash);
 }
 
 /**

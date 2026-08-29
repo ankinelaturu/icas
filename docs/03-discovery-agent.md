@@ -123,7 +123,7 @@ Suggested limits (`resolveSearchBudget`, defaults for a synthetic tenant):
 - repeated-state detection;
 - maximum retries/backtracks.
 
-Exact defaults should be tuned against the tenant app rather than over-designed in advance. The controller stores this graph in ICAS memory, not in Mastra conversation state.
+Exact defaults should be tuned against the tenant app rather than over-designed in advance. The controller stores this graph in ICAS memory, not in Mastra conversation state. Repeated-state identity is URL plus an accessibility-snapshot fingerprint when present, so fill/select on the same page is not treated as a cycle.
 
 ## Backtracking
 
