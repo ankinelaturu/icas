@@ -91,3 +91,67 @@ describe("PlaywrightSurface locate (semantic)", () => {
     ).rejects.toBeInstanceOf(SurfaceError);
   });
 });
+
+describe("PlaywrightSurface locate (fallbacks)", () => {
+  const surface = new PlaywrightSurface({ headed: false, timeoutMs: 400 });
+
+  afterEach(async () => {
+    await surface.close();
+  });
+
+  it("finds a control by css after a failed semantic strategy", async () => {
+    await surface.open(pageUrl("labeled-fields.html"));
+    const control = await surface.locate({
+      strategies: [
+        { type: "roleText", role: "button", text: "Nope" },
+        { type: "css", selector: "#legacy-grid" },
+      ],
+    });
+    await expect(control.innerText()).resolves.toBe("Grid value");
+  });
+
+  it("finds a control by xpath", async () => {
+    await surface.open(pageUrl("labeled-fields.html"));
+    const control = await surface.locate({
+      strategies: [{ type: "xpath", selector: "//*[@id='legacy-grid']" }],
+    });
+    await expect(control.innerText()).resolves.toBe("Grid value");
+  });
+
+  it("finds a nearby input with a relative anchor", async () => {
+    await surface.open(pageUrl("labeled-fields.html"));
+    const control = await surface.locate({
+      strategies: [
+        {
+          type: "relative",
+          text: "Amount due",
+          xpath: "following::input[1]",
+        },
+      ],
+    });
+    await expect(control.inputValue()).resolves.toBe("34.56");
+  });
+
+  it("uses coordinates only as a last resort", async () => {
+    await surface.open(pageUrl("labeled-fields.html"));
+    const control = await surface.locate({
+      strategies: [
+        { type: "roleText", role: "button", text: "Nope" },
+        { type: "coordinates", x: 20, y: 20 },
+      ],
+    });
+    await expect(control.innerText()).resolves.toMatch(/CoordTarget/);
+  });
+
+  it("fails TARGET_NOT_FOUND when fallbacks also miss", async () => {
+    await surface.open(pageUrl("labeled-fields.html"));
+    await expect(
+      surface.locate({
+        strategies: [
+          { type: "css", selector: "#does-not-exist" },
+          { type: "xpath", selector: "//*[@id='does-not-exist']" },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "TARGET_NOT_FOUND" });
+  });
+});

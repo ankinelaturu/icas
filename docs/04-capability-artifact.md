@@ -222,10 +222,15 @@ interface TargetDescriptor {
   strategies: [
     { type: "roleText", role: "button", text: "Payoff" },
     { type: "visibleText", text: "Payoff" },
-    { type: "relative", ... }
+    { type: "relative", text: "Amount due", xpath: "following::input[1]" },
+    { type: "css", selector: "#legacy-grid" },
+    { type: "xpath", selector: "//*[@id='legacy-grid']" },
+    { type: "coordinates", x: 12, y: 12 }
   ];
 }
 ```
+
+`relative` anchors on visible `text`, then optionally a `role` or `xpath` from that node. `coordinates` is last-resort only.
 
 Potential strategies:
 

@@ -49,8 +49,11 @@ const TargetStrategySchema = z.discriminatedUnion("type", [
     selector: z.string().min(1),
     confidence: z.number().optional(),
   }),
-  z.object({
+  z.strictObject({
     type: z.literal("relative"),
+    text: z.string().min(1),
+    role: z.string().min(1).optional(),
+    xpath: z.string().min(1).optional(),
     confidence: z.number().optional(),
   }),
   z.strictObject({

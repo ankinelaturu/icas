@@ -120,9 +120,9 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 ### Pass 2.4 — Target resolution (fallbacks)
 
-- [ ] `relative`, `css`, `xpath`
-- [ ] Coordinates last resort only; do not treat them as a robust production locator
-- [ ] Tests for fallback order and missing target
+- [x] `relative`, `css`, `xpath`
+- [x] Coordinates last resort only; do not treat them as a robust production locator
+- [x] Tests for fallback order and missing target
 
 ### Pass 2.5 — Execute actions
 
