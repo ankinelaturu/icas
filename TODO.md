@@ -212,9 +212,9 @@ Cross-cutting runtime used by replay and discovery.
 
 ### Pass 3.9 — Handoff ownership
 
-- [ ] Implement `HandoffController` with `ControlOwner`
-- [ ] `request` sets owner to `human`; `waitForResume` returns to `automation`
-- [ ] Tests: transition, no automation action while human owns control, required `InterventionRequest` fields
+- [x] Implement `HandoffController` with `ControlOwner`
+- [x] `request` sets owner to `human`; `waitForResume` returns to `automation`
+- [x] Tests: transition, no automation action while human owns control, required `InterventionRequest` fields
 
 ### Pass 3.10 — CLI approval / input
 

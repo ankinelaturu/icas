@@ -1,24 +1,14 @@
-export type ControlOwner = "automation" | "human";
+/**
+ * @file @icas/handoff — HITL intervention requests and session ownership.
+ */
 
-export type InterventionReason =
-  | "approval_required"
-  | "discovery_stuck"
-  | "unexpected_state"
-  | "policy_block"
-  | "hard_failure_recovery";
-
-export interface InterventionRequest {
-  runId: string;
-  reason: InterventionReason;
-  message: string;
-  capabilityId?: string;
-  goal?: string;
-  stepId?: string;
-  observationRef?: string;
-}
-
-export interface HandoffController {
-  owner(): ControlOwner;
-  request(intervention: InterventionRequest): Promise<void>;
-  waitForResume(): Promise<void>;
-}
+export type {
+  ControlOwner,
+  HandoffController,
+  InterventionReason,
+  InterventionRequest,
+} from "./handoff-types.js";
+export { INTERVENTION_REASONS } from "./handoff-types.js";
+export { HandoffError } from "./handoff-error.js";
+export { validateInterventionRequest } from "./validate-intervention.js";
+export { SessionHandoffController } from "./session-handoff-controller.js";
