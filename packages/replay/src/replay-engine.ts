@@ -99,12 +99,17 @@ export class ReplayEngine {
       };
     }
     this.currentCapability = capability;
-    for (const step of capability.steps) {
+    for (let index = 0; index < capability.steps.length; index++) {
+      const step = capability.steps[index];
+      if (step === undefined) {
+        continue;
+      }
+      const nextStep = capability.steps[index + 1];
       const preFailure = await this.evaluatePreconditions(step, inputs, runId, capability.id);
       if (preFailure !== undefined) {
         return preFailure;
       }
-      const blocked = await this.executeStep(step, inputs, runId, capability.id);
+      const blocked = await this.executeStep(step, nextStep, inputs, runId, capability.id);
       if (blocked !== undefined) {
         return blocked;
       }
@@ -191,6 +196,7 @@ export class ReplayEngine {
 
   private async executeStep(
     step: CapabilityStep,
+    nextStep: CapabilityStep | undefined,
     inputs: Record<string, unknown>,
     runId: string,
     capabilityId: string,
@@ -233,7 +239,7 @@ export class ReplayEngine {
     try {
       const result = await this.surface.execute(action);
       if (result.status !== "ok") {
-        return await this.maybeAssist(step, inputs, runId, capabilityId, {
+        return await this.maybeAssist(step, nextStep, inputs, runId, capabilityId, {
           status: "failure",
           capabilityId,
           code: ReplayFailureCode.unexpectedState,
@@ -245,7 +251,7 @@ export class ReplayEngine {
       }
     } catch (error) {
       if (hasSurfaceCode(error, ReplayFailureCode.targetNotFound)) {
-        return await this.maybeAssist(step, inputs, runId, capabilityId, {
+        return await this.maybeAssist(step, nextStep, inputs, runId, capabilityId, {
           status: "failure",
           capabilityId,
           code: ReplayFailureCode.targetNotFound,
@@ -259,7 +265,7 @@ export class ReplayEngine {
     }
     const post = await this.evaluatePostconditions(step, inputs, runId, capabilityId);
     if (post !== undefined) {
-      return await this.maybeAssist(step, inputs, runId, capabilityId, post);
+      return await this.maybeAssist(step, nextStep, inputs, runId, capabilityId, post);
     }
     return undefined;
   }
@@ -270,11 +276,12 @@ export class ReplayEngine {
 
   private async maybeAssist(
     step: CapabilityStep,
+    nextStep: CapabilityStep | undefined,
     inputs: Record<string, unknown>,
     runId: string,
     capabilityId: string,
     failure: ExecutionResult,
-  ): Promise<ExecutionResult> {
+  ): Promise<ExecutionResult | undefined> {
     if (failure.status !== "failure" || !this.canAssist() || this.repair === undefined) {
       return failure;
     }
@@ -326,7 +333,17 @@ export class ReplayEngine {
         payload: { action: repairAction, rationale: proposal.rationale },
       });
     }
-    return failure;
+    const post = await this.evaluatePostconditions(step, inputs, runId, capabilityId);
+    if (post !== undefined) {
+      return post;
+    }
+    if (nextStep !== undefined) {
+      const pre = await this.evaluatePreconditions(nextStep, inputs, runId, capabilityId);
+      if (pre !== undefined) {
+        return pre;
+      }
+    }
+    return undefined;
   }
 
   private async evaluatePostconditions(

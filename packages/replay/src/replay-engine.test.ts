@@ -629,6 +629,143 @@ describe("ReplayEngine assisted fallback repair", () => {
   });
 });
 
+describe("ReplayEngine assisted fallback rejoin", () => {
+  const policy = new PolicyGuard({
+    allowedOrigins: ["https://bank.example"],
+    allowedActionTypes: ["click", "fill", "read"],
+  });
+
+  it("rejoins the deterministic path after postconditions and next preconditions pass", async () => {
+    const surface = new FakeSurface();
+    let repaired = false;
+    surface.assertHandler = (assertion) => {
+      if (assertion.type === "textVisible" && assertion.value === "Lending Services") {
+        return repaired;
+      }
+      if (assertion.type === "textVisible" && assertion.value === "Search ready") {
+        return repaired;
+      }
+      return assertion.type === "textVisible" && assertion.value === "Payoff Statement";
+    };
+    surface.executeHandler = (action) => {
+      if (
+        action.type === "click" &&
+        action.target.strategies.some(
+          (strategy) => strategy.type === "visibleText" && strategy.text === "Retry",
+        )
+      ) {
+        repaired = true;
+      }
+      return { status: "ok" };
+    };
+    const engine = new ReplayEngine(surface, {
+      policy,
+      repair: {
+        propose: async () => ({
+          actions: [
+            {
+              type: "click",
+              target: { strategies: [{ type: "visibleText", text: "Retry" }] },
+            },
+          ],
+          rationale: "click retry",
+        }),
+      },
+    });
+    const result = await engine.run(
+      testCapability({
+        steps: [
+          clickStep("open-lending", {
+            postconditions: [{ type: "textVisible", value: "Lending Services" }],
+          }),
+          clickStep("open-search", {
+            preconditions: [{ type: "textVisible", value: "Search ready" }],
+          }),
+        ],
+      }),
+      {},
+      { runId: "run-rejoin-ok", assist: true },
+    );
+    expect(result.status).toBe("success");
+    expect(
+      surface.executed.filter((action) => action.type === "click"),
+    ).toHaveLength(3);
+  });
+
+  it("stops on a failed rejoin and does not invent further steps", async () => {
+    const surface = new FakeSurface();
+    let repaired = false;
+    let proposals = 0;
+    surface.assertHandler = (assertion) => {
+      if (assertion.type === "textVisible" && assertion.value === "Lending Services") {
+        return repaired;
+      }
+      if (assertion.type === "textVisible" && assertion.value === "Search ready") {
+        return false;
+      }
+      return assertion.type === "textVisible" && assertion.value === "Payoff Statement";
+    };
+    surface.executeHandler = (action) => {
+      if (
+        action.type === "click" &&
+        action.target.strategies.some(
+          (strategy) => strategy.type === "visibleText" && strategy.text === "Retry",
+        )
+      ) {
+        repaired = true;
+      }
+      return { status: "ok" };
+    };
+    const engine = new ReplayEngine(surface, {
+      policy,
+      repair: {
+        propose: async () => {
+          proposals += 1;
+          return {
+            actions: [
+              {
+                type: "click",
+                target: { strategies: [{ type: "visibleText", text: "Retry" }] },
+              },
+            ],
+            rationale: "click retry",
+          };
+        },
+      },
+    });
+    const result = await engine.run(
+      testCapability({
+        steps: [
+          clickStep("open-lending", {
+            postconditions: [{ type: "textVisible", value: "Lending Services" }],
+          }),
+          clickStep("open-search", {
+            preconditions: [{ type: "textVisible", value: "Search ready" }],
+          }),
+          clickStep("open-payoff"),
+        ],
+      }),
+      {},
+      { runId: "run-rejoin-fail", assist: true },
+    );
+    expect(result).toMatchObject({
+      status: "failure",
+      code: "PRECONDITION_FAILED",
+      stepId: "open-search",
+    });
+    expect(proposals).toBe(1);
+    const continueClicks = surface.executed.filter(
+      (action) =>
+        action.type === "click" &&
+        action.target.strategies.some(
+          (strategy) => strategy.type === "visibleText" && strategy.text === "Continue",
+        ),
+    );
+    expect(continueClicks).toHaveLength(1);
+  });
+});
+
+
 
 describe("ReplayEngine HITL", () => {
   it("pauses a risky encoded action and continues the same step after resume", async () => {

@@ -302,9 +302,9 @@ Callers resolve with `CapabilityResolver` first. `ReplayEngine` never branches o
 
 ### Pass 4.11 — Assisted fallback (rejoin)
 
-- [ ] After repair, verify the failed step’s postconditions and the next original step’s preconditions
-- [ ] Rejoin deterministic path only if both pass; otherwise stop
-- [ ] Tests: successful rejoin; failed rejoin does not continue inventing steps
+- [x] After repair, verify the failed step’s postconditions and the next original step’s preconditions
+- [x] Rejoin deterministic path only if both pass; otherwise stop
+- [x] Tests: successful rejoin; failed rejoin does not continue inventing steps
 
 ### Pass 4.12 — Replay integration tests
 
