@@ -425,8 +425,8 @@ Thin entry points. Packages own behavior.
 
 ### Pass 6.2 — `icas-play describe`
 
-- [ ] Print inputs, outputs, steps, success, discoveredOn
-- [ ] Reviewable by a human without reading raw JSON
+- [x] Print inputs, outputs, steps, success, discoveredOn
+- [x] Reviewable by a human without reading raw JSON
 
 ### Pass 6.3 — `icas-play run` (strict)
 

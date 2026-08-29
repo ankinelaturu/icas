@@ -18,6 +18,7 @@ import {
 } from "@icas/capability";
 
 import { catalogRoot } from "./catalog-root.js";
+import { formatCapabilityDescription } from "./format-describe.js";
 
 /**
  * Injectable IO and catalog so tests never touch repo `capabilities/`.
@@ -29,8 +30,7 @@ export interface PlayCliDeps {
 }
 
 /**
- * Build the Commander program. `list` is the only implemented subcommand
- * in this pass; `describe` / `run` remain placeholders.
+ * Build the Commander program. `run` remains a placeholder until a later pass.
  */
 export function createPlayProgram(deps: PlayCliDeps = {}): Command {
   const write = deps.stdout ?? ((line: string) => {
@@ -75,10 +75,20 @@ export function createPlayProgram(deps: PlayCliDeps = {}): Command {
   program
     .command("describe")
     .argument("<id>", "Capability id")
-    .description("Print one capability (not implemented in this pass)")
-    .action(() => {
-      writeErr("icas-play describe is not implemented yet.");
-      process.exitCode = 1;
+    .option("--version <semver>", "Pin a capabilityVersion instead of latest")
+    .description("Print inputs, outputs, steps, and success for humans")
+    .action(async (id: string, opts: { version?: string }) => {
+      const registry = resolveRegistry();
+      const artifact =
+        opts.version === undefined
+          ? await registry.get(id)
+          : await registry.get(id, opts.version);
+      if (artifact === undefined) {
+        writeErr(`capability "${id}" is not in the catalog`);
+        process.exitCode = 1;
+        return;
+      }
+      write(formatCapabilityDescription(artifact));
     });
 
   program
