@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@icas/capability": "workspace:*",
+    "@icas/policy": "workspace:*",
     "@icas/surface": "workspace:*"
   }
 }

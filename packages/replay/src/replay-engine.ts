@@ -4,28 +4,42 @@
 
 import { randomUUID } from "node:crypto";
 
-import type { CapabilityArtifact, CapabilityStep } from "@icas/capability";
+import type { CapabilityAction, CapabilityArtifact, CapabilityStep } from "@icas/capability";
+import type { PolicyGuard } from "@icas/policy";
 import type { Surface } from "@icas/surface";
 
 import {
   ReplayFailureCode,
   type ExecutionResult,
 } from "./execution-result.js";
-import { hydrateAssertion } from "./hydrate.js";
+import { hydrateAction, hydrateAssertion } from "./hydrate.js";
 import type { ReplayOptions } from "./replay-options.js";
+
+/**
+ * Optional collaborators. Policy is required for a safe production run.
+ */
+export interface ReplayEngineDependencies {
+  policy?: PolicyGuard;
+}
 
 /**
  * Execute a supplied effective capability. Callers resolve tenant overrides first.
  * This engine never branches on tenant identity.
  */
 export class ReplayEngine {
-  constructor(private readonly surface: Surface) {}
+  private readonly policy: PolicyGuard | undefined;
+
+  constructor(
+    private readonly surface: Surface,
+    deps: ReplayEngineDependencies = {},
+  ) {
+    this.policy = deps.policy;
+  }
 
   /**
    * Iterate capability steps and return a structured result.
    *
-   * Step bodies are stubbed in this pass: preconditions, policy, and execute
-   * are wired in later passes.
+   * Step execute is gated by PolicyGuard. Postconditions are wired later.
    *
    * @param capability - Effective artifact from {@link CapabilityResolver}, or missing
    * @param inputs - Typed invocation parameters used to hydrate assertion ValueRefs
@@ -50,7 +64,10 @@ export class ReplayEngine {
       if (preFailure !== undefined) {
         return preFailure;
       }
-      await this.stubStep(step);
+      const blocked = await this.executeStep(step, inputs, runId, capability.id);
+      if (blocked !== undefined) {
+        return blocked;
+      }
     }
     return {
       status: "success",
@@ -91,7 +108,42 @@ export class ReplayEngine {
     return undefined;
   }
 
-  private async stubStep(_step: CapabilityStep): Promise<void> {
-    return;
+  private async executeStep(
+    step: CapabilityStep,
+    inputs: Record<string, unknown>,
+    runId: string,
+    capabilityId: string,
+  ): Promise<ExecutionResult | undefined> {
+    const action = hydrateAction(step.action, inputs);
+    const destinationUrl = await this.peekDestination(action);
+    const decision = this.policy?.check(action, destinationUrl === undefined
+      ? {}
+      : { destinationUrl }) ?? { decision: "allow" as const };
+    if (decision.decision !== "allow") {
+      return {
+        status: "failure",
+        capabilityId,
+        code: ReplayFailureCode.policyBlocked,
+        stepId: step.id,
+        expected: action,
+        observed: decision,
+        runId,
+      };
+    }
+    await this.surface.execute(action);
+    return undefined;
+  }
+
+  private async peekDestination(
+    action: CapabilityAction,
+  ): Promise<string | undefined> {
+    if (!("target" in action)) {
+      return undefined;
+    }
+    try {
+      return await this.surface.peekDestination(action.target);
+    } catch {
+      return undefined;
+    }
   }
 }

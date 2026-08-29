@@ -288,6 +288,9 @@ importers:
       '@icas/capability':
         specifier: workspace:*
         version: link:../capability
+      '@icas/policy':
+        specifier: workspace:*
+        version: link:../policy
       '@icas/surface':
         specifier: workspace:*
         version: link:../surface

@@ -250,9 +250,9 @@ Callers resolve with `CapabilityResolver` first. `ReplayEngine` never branches o
 
 ### Pass 4.3 — Policy gate before execute
 
-- [ ] Every action goes through `PolicyGuard`
-- [ ] `POLICY_BLOCKED` on deny; HITL path not wired yet (return structured failure)
-- [ ] Tests: allowed action executes; denied action never hits `Surface.execute`
+- [x] Every action goes through `PolicyGuard`
+- [x] `POLICY_BLOCKED` on deny; HITL path not wired yet (return structured failure)
+- [x] Tests: allowed action executes; denied action never hits `Surface.execute`
 
 ### Pass 4.4 — Execute + postconditions
 

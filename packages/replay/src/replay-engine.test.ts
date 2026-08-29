@@ -1,3 +1,4 @@
+import { PolicyGuard } from "@icas/policy";
 import { describe, expect, it } from "vitest";
 
 import { ReplayEngine } from "./replay-engine.js";
@@ -50,7 +51,7 @@ describe("ReplayEngine preconditions", () => {
     );
     expect(result.status).toBe("success");
     expect(surface.asserted).toEqual([pre]);
-    expect(surface.executed).toEqual([]);
+    expect(surface.executed).toHaveLength(2);
   });
 
   it("fails PRECONDITION_FAILED on the first mismatched step and skips later steps", async () => {
@@ -80,5 +81,49 @@ describe("ReplayEngine preconditions", () => {
       runId: "run-pre-fail",
     });
     expect(surface.asserted).toEqual([expected]);
+    expect(surface.executed).toEqual([]);
   });
 });
+
+describe("ReplayEngine policy gate", () => {
+  it("executes an allowed click and never executes a denied navigate", async () => {
+    const surface = new FakeSurface();
+    const policy = new PolicyGuard({
+      allowedOrigins: ["https://bank.example"],
+      allowedActionTypes: ["click", "fill"],
+    });
+    const engine = new ReplayEngine(surface, { policy });
+    const allowed = await engine.run(
+      testCapability({ steps: [clickStep("open-lending")] }),
+      {},
+      { runId: "run-policy-allow" },
+    );
+    expect(allowed.status).toBe("success");
+    expect(surface.executed).toHaveLength(1);
+    expect(surface.executed[0]?.type).toBe("click");
+
+    surface.executed.length = 0;
+    const denied = await engine.run(
+      testCapability({
+        steps: [
+          {
+            id: "go-admin",
+            preconditions: [],
+            action: { type: "navigate", path: "/admin" },
+            postconditions: [],
+          },
+        ],
+      }),
+      {},
+      { runId: "run-policy-deny" },
+    );
+    expect(denied).toMatchObject({
+      status: "failure",
+      code: "POLICY_BLOCKED",
+      stepId: "go-admin",
+      runId: "run-policy-deny",
+    });
+    expect(surface.executed).toEqual([]);
+  });
+});
+

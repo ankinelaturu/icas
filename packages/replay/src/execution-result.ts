@@ -32,4 +32,5 @@ export type ExecutionResult =
 export const ReplayFailureCode = {
   missingCapability: "MISSING_CAPABILITY",
   preconditionFailed: "PRECONDITION_FAILED",
+  policyBlocked: "POLICY_BLOCKED",
 } as const;
