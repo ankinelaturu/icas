@@ -74,11 +74,11 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 ### Pass 1.7 — Resolver: version pin + whole-step replace
 
-- [ ] `CapabilityResolver`: load base + tenant override
-- [ ] Refuse mismatched `baseCapability` version (never apply silently)
-- [ ] Apply whole-step replace
-- [ ] Schema-validate the effective capability before returning it
-- [ ] Tests: happy replace; version mismatch; invalid resolved artifact rejected
+- [x] `CapabilityResolver`: load base + tenant override
+- [x] Refuse mismatched `baseCapability` version (never apply silently)
+- [x] Apply whole-step replace
+- [x] Schema-validate the effective capability before returning it
+- [x] Tests: happy replace; version mismatch; invalid resolved artifact rejected
 
 ### Pass 1.8 — Resolver: partial step patches
 

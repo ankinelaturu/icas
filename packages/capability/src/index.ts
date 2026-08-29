@@ -63,3 +63,10 @@ export {
   compareCapabilityVersion,
   parseBaseCapabilityPin,
 } from "./catalog-ids.js";
+
+export { applyCapabilityOverride } from "./apply-override.js";
+export {
+  CapabilityResolveError,
+  CapabilityResolver,
+} from "./capability-resolver.js";
+export type { ResolveCapabilityQuery } from "./capability-resolver.js";
