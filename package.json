@@ -8,6 +8,7 @@
     "dev": "turbo run dev --parallel",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "test:integration": "vitest run --config tests/integration/vitest.config.ts",
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean && rimraf node_modules",
     "icas-agent": "pnpm --filter @icas/agent start --",

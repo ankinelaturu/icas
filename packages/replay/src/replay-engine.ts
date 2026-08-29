@@ -364,12 +364,12 @@ export class ReplayEngine {
       if (failed === undefined) {
         return undefined;
       }
-      if (attempt < this.maxAttempts && (await this.recoverInterstitial(runId, attempt))) {
-        continue;
-      }
       const outcome = await this.classifyBusinessOutcome(capabilityId, runId);
       if (outcome !== undefined) {
         return outcome;
+      }
+      if (attempt < this.maxAttempts && (await this.recoverInterstitial(runId, attempt))) {
+        continue;
       }
       return {
         status: "failure",

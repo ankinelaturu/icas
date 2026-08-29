@@ -308,10 +308,10 @@ Callers resolve with `CapabilityResolver` first. `ReplayEngine` never branches o
 
 ### Pass 4.12 — Replay integration tests
 
-- [ ] `tests/integration/capability-replay.test.ts`
-- [ ] `tests/integration/loan-not-found.test.ts`
-- [ ] `tests/integration/assisted-fallback.test.ts`
-- [ ] Against HTML fixtures, not full tenants
+- [x] `tests/integration/capability-replay.test.ts`
+- [x] `tests/integration/loan-not-found.test.ts`
+- [x] `tests/integration/assisted-fallback.test.ts`
+- [x] Against HTML fixtures, not full tenants
 
 ---
 
