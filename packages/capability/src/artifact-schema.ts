@@ -9,12 +9,18 @@ const SCHEMA_VERSION = "1.0";
 /**
  * Reference a typed invocation input or a literal value.
  *
- * Pass 1.3 requires exactly one of `input` or `literal`.
+ * Exactly one of `input` or `literal` is required.
  */
-export const ValueRefSchema = z.strictObject({
-  input: z.string().min(1).optional(),
-  literal: z.unknown().optional(),
-});
+export const ValueRefSchema = z
+  .strictObject({
+    input: z.string().min(1).optional(),
+    literal: z.unknown().optional(),
+  })
+  .refine(
+    (ref) =>
+      (ref.input !== undefined) !== (ref.literal !== undefined),
+    { error: "ValueRef must have exactly one of input or literal" },
+  );
 
 const TargetStrategySchema = z.discriminatedUnion("type", [
   z.strictObject({

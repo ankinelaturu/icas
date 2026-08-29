@@ -89,4 +89,25 @@ describe("validateCapabilityArtifact", () => {
       );
     }
   });
+
+  it("rejects a ValueRef that sets both input and literal", () => {
+    const valid = loadFixture("loan-payoff.capability.json") as {
+      steps: Array<{ action: { type: string; value?: unknown } }>;
+    };
+    const steps = valid.steps.map((step) => {
+      if (step.action.type !== "fill") {
+        return step;
+      }
+      return {
+        ...step,
+        action: {
+          ...step.action,
+          value: { input: "loanAccountId", literal: "hard-coded" },
+        },
+      };
+    });
+    expect(() => validateCapabilityArtifact({ ...valid, steps })).toThrow(
+      /exactly one of input or literal/,
+    );
+  });
 });

@@ -32,9 +32,12 @@ export type {
 } from "./capability-override.js";
 
 export {
-  CapabilityValidationError,
-  validateCapabilityArtifact,
-} from "./validate-capability.js";
+  CapabilityTypeError,
+  resolveValueRef,
+  validateInputValues,
+  validateOutputValues,
+  validatePrimitiveValue,
+} from "./values.js";
 
 /**
  * Catalog of capability artifacts. Pass 1.5 replaces this scaffold with the

@@ -2,7 +2,8 @@
 
 Capability artifacts as data: schema/types, validation, catalog CRUD, tenant overrides, and resolution.
 
-- `validateCapabilityArtifact(value)` — schema-validate unknown JSON. Throws `CapabilityValidationError` with a readable path and message. `schemaVersion` is the format (`"1.0"`); `capabilityVersion` is the flow semver (`"1.0.0"`).
+- `validatePrimitiveValue` / `validateInputValues` / `validateOutputValues` — check runtime values against `string` | `number` | `boolean` | `date` | `money`.
+- `resolveValueRef(ref, inputs)` — resolve `{ input }` or `{ literal }` (exactly one).
 
 - `CapabilityRegistry` — abstract repository API (list/get/save/remove, including overrides).
 - `FileSystemCapabilityRegistry({ root })` — the implemented backend. Production root is repo `capabilities/`; tests pass a temp directory.

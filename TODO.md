@@ -46,9 +46,9 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 ### Pass 1.3 — Input/output type helpers
 
-- [ ] Validate values against `string` | `number` | `boolean` | `date` | `money`
-- [ ] Resolve `ValueRef` (`input` vs `literal`) given an input map
-- [ ] Tests for each primitive and for missing/invalid refs
+- [x] Validate values against `string` | `number` | `boolean` | `date` | `money`
+- [x] Resolve `ValueRef` (`input` vs `literal`) given an input map
+- [x] Tests for each primitive and for missing/invalid refs
 
 ### Pass 1.4 — Override schema validation
 
