@@ -192,9 +192,9 @@ Cross-cutting runtime used by replay and discovery.
 
 ### Pass 3.6 — Evidence writer core
 
-- [ ] Run-scoped dirs: `evidence/<capability>/<run-id>/`
-- [ ] Append-only JSONL + `summary.json`
-- [ ] Tests: append two events, read them back, summary written
+- [x] Run-scoped dirs: `evidence/<capability>/<run-id>/`
+- [x] Append-only JSONL + `summary.json`
+- [x] Tests: append two events, read them back, summary written
 
 ### Pass 3.7 — Evidence rich signals + redaction
 

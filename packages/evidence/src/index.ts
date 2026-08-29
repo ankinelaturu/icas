@@ -1,26 +1,15 @@
-export type RunType = "discovery" | "replay" | "adaptation";
+/**
+ * @file @icas/evidence — run-scoped traces, replay logs, and summaries.
+ */
 
-export interface RunSummary {
-  runId: string;
-  runType: RunType;
-  capabilityId?: string;
-  status: "success" | "business_outcome" | "failure" | "stuck";
-  startedAt: string;
-  finishedAt?: string;
-  steps?: number;
-  backtracks?: number;
-}
-
-export interface EvidenceEvent {
-  timestamp: string;
-  runId: string;
-  type: string;
-  actor?: "agent" | "replay" | "human";
-  payload?: unknown;
-}
-
-export interface EvidenceWriter {
-  append(event: EvidenceEvent): Promise<void>;
-  writeSummary(summary: RunSummary): Promise<void>;
-  captureRichSignal?(kind: "screenshot" | "dom" | "trace", value: unknown): Promise<void>;
-}
+export type {
+  EvidenceEvent,
+  EvidenceWriter,
+  RunSummary,
+  RunType,
+} from "./evidence-types.js";
+export { EvidenceError, assertEvidenceSegment } from "./evidence-error.js";
+export {
+  FileSystemEvidenceWriter,
+  type FileSystemEvidenceWriterOptions,
+} from "./filesystem-evidence-writer.js";
