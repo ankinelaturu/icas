@@ -89,6 +89,53 @@ describe("loki-bank HTTP", () => {
     expect(html).toContain("No loan record found");
     expect(html).toContain("000000");
   });
+
+  it("hides Find a Loan behind a session-warning overlay when inject=wait", async () => {
+    const baseUrl = await listen();
+    const html = await (
+      await fetch(`${baseUrl}/lending/search.htm?inject=wait`)
+    ).text();
+    expect(html).toContain('id="inject-wait" style=""');
+    expect(html).toContain("Session warning");
+    expect(html).toContain(">Continue</a>");
+    expect(html).toContain('id="loan-work" style="display:none"');
+    expect(html).not.toContain('id="loan-work" style=""');
+  });
+
+  it("hides Search behind a manual-review overlay when inject=hitl", async () => {
+    const baseUrl = await listen();
+    const html = await (
+      await fetch(`${baseUrl}/lending/search.htm?inject=hitl`)
+    ).text();
+    expect(html).toContain('id="inject-hitl" style=""');
+    expect(html).toContain("Manual review required");
+    expect(html).toContain("Release to servicing");
+    expect(html).toContain('id="loan-work" style="display:none"');
+  });
+
+  it("does not overlay loan details when inject is set (search is the inject surface)", async () => {
+    const baseUrl = await listen();
+    const html = await (
+      await fetch(`${baseUrl}/lending/account.htm?ln=987654&inject=wait`)
+    ).text();
+    expect(html).toContain("Loan Details");
+    expect(html).not.toContain("id=\"inject-wait\"");
+  });
+
+  it("refuses search POST until the overlay is cleared", async () => {
+    const baseUrl = await listen();
+    const blocked = await fetch(`${baseUrl}/lending/search.htm`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        cookie: "inject=hitl",
+      },
+      body: "txtAcct=987654",
+      redirect: "manual",
+    });
+    expect(blocked.status).toBe(302);
+    expect(blocked.headers.get("location")).toBe("/lending/search.htm");
+  });
 });
 
 async function listen(): Promise<string> {

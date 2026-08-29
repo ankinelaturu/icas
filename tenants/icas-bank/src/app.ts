@@ -16,6 +16,12 @@ import {
   PayoffNotEligibleError,
   SYSTEM_DATE,
 } from "./loans.js";
+import {
+  attachInjectMode,
+  injectModeFrom,
+  maybeDelayInjectWait,
+  overlayTemplateVars,
+} from "./inject-mode.js";
 import { renderPage } from "./render.js";
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -35,6 +41,7 @@ export function createIcasBankApp(options: IcasBankAppOptions = {}): Express {
   app.disable("x-powered-by");
   app.use(express.urlencoded({ extended: false }));
   app.use(express.static(publicDir, { etag: false, cacheControl: false }));
+  app.use(attachInjectMode);
 
   const page = (fileName: string, vars?: Record<string, string>): string =>
     renderPage(pagesDir, fileName, vars);
@@ -64,13 +71,22 @@ export function createIcasBankApp(options: IcasBankAppOptions = {}): Express {
     redirectInquiry(res, formString(req.body, "txtAcct"));
   });
 
-  app.get("/lending/account.htm", (req, res) => {
+  app.get("/lending/account.htm", async (req, res) => {
     const loan = loanFromQuery(req);
     if (loan === undefined) {
       redirectNotFound(res, queryString(req, "ln"));
       return;
     }
-    sendHtml(res, page("account.html", loanVars(loan)));
+    const mode = injectModeFrom(res);
+    await maybeDelayInjectWait(mode);
+    const ln = encodeURIComponent(loan.loanAccountId);
+    sendHtml(
+      res,
+      page("account.html", {
+        ...loanVars(loan),
+        ...overlayTemplateVars(mode, `/lending/account.htm?ln=${ln}&inject=clear`),
+      }),
+    );
   });
 
   app.get("/lending/payoff.htm", (req, res) => {

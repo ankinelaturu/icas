@@ -101,7 +101,63 @@ describe("icas-bank HTTP", () => {
     expect(html).toContain("000000");
     expect(html).not.toContain("Internal Server Error");
   });
+
+  it("hides loan details behind a session-warning overlay when inject=wait", async () => {
+    const baseUrl = await listen();
+    const html = await (
+      await fetch(`${baseUrl}/lending/account.htm?ln=987654&inject=wait`)
+    ).text();
+    expect(html).toContain('id="inject-wait" style=""');
+    expect(html).toContain("Session warning");
+    expect(html).toContain("Please wait");
+    expect(html).toContain(">Continue</a>");
+    expect(html).toContain('id="loan-work" style="display:none"');
+    expect(html).toContain('id="inject-hitl" style="display:none"');
+  });
+
+  it("hides Payoff behind a manual-review overlay when inject=hitl", async () => {
+    const baseUrl = await listen();
+    const html = await (
+      await fetch(`${baseUrl}/lending/account.htm?ln=987654&inject=hitl`)
+    ).text();
+    expect(html).toContain('id="inject-hitl" style=""');
+    expect(html).toContain("Manual review required");
+    expect(html).toContain("Release to servicing");
+    expect(html).toContain('id="loan-work" style="display:none"');
+    expect(html).toContain('id="inject-wait" style="display:none"');
+  });
+
+  it("carries inject=wait from home via cookie onto loan details", async () => {
+    const baseUrl = await listen();
+    const home = await fetch(`${baseUrl}/?inject=wait`);
+    const html = await (
+      await fetch(`${baseUrl}/lending/account.htm?ln=987654`, {
+        headers: { cookie: cookieHeader(home) },
+      })
+    ).text();
+    expect(html).toContain('id="inject-wait" style=""');
+  });
+
+  it("clears the overlay after Continue", async () => {
+    const baseUrl = await listen();
+    const cleared = await fetch(
+      `${baseUrl}/lending/account.htm?ln=987654&inject=clear`,
+      { redirect: "follow" },
+    );
+    const html = await cleared.text();
+    expect(cleared.url).toContain("/lending/account.htm?ln=987654");
+    expect(cleared.url).not.toContain("inject=");
+    expect(html).toContain('id="loan-work" style=""');
+    expect(html).toContain('id="inject-wait" style="display:none"');
+  });
 });
+
+function cookieHeader(response: globalThis.Response): string {
+  return response.headers
+    .getSetCookie()
+    .map((entry) => entry.split(";")[0])
+    .join("; ");
+}
 
 async function listen(): Promise<string> {
   const app = createIcasBankApp();

@@ -81,12 +81,14 @@ tests/integration/
 
 ### 4. Recoverable condition
 
-- inject a transient load/interstitial;
+- open `http://localhost:4101/?inject=wait` (or Loki search with the same query);
+- session-warning overlay; replay dismisses **Continue**;
 - demonstrate bounded recovery.
 
 ### 5. Human handoff
 
-- inject an ambiguous/manual-review state or risky approval boundary;
+- open `http://localhost:4101/?inject=hitl` (Loki: overlay on search, not loan details);
+- ambiguous/manual-review state; do not click **Continue**;
 - automation pauses;
 - operator uses same browser;
 - actions/state change are recorded;

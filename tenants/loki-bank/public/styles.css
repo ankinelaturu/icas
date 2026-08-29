@@ -204,3 +204,23 @@ iframe.rates {
   border: 2px inset #c4b48a;
   background: #fffdf6;
 }
+
+.dlg {
+  width: 440px;
+  background: #efe6d0;
+  border: 2px outset #c4b48a;
+  padding: 0 0 10px 0;
+  margin: 8px 0 12px 0;
+}
+
+.dlg-hd {
+  background: #1b4d3e;
+  color: #e8c547;
+  font-weight: bold;
+  padding: 4px 10px;
+  margin: 0 0 8px 0;
+}
+
+.dlg p {
+  margin: 6px 12px;
+}

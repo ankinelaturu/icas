@@ -8,7 +8,7 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 - Implementation order: capability → surface/browser → replay → discovery/compiler, then apps.
 - Add fixtures and tests in the same pass that introduces the behavior.
-- Full tenant apps: icas-bank is in; a second institution comes later (Phase 7).
+- Full tenant apps: icas-bank and loki-bank are in (Phase 7).
 - Model/provider (including vision) is deferred until discovery needs it (Phase 5).
 - Assisted fallback, `icas-adapt`, HITL browser takeover, and MCP are in scope.
 - Tenant specialization is a declarative `CapabilityOverride` resolved by `CapabilityResolver`. `ReplayEngine` stays tenant-agnostic.
@@ -528,11 +528,11 @@ Same fictional Vendor+Product: `icas-bank` / `icas-bank`. Tenant catalog id for 
 
 ### Pass 7.7 — Injectable interstitial / slow load
 
-- [ ] Transient session-warning or loading overlay that clears without changing intent
+- [x] Transient session-warning or loading overlay that clears without changing intent
 
 ### Pass 7.8 — Injectable HITL / manual-review screen
 
-- [ ] Ambiguous or approval boundary that automation should not click through
+- [x] Ambiguous or approval boundary that automation should not click through
 
 ---
 

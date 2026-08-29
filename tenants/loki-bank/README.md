@@ -34,3 +34,13 @@ Payoff statement field labels stay the same (`Total Payoff Amount`, `Principal B
 Home → Member Lending → Loan Servicing → Search (`Loan #`) → Loan Details → Payoff → Payoff Dt → Calculate / Generate → Payoff Statement
 
 Known accounts match icas-bank (`987654`, `112233`, `555555`, plus not-found).
+
+## Injectable overlays
+
+Same `inject` query as icas-bank. Overlay appears on **Find a Loan** (search), not loan details.
+
+| Start URL | What happens |
+|---|---|
+| `http://localhost:4102/?inject=wait` | Session warning + Continue on search |
+| `http://localhost:4102/?inject=hitl` | Manual review on search; **Release to servicing** |
+| no query | Happy path |

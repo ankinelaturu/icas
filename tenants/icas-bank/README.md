@@ -28,3 +28,15 @@ Known accounts (processing date **2026-08-28**):
 | anything else | — | `No loan record found` (business empty state, not a crash) |
 
 Demo quote for `987654` / `2026-09-30`: principal `12450.00`, per diem `3.45`, 33 days, total `12563.85`.
+
+## Injectable overlays
+
+Query `inject` (cookie-backed so it survives navigation). Overlay appears on **Loan Details**, not search.
+
+| Start URL | What happens |
+|---|---|
+| `http://localhost:4101/?inject=wait` | Session warning + Continue (recoverable; ~400ms delay) |
+| `http://localhost:4101/?inject=hitl` | Manual review; **Release to servicing** (do not click Continue) |
+| no query | Happy path |
+
+Continue / Release request `inject=clear` and drop the cookie.

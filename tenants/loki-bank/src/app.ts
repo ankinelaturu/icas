@@ -16,6 +16,12 @@ import {
   PayoffNotEligibleError,
   SYSTEM_DATE,
 } from "./loans.js";
+import {
+  attachInjectMode,
+  injectModeFrom,
+  maybeDelayInjectWait,
+  overlayTemplateVars,
+} from "./inject-mode.js";
 import { renderPage } from "./render.js";
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -35,6 +41,7 @@ export function createLokiBankApp(options: LokiBankAppOptions = {}): Express {
   app.disable("x-powered-by");
   app.use(express.urlencoded({ extended: false }));
   app.use(express.static(publicDir, { etag: false, cacheControl: false }));
+  app.use(attachInjectMode);
 
   const page = (fileName: string, vars?: Record<string, string>): string =>
     renderPage(pagesDir, fileName, vars);
@@ -51,16 +58,29 @@ export function createLokiBankApp(options: LokiBankAppOptions = {}): Express {
     sendHtml(res, page("lending.html"));
   });
 
-  app.get("/lending/search.htm", (req, res) => {
+  app.get("/lending/search.htm", async (req, res) => {
+    const mode = injectModeFrom(res);
+    if (mode !== undefined) {
+      await maybeDelayInjectWait(mode);
+      sendHtml(
+        res,
+        page("search.html", overlayTemplateVars(mode, "/lending/search.htm?inject=clear")),
+      );
+      return;
+    }
     const acct = queryString(req, "txtAcct");
     if (acct.length > 0) {
       redirectInquiry(res, acct);
       return;
     }
-    sendHtml(res, page("search.html"));
+    sendHtml(res, page("search.html", overlayTemplateVars(undefined, "/lending/search.htm?inject=clear")));
   });
 
   app.post("/lending/search.htm", (req, res) => {
+    if (injectModeFrom(res) !== undefined) {
+      res.redirect("/lending/search.htm");
+      return;
+    }
     redirectInquiry(res, formString(req.body, "txtAcct"));
   });
 

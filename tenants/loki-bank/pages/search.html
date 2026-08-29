@@ -32,6 +32,18 @@
 <p class="note">F1 Assist &nbsp; F3 Exit &nbsp; F12 Cancel</p>
 </td>
 <td class="work">
+<div class="dlg" id="inject-wait" style="{{waitStyle}}">
+<div class="dlg-hd">Session warning</div>
+<p>Please wait. The host is restoring your operator session.</p>
+<p>This message does not change the loan inquiry.</p>
+<p><a href="{{dismissHref}}">Continue</a></p>
+</div>
+<div class="dlg" id="inject-hitl" style="{{hitlStyle}}">
+<div class="dlg-hd">Manual review required</div>
+<p>Supervisor hold. Do not search until this inquiry is released.</p>
+<p><a href="{{dismissHref}}">Release to servicing</a></p>
+</div>
+<div id="loan-work" style="{{workStyle}}">
 <div class="section-hd">Find a Loan</div>
 <form method="post" action="/lending/search.htm">
 <table class="grid">
@@ -66,6 +78,7 @@
 </form>
 <p class="note">Use the loan number, not the CIF number. Last search: (none)</p>
 <p><a href="/lending.htm">Return to Member Lending</a></p>
+</div>
 </td>
 </tr>
 <tr><td class="status" colspan="2">Ready. Caps: Off &nbsp; NUM &nbsp;|&nbsp; Synthetic demonstration data. Not a real financial institution.</td></tr>
