@@ -38,11 +38,11 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 ### Pass 1.2 — Base capability schema validation
 
-- [ ] Validate required fields, versions, inputs/outputs, step shape, action vocabulary, assertion families
-- [ ] Clear errors for invalid artifacts
-- [ ] Distinguish `schemaVersion` vs `capabilityVersion`
-- [ ] Tests: valid `tests/fixtures/loan-payoff.capability.json` passes; truncated/unknown-action fixtures fail
-- [ ] Add package Vitest config in this pass (first tests in the package)
+- [x] Validate required fields, versions, inputs/outputs, step shape, action vocabulary, assertion families
+- [x] Clear errors for invalid artifacts
+- [x] Distinguish `schemaVersion` vs `capabilityVersion`
+- [x] Tests: valid `tests/fixtures/loan-payoff.capability.json` passes; truncated/unknown-action fixtures fail
+- [x] Add package Vitest config in this pass (first tests in the package)
 
 ### Pass 1.3 — Input/output type helpers
 

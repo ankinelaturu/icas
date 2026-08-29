@@ -14,6 +14,15 @@ export type {
   ValueRef,
 } from "./artifact.js";
 
+export {
+  AssertionSchema,
+  CapabilityActionSchema,
+  CapabilityArtifactSchema,
+  CapabilityStepSchema,
+  TargetDescriptorSchema,
+  ValueRefSchema,
+} from "./artifact-schema.js";
+
 export type {
   CapabilityOverride,
   CapabilityOverridePatch,
@@ -21,6 +30,11 @@ export type {
   OverrideProvenanceCreatedBy,
   StepOverride,
 } from "./capability-override.js";
+
+export {
+  CapabilityValidationError,
+  validateCapabilityArtifact,
+} from "./validate-capability.js";
 
 /**
  * Catalog of capability artifacts. Pass 1.5 replaces this scaffold with the

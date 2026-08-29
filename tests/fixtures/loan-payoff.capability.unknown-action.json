@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.0",
+  "capabilityVersion": "1.0.0",
+  "id": "loan-payoff",
+  "name": "Generate Loan Payoff Statement",
+  "target": {
+    "vendor": "icas",
+    "product": "icas"
+  },
+  "inputs": {
+    "loanAccountId": { "type": "string", "required": true }
+  },
+  "outputs": {
+    "totalPayoffAmount": { "type": "money" }
+  },
+  "steps": [
+    {
+      "id": "open-lending",
+      "preconditions": [{ "type": "textVisible", "value": "Home" }],
+      "action": {
+        "type": "hover",
+        "target": {
+          "strategies": [{ "type": "visibleText", "text": "Lending" }]
+        }
+      },
+      "postconditions": []
+    }
+  ],
+  "success": [{ "type": "textVisible", "value": "Payoff Statement" }]
+}
