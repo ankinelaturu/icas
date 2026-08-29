@@ -443,11 +443,11 @@ Thin entry points. Packages own behavior.
 
 ### Pass 6.5 — `icas-agent discover`
 
-- [ ] Required: `--id` (unique), `--url`, `--goal`
-- [ ] Optional: `--vendor` `--product` `--tenant` (default `icas-bank`)
-- [ ] Refuse if `--id` already exists unless version bump is explicit
-- [ ] Wire surface, policy, evidence, handoff, compiler
-- [ ] On success: `save` base + `saveOverride` header-only for the discovering tenant; write discovery evidence
+- [x] Required: `--id` (unique), `--url`, `--goal`
+- [x] Optional: `--vendor` `--product` `--tenant` (default `icas-bank`)
+- [x] Refuse if `--id` already exists unless version bump is explicit
+- [x] Wire surface, policy, evidence, handoff, compiler
+- [x] On success: `save` base + `saveOverride` header-only for the discovering tenant; write discovery evidence
 
 ### Pass 6.6 — `icas-adapt` guarded replay
 

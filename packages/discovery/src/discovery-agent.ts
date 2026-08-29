@@ -79,9 +79,13 @@ export class DiscoveryAgent {
    * Loop body is one DFS expansion: propose (once per node) → pick lowest-rank
    * untried sibling → policy → execute → observe. Dead-ends pop back to the
    * parent and restore the UI by replaying `pathActions`, not `page.goBack()`.
+   *
+   * @param request - Goal, surface identity, optional budgets, optional `runId`
+   *   so the CLI can pre-create an evidence writer with a matching folder
    */
   async run(request: DiscoveryRequest): Promise<DiscoveryResult> {
-    const runId = randomUUID();
+    const runId = request.runId ?? randomUUID();
+    // CLI pre-creates evidence with this id so JSONL and `createdFromRun` match.
     const budget = resolveSearchBudget({
       ...(request.maxSteps === undefined ? {} : { maxSteps: request.maxSteps }),
       ...(request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }),

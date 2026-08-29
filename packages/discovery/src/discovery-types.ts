@@ -35,6 +35,8 @@ export interface DiscoveryRequest {
   maxCandidatesPerState?: number;
   /** Override {@link SearchBudget.timeoutMs}. */
   timeoutMs?: number;
+  /** Stable evidence/run id; generated when omitted. */
+  runId?: string;
 }
 
 /**
