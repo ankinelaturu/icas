@@ -45,3 +45,43 @@ describe("PolicyGuard action allowlist", () => {
     ).toMatchObject({ decision: "deny" });
   });
 });
+
+describe("PolicyGuard origin checks", () => {
+  const guard = new PolicyGuard({
+    allowedOrigins: ["https://bank.example"],
+    allowedActionTypes: ["click", "navigate"],
+  });
+  const click = {
+    type: "click" as const,
+    target: { strategies: [{ type: "visibleText" as const, text: "Open" }] },
+  };
+
+  it("allows an in-origin destination before execute", () => {
+    expect(
+      guard.check(click, {
+        destinationUrl: "https://bank.example/loans/payoff",
+      }),
+    ).toEqual({ decision: "allow" });
+  });
+
+  it("denies an off-origin destination before execute", () => {
+    expect(
+      guard.check(click, { destinationUrl: "https://evil.example/phish" }),
+    ).toEqual({
+      decision: "deny",
+      reason: "Origin https://evil.example is not allowed.",
+    });
+  });
+
+  it("denies a resulting navigation that leaves allowedOrigins", () => {
+    expect(
+      guard.check(click, {
+        destinationUrl: "https://bank.example/loans",
+        resultingUrl: "https://other.example/out",
+      }),
+    ).toEqual({
+      decision: "deny",
+      reason: "Origin https://other.example is not allowed.",
+    });
+  });
+});

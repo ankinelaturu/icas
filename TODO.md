@@ -174,9 +174,9 @@ Cross-cutting runtime used by replay and discovery.
 
 ### Pass 3.3 — PolicyGuard origin checks
 
-- [ ] Deny off-origin destination when known before execute
-- [ ] Deny resulting navigation that leaves `allowedOrigins`
-- [ ] Tests: in-origin allow; off-origin deny
+- [x] Deny off-origin destination when known before execute
+- [x] Deny resulting navigation that leaves `allowedOrigins`
+- [x] Tests: in-origin allow; off-origin deny
 
 ### Pass 3.4 — Risky action escalation
 

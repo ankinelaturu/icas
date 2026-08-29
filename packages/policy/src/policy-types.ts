@@ -22,9 +22,10 @@ export type PolicyDecision =
   | { decision: "require-human"; reason: string };
 
 /**
- * Navigation context for origin checks.
+ * Navigation context for origin checks (known href before click, URL after).
  */
 export interface PolicyCheckContext {
   currentUrl?: string;
   destinationUrl?: string;
+  resultingUrl?: string;
 }

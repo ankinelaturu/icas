@@ -35,12 +35,22 @@ export class PolicyGuard {
         };
       }
     }
-    if (context.destinationUrl !== undefined && context.destinationUrl.length > 0) {
-      const origin = new URL(context.destinationUrl).origin;
-      if (!this.policy.allowedOrigins.includes(origin)) {
-        return { decision: "deny", reason: `Origin ${origin} is not allowed.` };
-      }
+    const originDenial = this.denyIfOriginNotAllowed(context.destinationUrl)
+      ?? this.denyIfOriginNotAllowed(context.resultingUrl);
+    if (originDenial !== undefined) {
+      return originDenial;
     }
     return { decision: "allow" };
+  }
+
+  private denyIfOriginNotAllowed(url: string | undefined): PolicyDecision | undefined {
+    if (url === undefined || url.length === 0) {
+      return undefined;
+    }
+    const origin = new URL(url).origin;
+    if (!this.policy.allowedOrigins.includes(origin)) {
+      return { decision: "deny", reason: `Origin ${origin} is not allowed.` };
+    }
+    return undefined;
   }
 }
