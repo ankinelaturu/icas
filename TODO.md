@@ -169,8 +169,8 @@ Cross-cutting runtime used by replay and discovery.
 
 ### Pass 3.2 — PolicyGuard action allowlist
 
-- [ ] Allow / deny by `allowedActionTypes`
-- [ ] Tests: allowed click/fill; denied unknown or disallowed type
+- [x] Allow / deny by `allowedActionTypes`
+- [x] Tests: allowed click/fill; denied unknown or disallowed type
 
 ### Pass 3.3 — PolicyGuard origin checks
 
