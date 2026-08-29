@@ -36,6 +36,7 @@ export class ReplayEngine {
   private readonly policy: PolicyGuard | undefined;
   private readonly evidence: EvidenceWriter | undefined;
   private maxAttempts = 2;
+  private startedAt = "";
 
   constructor(
     private readonly surface: Surface,
@@ -61,6 +62,19 @@ export class ReplayEngine {
   ): Promise<ExecutionResult> {
     const runId = options.runId ?? randomUUID();
     this.maxAttempts = options.maxRetries ?? 2;
+    this.startedAt = new Date().toISOString();
+    const result = await this.runLoop(capability, inputs, runId);
+    if (result.status === "failure") {
+      await this.captureFailureEvidence(result);
+    }
+    return result;
+  }
+
+  private async runLoop(
+    capability: CapabilityArtifact | undefined,
+    inputs: Record<string, unknown>,
+    runId: string,
+  ): Promise<ExecutionResult> {
     if (capability === undefined) {
       return {
         status: "failure",
@@ -187,7 +201,7 @@ export class ReplayEngine {
         return {
           status: "failure",
           capabilityId,
-          code: ReplayFailureCode.targetNotFound,
+          code: ReplayFailureCode.unexpectedState,
           stepId: step.id,
           expected: action,
           observed: result,
@@ -306,5 +320,49 @@ export class ReplayEngine {
     } catch {
       return undefined;
     }
+  }
+
+  private async captureFailureEvidence(
+    result: Extract<ExecutionResult, { status: "failure" }>,
+  ): Promise<void> {
+    if (this.evidence === undefined) {
+      return;
+    }
+    const payload: Record<string, unknown> = {
+      code: result.code,
+      expected: result.expected,
+      observed: result.observed,
+    };
+    if (result.stepId !== undefined) {
+      payload.stepId = result.stepId;
+    }
+    await this.evidence.append({
+      timestamp: new Date().toISOString(),
+      runId: result.runId,
+      runType: "replay",
+      type: "failure",
+      actor: "replay",
+      payload,
+    });
+    try {
+      const observation = await this.surface.observe();
+      await this.evidence.captureRichSignal(
+        "dom",
+        observation.accessibilitySnapshot ?? observation,
+      );
+      if (observation.imagePath !== undefined) {
+        await this.evidence.captureRichSignal("screenshot", observation.imagePath);
+      }
+    } catch {
+      await this.evidence.captureRichSignal("trace", { code: result.code });
+    }
+    await this.evidence.writeSummary({
+      runId: result.runId,
+      runType: "replay",
+      capabilityId: result.capabilityId,
+      status: "failure",
+      startedAt: this.startedAt,
+      finishedAt: new Date().toISOString(),
+    });
   }
 }

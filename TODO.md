@@ -283,9 +283,9 @@ Callers resolve with `CapabilityResolver` first. `ReplayEngine` never branches o
 
 ### Pass 4.8 — Hard failures + evidence
 
-- [ ] Codes: `PRECONDITION_FAILED`, `TARGET_NOT_FOUND`, `POSTCONDITION_FAILED`, `POLICY_BLOCKED`, `UNEXPECTED_STATE`, `OUTPUT_EXTRACTION_FAILED`
-- [ ] Capture rich evidence at the failure boundary
-- [ ] Tests: each code at least once with `stepId` / expected / observed
+- [x] Codes: `PRECONDITION_FAILED`, `TARGET_NOT_FOUND`, `POSTCONDITION_FAILED`, `POLICY_BLOCKED`, `UNEXPECTED_STATE`, `OUTPUT_EXTRACTION_FAILED`
+- [x] Capture rich evidence at the failure boundary
+- [x] Tests: each code at least once with `stepId` / expected / observed
 
 ### Pass 4.9 — Replay HITL
 

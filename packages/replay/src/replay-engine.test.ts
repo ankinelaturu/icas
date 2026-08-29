@@ -387,3 +387,167 @@ describe("ReplayEngine recoverable retries", () => {
   });
 });
 
+describe("ReplayEngine hard failures and evidence", () => {
+  it("fails UNEXPECTED_STATE when overall success assertions do not hold", async () => {
+    const surface = new FakeSurface();
+    surface.assertHandler = (assertion) =>
+      !(assertion.type === "textVisible" && assertion.value === "Payoff Statement");
+    const engine = new ReplayEngine(surface);
+    const result = await engine.run(
+      testCapability({ steps: [clickStep("open-lending")] }),
+      {},
+      { runId: "run-success-miss" },
+    );
+    expect(result).toMatchObject({
+      status: "failure",
+      code: "UNEXPECTED_STATE",
+      expected: { type: "textVisible", value: "Payoff Statement" },
+      observed: false,
+      runId: "run-success-miss",
+    });
+  });
+
+  it("captures rich evidence at the failure boundary for each hard-failure code", async () => {
+    const cases: Array<{
+      code: string;
+      run: (surface: FakeSurface, engine: ReplayEngine) => Promise<unknown>;
+    }> = [
+      {
+        code: "PRECONDITION_FAILED",
+        run: async (surface, engine) => {
+          surface.assertHandler = () => false;
+          return engine.run(
+            testCapability({
+              steps: [
+                clickStep("open-lending", {
+                  preconditions: [{ type: "textVisible", value: "Home" }],
+                }),
+              ],
+            }),
+            {},
+            { runId: "ev-pre" },
+          );
+        },
+      },
+      {
+        code: "POLICY_BLOCKED",
+        run: async (surface, engine) =>
+          engine.run(
+            testCapability({
+              steps: [
+                {
+                  id: "go-admin",
+                  preconditions: [],
+                  action: { type: "navigate", path: "/admin" },
+                  postconditions: [],
+                },
+              ],
+            }),
+            {},
+            { runId: "ev-policy" },
+          ),
+      },
+      {
+        code: "TARGET_NOT_FOUND",
+        run: async (surface, engine) => {
+          surface.executeHandler = () => {
+            const error = new Error("missing");
+            (error as Error & { code: string }).code = "TARGET_NOT_FOUND";
+            throw error;
+          };
+          return engine.run(
+            testCapability({ steps: [clickStep("open-lending")] }),
+            {},
+            { runId: "ev-target" },
+          );
+        },
+      },
+      {
+        code: "POSTCONDITION_FAILED",
+        run: async (surface, engine) => {
+          surface.assertHandler = () => false;
+          return engine.run(
+            testCapability({
+              steps: [
+                clickStep("open-lending", {
+                  postconditions: [{ type: "textVisible", value: "Lending Services" }],
+                }),
+              ],
+            }),
+            {},
+            { runId: "ev-post" },
+          );
+        },
+      },
+      {
+        code: "UNEXPECTED_STATE",
+        run: async (surface, engine) => {
+          surface.assertHandler = (assertion) =>
+            !(assertion.type === "textVisible" && assertion.value === "Payoff Statement");
+          return engine.run(
+            testCapability({ steps: [clickStep("open-lending")] }),
+            {},
+            { runId: "ev-unexpected" },
+          );
+        },
+      },
+      {
+        code: "OUTPUT_EXTRACTION_FAILED",
+        run: async (surface, engine) => {
+          surface.executeHandler = (action) =>
+            action.type === "read"
+              ? { status: "ok", details: {} }
+              : { status: "ok" };
+          return engine.run(
+            testCapability({
+              steps: [clickStep("open-lending")],
+              outputs: {
+                totalPayoffAmount: {
+                  type: "money",
+                  extract: {
+                    target: {
+                      strategies: [{ type: "label", label: "Total Payoff Amount" }],
+                    },
+                  },
+                },
+              },
+            }),
+            {},
+            { runId: "ev-output" },
+          );
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      const surface = new FakeSurface();
+      const { events, evidence } = memoryEvidence();
+      const signals: Array<{ kind: string; value: unknown }> = [];
+      const capturing: EvidenceWriter = {
+        ...evidence,
+        captureRichSignal: async (kind, value) => {
+          signals.push({ kind, value });
+        },
+      };
+      const policy = new PolicyGuard({
+        allowedOrigins: ["https://bank.example"],
+        allowedActionTypes: ["click", "fill", "read"],
+      });
+      const engine = new ReplayEngine(surface, { policy, evidence: capturing });
+      const result = (await testCase.run(surface, engine)) as {
+        status: string;
+        code?: string;
+        stepId?: string;
+        expected?: unknown;
+        observed?: unknown;
+      };
+      expect(result.status).toBe("failure");
+      expect(result.code).toBe(testCase.code);
+      expect(result).toHaveProperty("expected");
+      expect(result).toHaveProperty("observed");
+      expect(events.some((event) => event.type === "failure")).toBe(true);
+      expect(signals.some((signal) => signal.kind === "screenshot")).toBe(true);
+    }
+  });
+});
+

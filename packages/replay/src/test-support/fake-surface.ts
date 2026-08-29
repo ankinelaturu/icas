@@ -19,7 +19,7 @@ import type {
 export class FakeSurface implements Surface {
   readonly executed: CapabilityAction[] = [];
   readonly asserted: Assertion[] = [];
-  observation: Observation = { id: "obs-1" };
+  observation: Observation = { id: "obs-1", imagePath: "/tmp/fake-screenshot.png" };
 
   assertHandler: (assertion: Assertion) => boolean | Promise<boolean> = () => true;
   executeHandler: (
