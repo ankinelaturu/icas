@@ -21,6 +21,7 @@
     "@icas/capability": "workspace:*",
     "@icas/policy": "workspace:*",
     "@icas/surface": "workspace:*",
+    "@mastra/core": "1.63.0",
     "zod": "^4.5.2"
   }
 }

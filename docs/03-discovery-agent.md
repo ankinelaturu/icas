@@ -176,16 +176,11 @@ Human actions require classification. A normal reusable approval boundary may be
 
 ## Mastra's role
 
-Mastra is used for the LLM/tool interaction layer, not as the owner of ICAS's artifact or replay semantics. ICAS should still own:
+Mastra is the LLM/tool layer, not the owner of ICAS search or artifacts.
 
-- search state;
-- visited-state handling;
-- branch ranking history;
-- backtracking;
-- search budget;
-- trace format;
-- capability compiler;
-- surface abstraction;
-- policy and evidence boundaries.
+- Construct `new Agent({ id, name, instructions, model })` with `model` as `'provider/model'` (e.g. `openai/gpt-4o`).
+- Call `agent.generate(prompt, { structuredOutput: { schema: CandidateProposalSchema } })` **once per DFS node**.
+- Do not give the agent click/fill tools. ICAS policy-checks and executes.
+- Do not store the search graph in Mastra Memory. `SearchNode` parent/tried sets live in `DiscoveryAgent`.
 
-This keeps agent framework knowledge useful while preserving the system design as ICAS's architecture.
+ICAS still owns: search state, visited-state handling, branch ranking, backtracking, budget, trace, compiler, surface, policy, and evidence.

@@ -341,10 +341,10 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 
 ### Pass 5.4 — Mastra tool/LLM adapter
 
-- [ ] Wire Mastra for structured candidate generation
-- [ ] Pin extra `@mastra/*` packages only if needed, to concrete versions (not `latest`)
-- [ ] Keep search controller in ICAS, not in Mastra memory
-- [ ] Test: adapter returns schema-validated candidates from a mocked model
+- [x] Wire Mastra for structured candidate generation
+- [x] Pin extra `@mastra/*` packages only if needed, to concrete versions (not `latest`)
+- [x] Keep search controller in ICAS, not in Mastra memory
+- [x] Test: adapter returns schema-validated candidates from a mocked model
 
 ### Pass 5.5 — Model / vision provider
 

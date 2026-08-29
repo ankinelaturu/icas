@@ -212,6 +212,9 @@ importers:
       '@icas/surface':
         specifier: workspace:*
         version: link:../surface
+      '@mastra/core':
+        specifier: 1.63.0
+        version: 1.63.0(express@5.2.1)(zod@4.5.2)
       zod:
         specifier: ^4.5.2
         version: 4.5.2

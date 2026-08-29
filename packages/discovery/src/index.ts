@@ -2,7 +2,7 @@
  * @file @icas/discovery — LLM-driven discovery, bounded DFS, trace, and compiler.
  *
  * Model output is {@link CandidateProposal}, never free-form prose. Search
- * state stays in ICAS; Mastra is wired in a later pass as the proposer only.
+ * state stays in ICAS; Mastra proposes structured candidates only.
  */
 
 export type {
@@ -22,6 +22,15 @@ export type { CandidateProposer, ProposeContext } from "./candidate-proposer.js"
 export { CapabilityCompiler } from "./capability-compiler.js";
 export type { DiscoveryAgentDependencies } from "./discovery-agent.js";
 export { DiscoveryAgent } from "./discovery-agent.js";
+export {
+  createDiscoveryMastra,
+  createDiscoveryProposerAgent,
+  DISCOVERY_PROPOSER_AGENT_ID,
+  DISCOVERY_PROPOSER_INSTRUCTIONS,
+  formatProposePrompt,
+  MastraCandidateProposer,
+} from "./mastra-proposer.js";
+export type { StructuredGenerateAgent } from "./mastra-proposer.js";
 export type {
   DiscoveryRequest,
   DiscoveryResult,
