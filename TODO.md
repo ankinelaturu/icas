@@ -102,9 +102,9 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 ### Pass 2.1 — HTML fixtures
 
-- [ ] Static pages under `tests/fixtures/` for home / lending / loan-search / labeled fields
-- [ ] Enough markup to exercise role+text, label, and visible-text strategies
-- [ ] No full tenant app yet
+- [x] Static pages under `tests/fixtures/` for home / lending / loan-search / labeled fields
+- [x] Enough markup to exercise role+text, label, and visible-text strategies
+- [x] No full tenant app yet
 
 ### Pass 2.2 — Browser lifecycle
 

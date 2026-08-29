@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Search Loan Account</title>
+  </head>
+  <body>
+    <h1>Search Loan Account</h1>
+    <form action="labeled-fields.html" method="get">
+      <label for="loan-account">Loan Account</label>
+      <input id="loan-account" name="loanAccount" type="text" />
+      <label for="account-status">Account Status</label>
+      <select id="account-status" name="status">
+        <option value="">Select</option>
+        <option value="Active">Active</option>
+        <option value="Paid Off">Paid Off</option>
+      </select>
+      <button type="submit">Search</button>
+    </form>
+    <button type="button">Payoff</button>
+    <p data-icas-state="accountStatus">Active</p>
+  </body>
+</html>
