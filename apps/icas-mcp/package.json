@@ -17,6 +17,10 @@
   "dependencies": {
     "@icas/browser": "workspace:*",
     "@icas/capability": "workspace:*",
+    "@icas/evidence": "workspace:*",
+    "@icas/handoff": "workspace:*",
+    "@icas/policy": "workspace:*",
+    "@icas/redactor": "workspace:*",
     "@icas/replay": "workspace:*",
     "@modelcontextprotocol/sdk": "1.30.0",
     "zod": "^4.5.2"

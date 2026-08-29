@@ -483,8 +483,8 @@ Thin entry points. Packages own behavior.
 
 ### Pass 6.12 — MCP invoke → ReplayEngine
 
-- [ ] Tool call delegates to `ReplayEngine` with resolved effective capability for an enrolled tenant (default `icas-bank`)
-- [ ] No duplicated browser or replay logic
+- [x] Tool call delegates to `ReplayEngine` with resolved effective capability for an enrolled tenant (default `icas-bank`)
+- [x] No duplicated browser or replay logic
 
 ---
 
