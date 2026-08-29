@@ -15,7 +15,7 @@ import {
 } from "../../packages/capability/src/index.js";
 import { CapabilityCompiler } from "../../packages/discovery/src/capability-compiler.js";
 import { DiscoveryAgent } from "../../packages/discovery/src/discovery-agent.js";
-import { FakeProposer } from "../../packages/discovery/src/test-support/fake-proposer.js";
+import { FakeProposer } from "../../packages/discovery/tests/test-support/fake-proposer.js";
 
 import { fixturePolicy, pageUrl } from "./fixture-pages.js";
 

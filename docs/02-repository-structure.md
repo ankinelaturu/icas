@@ -63,7 +63,7 @@ Detailed design source of truth used during development and implementation. Root
 
 ### `tests/`
 
-Cross-package integration and end-to-end tests. Package-local unit tests may live inside each package.
+Cross-package integration and end-to-end tests (`tests/integration/`, `tests/e2e/`, `tests/fixtures/`). Package-local unit tests live in `packages/<name>/tests/` (and `tenants/<name>/tests/`), not beside `src/` files.
 
 ## Dependency direction
 

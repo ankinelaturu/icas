@@ -6,6 +6,8 @@ Test the contracts and failure boundaries that matter. Do not spend effort unit-
 
 ## Package-level tests
 
+Unit tests live in `packages/<name>/tests/` (tenant apps: `tenants/<name>/tests/`). They are not colocated under `src/`.
+
 ### Capability
 
 - schema validation;
