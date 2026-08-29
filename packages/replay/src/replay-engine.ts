@@ -5,6 +5,7 @@
 import { randomUUID } from "node:crypto";
 
 import type { CapabilityAction, CapabilityArtifact, CapabilityStep } from "@icas/capability";
+import type { EvidenceWriter } from "@icas/evidence";
 import type { PolicyGuard } from "@icas/policy";
 import type { Surface } from "@icas/surface";
 
@@ -15,6 +16,7 @@ import {
 } from "./execution-result.js";
 import { extractOutputs, isExecutionResult } from "./extract-outputs.js";
 import { hydrateAction, hydrateAssertion } from "./hydrate.js";
+import { INTERSTITIAL_CONTINUE, INTERSTITIAL_TEXTS } from "./recoverable.js";
 import type { ReplayOptions } from "./replay-options.js";
 import { hasSurfaceCode } from "./surface-code.js";
 
@@ -23,6 +25,7 @@ import { hasSurfaceCode } from "./surface-code.js";
  */
 export interface ReplayEngineDependencies {
   policy?: PolicyGuard;
+  evidence?: EvidenceWriter;
 }
 
 /**
@@ -31,12 +34,15 @@ export interface ReplayEngineDependencies {
  */
 export class ReplayEngine {
   private readonly policy: PolicyGuard | undefined;
+  private readonly evidence: EvidenceWriter | undefined;
+  private maxAttempts = 2;
 
   constructor(
     private readonly surface: Surface,
     deps: ReplayEngineDependencies = {},
   ) {
     this.policy = deps.policy;
+    this.evidence = deps.evidence;
   }
 
   /**
@@ -54,6 +60,7 @@ export class ReplayEngine {
     options: ReplayOptions = {},
   ): Promise<ExecutionResult> {
     const runId = options.runId ?? randomUUID();
+    this.maxAttempts = options.maxRetries ?? 2;
     if (capability === undefined) {
       return {
         status: "failure",
@@ -124,20 +131,30 @@ export class ReplayEngine {
     runId: string,
     capabilityId: string,
   ): Promise<ExecutionResult | undefined> {
-    for (const assertion of step.preconditions) {
-      const expected = hydrateAssertion(assertion, inputs);
-      const ok = await this.surface.assert(expected);
-      if (!ok) {
-        return {
-          status: "failure",
-          capabilityId,
-          code: ReplayFailureCode.preconditionFailed,
-          stepId: step.id,
-          expected,
-          observed: false,
-          runId,
-        };
+    for (let attempt = 1; attempt <= this.maxAttempts; attempt++) {
+      let failed: ReturnType<typeof hydrateAssertion> | undefined;
+      for (const assertion of step.preconditions) {
+        const expected = hydrateAssertion(assertion, inputs);
+        if (!(await this.surface.assert(expected))) {
+          failed = expected;
+          break;
+        }
       }
+      if (failed === undefined) {
+        return undefined;
+      }
+      if (attempt < this.maxAttempts && (await this.recoverInterstitial(runId, attempt))) {
+        continue;
+      }
+      return {
+        status: "failure",
+        capabilityId,
+        code: ReplayFailureCode.preconditionFailed,
+        stepId: step.id,
+        expected: failed,
+        observed: false,
+        runId,
+      };
     }
     return undefined;
   }
@@ -200,26 +217,60 @@ export class ReplayEngine {
     runId: string,
     capabilityId: string,
   ): Promise<ExecutionResult | undefined> {
-    for (const assertion of step.postconditions) {
-      const expected = hydrateAssertion(assertion, inputs);
-      const ok = await this.surface.assert(expected);
-      if (!ok) {
-        const outcome = await this.classifyBusinessOutcome(capabilityId, runId);
-        if (outcome !== undefined) {
-          return outcome;
+    for (let attempt = 1; attempt <= this.maxAttempts; attempt++) {
+      let failed: ReturnType<typeof hydrateAssertion> | undefined;
+      for (const assertion of step.postconditions) {
+        const expected = hydrateAssertion(assertion, inputs);
+        if (!(await this.surface.assert(expected))) {
+          failed = expected;
+          break;
         }
-        return {
-          status: "failure",
-          capabilityId,
-          code: ReplayFailureCode.postconditionFailed,
-          stepId: step.id,
-          expected,
-          observed: false,
-          runId,
-        };
       }
+      if (failed === undefined) {
+        return undefined;
+      }
+      if (attempt < this.maxAttempts && (await this.recoverInterstitial(runId, attempt))) {
+        continue;
+      }
+      const outcome = await this.classifyBusinessOutcome(capabilityId, runId);
+      if (outcome !== undefined) {
+        return outcome;
+      }
+      return {
+        status: "failure",
+        capabilityId,
+        code: ReplayFailureCode.postconditionFailed,
+        stepId: step.id,
+        expected: failed,
+        observed: false,
+        runId,
+      };
     }
     return undefined;
+  }
+
+  private async recoverInterstitial(runId: string, attempt: number): Promise<boolean> {
+    for (const text of INTERSTITIAL_TEXTS) {
+      const visible = await this.surface.assert({ type: "textVisible", value: text });
+      if (!visible) {
+        continue;
+      }
+      const decision = this.policy?.check(INTERSTITIAL_CONTINUE) ?? { decision: "allow" as const };
+      if (decision.decision !== "allow") {
+        return false;
+      }
+      await this.surface.execute(INTERSTITIAL_CONTINUE);
+      await this.evidence?.append({
+        timestamp: new Date().toISOString(),
+        runId,
+        runType: "replay",
+        type: "recovery",
+        actor: "replay",
+        payload: { reason: "known_interstitial", text, attempt },
+      });
+      return true;
+    }
+    return false;
   }
 
   private async classifyBusinessOutcome(

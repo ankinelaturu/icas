@@ -276,10 +276,10 @@ Callers resolve with `CapabilityResolver` first. `ReplayEngine` never branches o
 
 ### Pass 4.7 — Recoverable waits / retries
 
-- [ ] Bounded retry for transient load, known interstitial, retryable timeout
-- [ ] Log recovery in evidence
-- [ ] Do not retry semantic mismatches
-- [ ] Tests: interstitial then success; semantic fail does not retry forever
+- [x] Bounded retry for transient load, known interstitial, retryable timeout
+- [x] Log recovery in evidence
+- [x] Do not retry semantic mismatches
+- [x] Tests: interstitial then success; semantic fail does not retry forever
 
 ### Pass 4.8 — Hard failures + evidence
 

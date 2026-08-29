@@ -1,3 +1,4 @@
+import type { EvidenceEvent, EvidenceWriter } from "@icas/evidence";
 import { PolicyGuard } from "@icas/policy";
 import { describe, expect, it } from "vitest";
 
@@ -85,8 +86,14 @@ describe("ReplayEngine preconditions", () => {
       observed: false,
       runId: "run-pre-fail",
     });
-    expect(surface.asserted).toEqual([expected]);
+    expect(surface.asserted[0]).toEqual(expected);
     expect(surface.executed).toEqual([]);
+    expect(
+      surface.asserted.some(
+        (assertion) =>
+          assertion.type === "textVisible" && assertion.value === "Lending Services",
+      ),
+    ).toBe(false);
   });
 });
 
@@ -291,6 +298,92 @@ describe("ReplayEngine business outcomes", () => {
       details: { text: "Loan not found" },
       runId: "run-loan-missing",
     });
+  });
+});
+
+function memoryEvidence(): { events: EvidenceEvent[]; evidence: EvidenceWriter } {
+  const events: EvidenceEvent[] = [];
+  return {
+    events,
+    evidence: {
+      append: async (event) => {
+        events.push(event);
+      },
+      writeSummary: async () => {},
+      captureRichSignal: async () => {},
+    },
+  };
+}
+
+describe("ReplayEngine recoverable retries", () => {
+  it("dismisses a known interstitial, logs recovery, then succeeds", async () => {
+    const surface = new FakeSurface();
+    let dismissed = false;
+    surface.assertHandler = (assertion) => {
+      if (assertion.type === "textVisible" && assertion.value === "Please wait") {
+        return !dismissed;
+      }
+      if (assertion.type === "textVisible" && assertion.value === "Home") {
+        return dismissed;
+      }
+      return true;
+    };
+    surface.executeHandler = (action) => {
+      if (
+        action.type === "click" &&
+        action.target.strategies.some(
+          (strategy) => strategy.type === "visibleText" && strategy.text === "Continue",
+        )
+      ) {
+        dismissed = true;
+      }
+      return { status: "ok" };
+    };
+    const { events, evidence } = memoryEvidence();
+    const engine = new ReplayEngine(surface, { evidence });
+    const result = await engine.run(
+      testCapability({
+        steps: [
+          clickStep("open-lending", {
+            preconditions: [{ type: "textVisible", value: "Home" }],
+          }),
+        ],
+      }),
+      {},
+      { runId: "run-interstitial" },
+    );
+    expect(result.status).toBe("success");
+    expect(events.some((event) => event.type === "recovery")).toBe(true);
+  });
+
+  it("does not retry a semantic precondition mismatch", async () => {
+    const surface = new FakeSurface();
+    let homeChecks = 0;
+    surface.assertHandler = (assertion) => {
+      if (assertion.type === "textVisible" && assertion.value === "Home") {
+        homeChecks += 1;
+        return false;
+      }
+      return false;
+    };
+    const engine = new ReplayEngine(surface);
+    const result = await engine.run(
+      testCapability({
+        steps: [
+          clickStep("open-lending", {
+            preconditions: [{ type: "textVisible", value: "Home" }],
+          }),
+        ],
+      }),
+      {},
+      { runId: "run-semantic", maxRetries: 50 },
+    );
+    expect(result).toMatchObject({
+      status: "failure",
+      code: "PRECONDITION_FAILED",
+      stepId: "open-lending",
+    });
+    expect(homeChecks).toBe(1);
   });
 });
 
