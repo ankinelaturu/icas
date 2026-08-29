@@ -456,8 +456,8 @@ Thin entry points. Packages own behavior.
 
 ### Pass 6.7 — `icas-adapt` override generation
 
-- [ ] Bounded specialization around the divergent region
-- [ ] Write `CapabilityOverride` with provenance (`createdBy: "icas-adapt"` or `"verified"` if header-only, run id, reason)
+- [x] Bounded specialization around the divergent region
+- [x] Write `CapabilityOverride` with provenance (`createdBy: "icas-adapt"` or `"verified"` if header-only, run id, reason)
 
 ### Pass 6.8 — `icas-adapt` re-verify
 

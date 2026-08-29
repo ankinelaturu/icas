@@ -1,5 +1,5 @@
 /**
- * @file icas-adapt guarded replay loads the base and stops at the first mismatch.
+ * @file icas-adapt writes a header-only or one-step override after guarded replay.
  */
 
 import { mkdtemp, rm } from "node:fs/promises";
@@ -16,6 +16,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { runAdapt } from "../src/cli.js";
 import type { AdaptReplayInvocation } from "../src/adapt-session.js";
+import type { StepSpecializer } from "../src/build-override.js";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -27,7 +28,21 @@ function loadLoanPayoff() {
   return validateCapabilityArtifact(JSON.parse(raw) as unknown);
 }
 
-describe("icas-adapt guarded replay", () => {
+const memberLendingSpecializer: StepSpecializer = {
+  async specialize() {
+    return {
+      target: {
+        strategies: [
+          { type: "roleText", role: "link", text: "Member Lending" },
+          { type: "visibleText", text: "Member Lending" },
+        ],
+      },
+      postconditions: [{ type: "textVisible", value: "Member Lending" }],
+    };
+  },
+};
+
+describe("icas-adapt override generation", () => {
   let root: string;
   let registry: FileSystemCapabilityRegistry;
   const lines: string[] = [];
@@ -48,7 +63,7 @@ describe("icas-adapt guarded replay", () => {
     process.exitCode = 0;
   });
 
-  function deps(result: "mismatch" | "compatible") {
+  function deps(result: "mismatch" | "compatible", specializer?: StepSpecializer) {
     return {
       registry,
       stdout: (line: string) => {
@@ -57,6 +72,7 @@ describe("icas-adapt guarded replay", () => {
       stderr: (line: string) => {
         errors.push(line);
       },
+      ...(specializer === undefined ? {} : { specializer }),
       executeReplay: async (invocation: AdaptReplayInvocation) => {
         invocations.push(invocation);
         if (result === "compatible") {
@@ -87,7 +103,7 @@ describe("icas-adapt guarded replay", () => {
     expect(invocations).toHaveLength(0);
   });
 
-  it("replays the base artifact (not an enrolled resolve) and reports mismatch", async () => {
+  it("writes a one-step icas-adapt override around the divergent step", async () => {
     await registry.save(loadLoanPayoff());
     await runAdapt(
       [
@@ -103,18 +119,19 @@ describe("icas-adapt guarded replay", () => {
         "--payoffDate",
         "2026-09-30",
       ],
-      deps("mismatch"),
+      deps("mismatch", memberLendingSpecializer),
     );
-    expect(invocations).toHaveLength(1);
-    expect(invocations[0]?.request.tenant).toBe("loki-bank");
-    expect(invocations[0]?.capability.id).toBe("loan-payoff");
     expect(lines.join("\n")).toContain("status: mismatch");
-    expect(lines.join("\n")).toContain("step: open-lending");
-    expect(process.exitCode).toBe(1);
-    expect(await registry.listOverrides({ tenant: "loki-bank" })).toEqual([]);
+    expect(lines.join("\n")).toContain("override provenance: icas-adapt");
+    const overrides = await registry.listOverrides({ tenant: "loki-bank" });
+    expect(overrides).toHaveLength(1);
+    expect(overrides[0]?.provenance.createdBy).toBe("icas-adapt");
+    expect(overrides[0]?.overrides.steps?.["open-lending"]?.target?.strategies[0]).toMatchObject({
+      text: "Member Lending",
+    });
   });
 
-  it("does not infer tenant from --url", async () => {
+  it("writes a header-only verified override when the base already matches", async () => {
     await registry.save(loadLoanPayoff());
     await runAdapt(
       [
@@ -134,6 +151,9 @@ describe("icas-adapt guarded replay", () => {
     );
     expect(invocations[0]?.request.tenant).toBe("loki-bank");
     expect(invocations[0]?.request.url).toBe("https://icas.example/home");
-    expect(lines.join("\n")).toContain("status: compatible");
+    expect(lines.join("\n")).toContain("createdBy: verified");
+    const overrides = await registry.listOverrides({ tenant: "loki-bank" });
+    expect(overrides[0]?.overrides).toEqual({});
+    expect(overrides[0]?.provenance.createdBy).toBe("verified");
   });
 });

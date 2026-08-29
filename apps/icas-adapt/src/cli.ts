@@ -4,8 +4,8 @@
  *
  * Guarded replay of a Vendor+Product base against a new tenant URL.
  * `--tenant` is required; do not default it to `icas-bank`. `--url` is only
- * the surface entry. This pass reports the first checkpoint mismatch and
- * does not write an override.
+ * the surface entry. After guarded replay this pass writes a header-only
+ * override (`verified`) or a one-step patch (`icas-adapt`).
  *
  * @see docs/06-multi-tenant-and-adaptation.md
  */
@@ -19,6 +19,7 @@ import {
 import type { ExecutionResult, GuardedReplayReport } from "@icas/replay";
 
 import { runGuardedAdapt, type AdaptReplayInvocation, type AdaptRunRequest } from "./adapt-session.js";
+import type { StepSpecializer } from "./build-override.js";
 import { catalogRoot } from "./catalog-root.js";
 import { coerceInputValues } from "./coerce-inputs.js";
 import { DEFAULT_ICAS_IDENTITY } from "./defaults.js";
@@ -29,6 +30,7 @@ export interface AdaptCliDeps {
   stdout?: (line: string) => void;
   stderr?: (line: string) => void;
   executeReplay?: (invocation: AdaptReplayInvocation) => Promise<ExecutionResult>;
+  specializer?: StepSpecializer;
   env?: NodeJS.ProcessEnv;
 }
 
@@ -80,6 +82,7 @@ export function createAdaptProgram(deps: AdaptCliDeps = {}): Command {
         writeErr,
         env: deps.env ?? process.env,
         ...(deps.executeReplay === undefined ? {} : { executeReplay: deps.executeReplay }),
+        ...(deps.specializer === undefined ? {} : { specializer: deps.specializer }),
       });
     });
 
@@ -105,6 +108,7 @@ async function executeAdaptCommand(
     write: (line: string) => void;
     writeErr: (line: string) => void;
     executeReplay?: (invocation: AdaptReplayInvocation) => Promise<ExecutionResult>;
+    specializer?: StepSpecializer;
     env: NodeJS.ProcessEnv;
   },
 ): Promise<void> {
@@ -131,11 +135,12 @@ async function executeAdaptCommand(
       headed: resolveHeaded(opts.headless === true, io.env),
       ...(opts.version === undefined ? {} : { version: opts.version }),
     };
-    const report = await runGuardedAdapt(request, {
+    const { report, override } = await runGuardedAdapt(request, {
       registry: io.registry,
       ...(io.executeReplay === undefined ? {} : { executeReplay: io.executeReplay }),
+      ...(io.specializer === undefined ? {} : { specializer: io.specializer }),
     });
-    io.write(formatAdaptReport(report, opts.tenant));
+    io.write(formatAdaptReport(report, opts.tenant, override?.provenance.createdBy));
     process.exitCode = report.status === "compatible" ? 0 : 1;
   } catch (error) {
     io.writeErr(error instanceof Error ? error.message : String(error));
@@ -146,11 +151,18 @@ async function executeAdaptCommand(
 /**
  * Human-readable guarded-replay outcome. JSON is avoided on purpose.
  */
-function formatAdaptReport(report: GuardedReplayReport, tenant: string): string {
+function formatAdaptReport(
+  report: GuardedReplayReport,
+  tenant: string,
+  createdBy: string | undefined,
+): string {
   const lines = [`tenant: ${tenant}`, `status: ${report.status}`];
+  if (createdBy !== undefined) {
+    lines.push(`override provenance: ${createdBy}`);
+  }
   if (report.status === "compatible") {
     lines.push(`runId: ${report.result.runId}`);
-    lines.push("base capability checkpoints passed; override not written in this pass");
+    lines.push("enrolled header-only override (createdBy: verified)");
     return lines.join("\n");
   }
   if (report.status === "business_outcome") {

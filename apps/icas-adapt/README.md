@@ -6,4 +6,4 @@ Cross-tenant capability adaptation CLI using guarded replay plus bounded discove
 pnpm icas-adapt loan-payoff --tenant loki-bank --url <url> --loanAccountId … --payoffDate …
 ```
 
-`--tenant` is required and is never defaulted to `icas-bank`. `--url` only opens the surface. Guarded replay uses the Vendor+Product **base** (the new tenant is not enrolled yet) and stops at the first checkpoint mismatch.
+After guarded replay, a compatible tenant is enrolled with a header-only override (`createdBy: "verified"`). A one-step UI drift writes a declarative patch (`createdBy: "icas-adapt"`).
