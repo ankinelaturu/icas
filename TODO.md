@@ -32,9 +32,9 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 ### Pass 1.1 — Override types
 
-- [ ] Add `CapabilityOverride`, `StepOverride`, override operations (`steps`, `insertBefore`, `insertAfter`, `disabledSteps`), and provenance types (`createdBy`: `discovery` | `verified` | `icas-adapt` | `human`)
-- [ ] Export from `@icas/capability`
-- [ ] No runtime yet; types only
+- [x] Add `CapabilityOverride`, `StepOverride`, override operations (`steps`, `insertBefore`, `insertAfter`, `disabledSteps`), and provenance types (`createdBy`: `discovery` | `verified` | `icas-adapt` | `human`)
+- [x] Export from `@icas/capability`
+- [x] No runtime yet; types only
 
 ### Pass 1.2 — Base capability schema validation
 
