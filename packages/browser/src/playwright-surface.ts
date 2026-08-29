@@ -127,8 +127,12 @@ export class PlaywrightSurface implements Surface {
     switch (action.type) {
       case "click": {
         const control = await this.locate(action.target);
+        const destinationUrl = await hrefOf(control, page.url());
         await control.click();
-        return { status: "ok", details: { url: page.url() } };
+        return {
+          status: "ok",
+          details: { destinationUrl, resultingUrl: page.url() },
+        };
       }
       case "fill": {
         const control = await this.locate(action.target);
@@ -232,6 +236,14 @@ export class PlaywrightSurface implements Surface {
     return await resolveTarget(this.requirePage(), target, this.timeoutMs);
   }
 
+  /**
+   * Resolve an in-page href to an absolute URL when the target is an anchor.
+   */
+  async peekDestination(target: TargetDescriptor): Promise<string | undefined> {
+    const control = await this.locate(target);
+    return await hrefOf(control, this.requirePage().url());
+  }
+
   async handoffToHuman(): Promise<void> {
     throw new Error("PlaywrightSurface.handoffToHuman is a scaffold.");
   }
@@ -260,6 +272,17 @@ function literalString(ref: ValueRef): string {
     return String(value);
   }
   throw new Error("action value must resolve to a string, number, or boolean");
+}
+
+async function hrefOf(
+  control: Locator,
+  baseUrl: string,
+): Promise<string | undefined> {
+  const href = await control.getAttribute("href");
+  if (href === null || href.length === 0) {
+    return undefined;
+  }
+  return new URL(href, baseUrl).href;
 }
 
 async function readControlValue(control: Locator): Promise<string> {

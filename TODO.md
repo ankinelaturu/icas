@@ -144,9 +144,9 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 ### Pass 2.8 — Navigation / origin hooks
 
-- [ ] Expose known destination (e.g. anchor href) before click when possible
-- [ ] Report resulting URL after navigation
-- [ ] Test: in-origin vs off-origin link on a fixture page
+- [x] Expose known destination (e.g. anchor href) before click when possible
+- [x] Report resulting URL after navigation
+- [x] Test: in-origin vs off-origin link on a fixture page
 
 ### Pass 2.9 — Browser handoff seam
 

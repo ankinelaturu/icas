@@ -310,3 +310,38 @@ describe("PlaywrightSurface observe", () => {
     expect(observation.accessibilitySnapshot).toBeDefined();
   });
 });
+
+describe("PlaywrightSurface navigation hooks", () => {
+  const surface = new PlaywrightSurface({ headed: false, timeoutMs: 2_000 });
+
+  afterEach(async () => {
+    await surface.close();
+  });
+
+  it("exposes in-origin vs off-origin destinations before click", async () => {
+    await surface.open(pageUrl("home.html"));
+    const inOrigin = await surface.peekDestination({
+      strategies: [{ type: "roleText", role: "link", text: "Open Lending" }],
+    });
+    const offOrigin = await surface.peekDestination({
+      strategies: [{ type: "roleText", role: "link", text: "External Portal" }],
+    });
+    expect(inOrigin).toMatch(/lending\.html$/);
+    expect(offOrigin).toMatch(/^https:\/\/example\.com\/?$/);
+  });
+
+  it("reports destination and resulting URL after an in-origin click", async () => {
+    await surface.open(pageUrl("home.html"));
+    const result = await surface.execute({
+      type: "click",
+      target: {
+        strategies: [{ type: "roleText", role: "link", text: "Open Lending" }],
+      },
+    });
+    expect(result.status).toBe("ok");
+    expect(result.details).toMatchObject({
+      destinationUrl: expect.stringMatching(/lending\.html$/),
+      resultingUrl: expect.stringMatching(/lending\.html$/),
+    });
+  });
+});

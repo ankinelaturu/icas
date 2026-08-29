@@ -46,5 +46,9 @@ export interface Surface {
   execute(action: CapabilityAction): Promise<SurfaceActionResult>;
   assert(assertion: Assertion): Promise<boolean>;
   locate(target: TargetDescriptor): Promise<unknown>;
+  /**
+   * Absolute URL a click would navigate to, when known (e.g. an anchor href).
+   */
+  peekDestination(target: TargetDescriptor): Promise<string | undefined>;
   handoffToHuman(): Promise<void>;
 }

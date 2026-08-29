@@ -14,11 +14,12 @@ interface Surface {
   execute(action: CapabilityAction): Promise<SurfaceActionResult>;
   assert(assertion: Assertion): Promise<boolean>;
   locate(target: TargetDescriptor): Promise<unknown>;
+  peekDestination(target: TargetDescriptor): Promise<string | undefined>;
   handoffToHuman(): Promise<void>;
 }
 ```
 
-`close` is explicit teardown and must be safe to call twice.
+`close` is explicit teardown and must be safe to call twice. `peekDestination` exposes a known navigation URL (anchor href) before click so policy can deny off-origin destinations.
 
 ## Implemented surface
 
