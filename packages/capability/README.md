@@ -1,3 +1,9 @@
 # @icas/capability
 
-Capability artifact schema, types, validation, and registry.
+Capability artifacts as data: schema/types, validation, catalog CRUD, tenant overrides, and resolution.
+
+- `CapabilityRegistry` — abstract repository API (list/get/save/remove, including overrides).
+- `FileSystemCapabilityRegistry({ root })` — the implemented backend. Production root is repo `capabilities/`; tests pass a temp directory.
+- `CapabilityResolver` — load base + optional tenant override, validate, return the effective capability. The effective artifact is never persisted.
+
+REST/DB registry implementations are out of scope. Callers depend on the interface, not on filesystem paths. See `docs/04-capability-artifact.md`.

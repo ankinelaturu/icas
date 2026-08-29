@@ -7,7 +7,7 @@ This directory is the detailed engineering source of truth for ICAS. The root `R
 1. [`01-system-overview.md`](01-system-overview.md) — system goals, components, data flow, design principles.
 2. [`02-repository-structure.md`](02-repository-structure.md) — monorepo layout and dependency boundaries.
 3. [`03-discovery-agent.md`](03-discovery-agent.md) — `icas-agent`, Mastra, visual observation, bounded search, trace, compiler.
-4. [`04-capability-artifact.md`](04-capability-artifact.md) — capability schema, inputs/outputs, pre/action/post, targeting, versioning.
+4. [`04-capability-artifact.md`](04-capability-artifact.md) — capability schema, tenant overrides, repository API, filesystem catalog, targeting, versioning.
 5. [`05-replay-engine.md`](05-replay-engine.md) — deterministic replay, result taxonomy, waits/retries, assisted fallback.
 6. [`06-multi-tenant-and-adaptation.md`](06-multi-tenant-and-adaptation.md) — Vendor → Product → Tenant, reuse, drift, `icas-adapt`.
 7. [`07-human-handoff.md`](07-human-handoff.md) — CLI approval/input, browser takeover, ownership, intervention contracts.

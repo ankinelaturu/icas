@@ -32,7 +32,7 @@ CapabilityRegistry
    └── icas-mcp   → agent-facing protocol
 ```
 
-`icas-play` may list/describe/run capabilities for humans. That is not by itself the agent-facing stretch goal. `icas-mcp` makes the catalog machine-discoverable as tools.
+`icas-play` may list/describe/run capabilities for humans. That is not by itself the agent-facing stretch goal. `icas-mcp` makes the catalog machine-discoverable as tools. Both must go through `CapabilityRegistry` / `CapabilityResolver` rather than reading files directly. Catalog API and on-disk layout are specified in [`04-capability-artifact.md`](04-capability-artifact.md).
 
 ## MCP server shape
 

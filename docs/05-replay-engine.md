@@ -170,6 +170,8 @@ ReplayEngine
 
 This avoids tenant-specific branching inside replay. Normal precondition/action/postcondition, policy, HITL, error, and evidence handling remain unchanged.
 
+Registry CRUD, on-disk layout, and `FileSystemCapabilityRegistry({ root })` are specified in [`04-capability-artifact.md`](04-capability-artifact.md). Replay depends on the `CapabilityRegistry` interface and the resolved effective artifact only.
+
 ## Guarded compatibility mode
 
 `icas-adapt` can invoke the same replay engine against another tenant using the same Vendor+Product. The checkpoints determine whether the capability is compatible:

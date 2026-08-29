@@ -51,6 +51,8 @@ Synthetic target banking applications. The term intentionally matches the Interf
 
 Generated, reusable capability artifacts. This is product output: what ICAS learned.
 
+`@icas/capability` is the only package that reads or writes this tree. `CapabilityRegistry` is the catalog interface; `FileSystemCapabilityRegistry({ root })` is the implemented backend; `CapabilityResolver` derives an effective capability from a stored base plus optional tenant override. REST/DB backends are not part of this prototype. Layout and API are specified in [`04-capability-artifact.md`](04-capability-artifact.md).
+
 ### `evidence/`
 
 Run-scoped proof and observability: discovery traces, replay logs, screenshots on failure, summaries, and human-handoff evidence. This is proof of what ICAS did.

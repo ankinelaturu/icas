@@ -259,3 +259,141 @@ A human reviewer and an agent/tool adapter should be able to understand:
 - what actions it performs;
 - what state it expects before/after each action;
 - what constitutes overall success.
+
+## Capability repository
+
+`@icas/capability` is the repository of capability artifacts. It owns everything about capabilities **as data**: schema/types, validation, CRUD against a catalog, tenant overrides, and resolution into an effective capability.
+
+It does not discover, compile from a trace, or execute. Those consume this package:
+
+| Concern | Package |
+|---|---|
+| Schema, validation, catalog CRUD, resolve | `@icas/capability` |
+| Learn a path and compile a new artifact | `@icas/discovery` (`CapabilityCompiler` then `save`) |
+| Execute the effective artifact | `@icas/replay` |
+| Human / MCP adapters | `icas-play` / `icas-mcp` |
+
+Callers must not glob `capabilities/*.json` themselves.
+
+### Interface vs implementation
+
+`CapabilityRegistry` is the abstract catalog API. Apps, `CapabilityResolver`, and tests depend on the interface, not on paths.
+
+The implemented backend is filesystem-backed and takes a root folder:
+
+```ts
+new FileSystemCapabilityRegistry({ root: "/path/to/capabilities" })
+```
+
+- Production default: repository-root `capabilities/`
+- Tests: a temp directory, never the submission catalog
+
+REST, database, or a nested `CapabilityStorage` layer are **not** implemented. The `CapabilityRegistry` interface is the expansion seam if a remote catalog is ever needed. Do not add `CapabilityRestRegistry` / `CapabilityDBRegistry` in this prototype.
+
+An in-memory registry is allowed later in tests if filesystem tests become noisy. It is not a product backend.
+
+`CapabilityResolver` sits on `CapabilityRegistry`. It computes an effective capability; it is not a stored row and does not care whether the backend is disk or memory.
+
+```text
+CapabilityRegistry  (interface: CRUD + query)
+      ↑
+FileSystemCapabilityRegistry({ root })   ← only backend in this repo
+      ↑
+CapabilityResolver  (base + optional override → effective artifact)
+```
+
+### Registry API
+
+Every `save*` schema-validates first. Invalid artifacts are not written. `save` / `saveOverride` are upserts.
+
+```ts
+interface CapabilitySummary {
+  id: string;
+  name: string;
+  capabilityVersion: string;
+  schemaVersion: string;
+  target: { vendor: string; product: string };
+}
+
+interface CapabilityRegistry {
+  list(filter?: {
+    vendor?: string;
+    product?: string;
+  }): Promise<CapabilitySummary[]>;
+  // latest capabilityVersion per id (what icas-play list / MCP catalog need)
+
+  get(id: string, version?: string): Promise<CapabilityArtifact | undefined>;
+  // version omitted → latest capabilityVersion for that id
+
+  save(capability: CapabilityArtifact): Promise<void>;
+  // upsert keyed by (id, capabilityVersion)
+
+  remove(id: string, version?: string): Promise<boolean>;
+  // version omitted → remove all versions of id
+  // included for a complete repository; the demo may not call it
+
+  listOverrides(filter?: {
+    tenant?: string;
+    baseCapability?: string; // e.g. "loan-payoff@1.0.0"
+  }): Promise<CapabilityOverride[]>;
+
+  getOverride(
+    tenant: string,
+    baseCapability: string,
+  ): Promise<CapabilityOverride | undefined>;
+
+  saveOverride(override: CapabilityOverride): Promise<void>;
+  // keyed by (tenant, baseCapability);
+  // reject if the pinned base version is not stored
+
+  removeOverride(tenant: string, baseCapability: string): Promise<boolean>;
+}
+```
+
+```ts
+interface CapabilityResolver {
+  resolve(query: {
+    id: string;
+    version?: string;
+    tenant?: string;
+  }): Promise<CapabilityArtifact>;
+}
+```
+
+`resolve` behavior:
+
+1. load the base capability (fail if missing);
+2. if `tenant` is set, load that tenant's override (missing override is fine → return base unchanged);
+3. refuse an override whose `baseCapability` version does not match the loaded base (never apply silently);
+4. apply the declarative patch;
+5. schema-validate the effective artifact;
+6. return the effective capability.
+
+The effective capability is **never written** to disk. Compatibility is still proven by `ReplayEngine`, not by the registry.
+
+Who calls what:
+
+| Caller | Operations |
+|---|---|
+| `icas-play list` | `list()` |
+| `icas-play describe` | `get(id)` |
+| `icas-play run` / `icas-mcp` | `resolver.resolve({ id, tenant })` |
+| `CapabilityCompiler` | `save(base)` |
+| `icas-adapt` | `saveOverride`, then `resolve` and re-replay |
+
+### On-disk layout
+
+`FileSystemCapabilityRegistry` owns this tree. Tenant identity is not in the base filename.
+
+```text
+capabilities/
+  loan-payoff/
+    1.0.0.json              # base CapabilityArtifact
+    overrides/
+      tenant-b.json         # CapabilityOverride
+                            # baseCapability: "loan-payoff@1.0.0"
+```
+
+- Base file = Vendor+Product knowledge.
+- Override file = one tenant specialization pinned to one base version.
+- Root is injectable so tests do not touch the submission catalog.

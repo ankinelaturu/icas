@@ -104,6 +104,8 @@ specialized capability derived from base
 
 The important design property is that tenant specialization should not require duplicating the entire artifact when only a small region differs.
 
+The chosen catalog is `FileSystemCapabilityRegistry` writing base + override JSON as specified in [`04-capability-artifact.md`](04-capability-artifact.md). Derived full copies of the artifact and REST/DB registries are not implemented.
+
 ## Tenant override model
 
 Preferred model:
