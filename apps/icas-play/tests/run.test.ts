@@ -139,6 +139,29 @@ describe("icas-play run", () => {
     expect(lines.join("\n")).toContain("status: success");
   });
 
+  it("passes assist: true through to replay when --assist is set", async () => {
+    await registry.save(loadLoanPayoff());
+    await registry.saveOverride(loadIcasBankOverride());
+    await runPlay(
+      [
+        "node",
+        "icas-play",
+        "run",
+        "loan-payoff",
+        "--url",
+        "https://bank.example/home",
+        "--assist",
+        "--loanAccountId",
+        "987654",
+        "--payoffDate",
+        "2026-09-30",
+      ],
+      deps(),
+    );
+    expect(process.exitCode).toBe(0);
+    expect(invocations[0]?.request.assist).toBe(true);
+  });
+
   it("accepts repeatable --input name=value", async () => {
     await registry.save(loadLoanPayoff());
     await registry.saveOverride(loadIcasBankOverride());

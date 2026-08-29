@@ -438,8 +438,8 @@ Thin entry points. Packages own behavior.
 
 ### Pass 6.4 — `icas-play run --assist`
 
-- [ ] Pass `assist: true` through to replay
-- [ ] Default remains model-free when the flag is absent
+- [x] Pass `assist: true` through to replay
+- [x] Default remains model-free when the flag is absent
 
 ### Pass 6.5 — `icas-agent discover`
 

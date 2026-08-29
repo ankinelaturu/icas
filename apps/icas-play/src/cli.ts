@@ -19,7 +19,7 @@ import {
   FileSystemCapabilityRegistry,
   type CapabilityRegistry,
 } from "@icas/capability";
-import type { ExecutionResult } from "@icas/replay";
+import type { ExecutionResult, RepairProposer } from "@icas/replay";
 
 import { catalogRoot } from "./catalog-root.js";
 import { coerceInputValues } from "./coerce-inputs.js";
@@ -45,6 +45,8 @@ export interface PlayCliDeps {
    * without launching a browser.
    */
   executeReplay?: (invocation: PlayReplayInvocation) => Promise<ExecutionResult>;
+  /** Injected RepairProposer for `--assist` tests; production builds Mastra. */
+  repair?: RepairProposer;
   /** Override process.env when resolving headed vs headless. */
   env?: NodeJS.ProcessEnv;
 }
@@ -143,9 +145,10 @@ export function createPlayProgram(deps: PlayCliDeps = {}): Command {
     .option("--version <semver>", "Pin a capabilityVersion instead of latest")
     .option("--input <name=value>", "Typed capability input (repeatable)", collectInput, [])
     .option("--headless", "Launch Chromium without a window")
+    .option("--assist", "One bounded LLM repair at a failed step (default is model-free)")
     .allowUnknownOption()
     .allowExcessArguments()
-    .description("Deterministic replay of an enrolled tenant (no LLM)")
+    .description("Deterministic replay of an enrolled tenant (model-free unless --assist)")
     .action(async (id: string, tokens: string[], opts: RunCommandOptions) => {
       await executeRunCommand(id, tokens, opts, {
         registry: resolveRegistry(),
@@ -155,6 +158,7 @@ export function createPlayProgram(deps: PlayCliDeps = {}): Command {
         ...(deps.executeReplay === undefined
           ? {}
           : { executeReplay: deps.executeReplay }),
+        ...(deps.repair === undefined ? {} : { repair: deps.repair }),
       });
     });
 
@@ -169,6 +173,7 @@ interface RunCommandOptions {
   version?: string;
   input: string[];
   headless?: boolean;
+  assist?: boolean;
 }
 
 /**
@@ -187,6 +192,7 @@ async function executeRunCommand(
     write: (line: string) => void;
     writeErr: (line: string) => void;
     executeReplay?: (invocation: PlayReplayInvocation) => Promise<ExecutionResult>;
+    repair?: RepairProposer;
     env: NodeJS.ProcessEnv;
   },
 ): Promise<void> {
@@ -212,13 +218,15 @@ async function executeRunCommand(
       vendor: opts.vendor,
       product: opts.product,
       inputs,
-      assist: false,
+      assist: opts.assist === true,
       headed: resolveHeaded(opts.headless === true, io.env),
       ...(opts.version === undefined ? {} : { version: opts.version }),
     };
     const result = await runEnrolledReplay(request, {
       registry,
+      env: io.env,
       ...(io.executeReplay === undefined ? {} : { executeReplay: io.executeReplay }),
+      ...(io.repair === undefined ? {} : { repair: io.repair }),
     });
     io.write(formatRunResult(result));
     process.exitCode = exitCodeForResult(result);

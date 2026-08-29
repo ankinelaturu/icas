@@ -22,7 +22,9 @@
     "@icas/policy": "workspace:*",
     "@icas/redactor": "workspace:*",
     "@icas/replay": "workspace:*",
-    "commander": "^14.0.3"
+    "@mastra/core": "1.63.0",
+    "commander": "^14.0.3",
+    "zod": "^4.5.2"
   },
   "devDependencies": {
     "rimraf": "^6.0.1",

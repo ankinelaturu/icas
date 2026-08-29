@@ -1,9 +1,10 @@
 /**
  * @file Wire CapabilityResolver + ReplayEngine for `icas-play run`.
  *
- * This module stays in the app. It must not glob the catalog, infer tenant
- * from `--url`, or call an LLM. `ReplayEngine` receives the already-resolved
- * effective capability only.
+ * This module stays in the app. It must not glob the catalog or infer tenant
+ * from `--url`. Strict replay is model-free. `--assist` injects a
+ * {@link RepairProposer} here; ReplayEngine still ignores assist when repair
+ * is missing.
  */
 
 import { randomUUID } from "node:crypto";
@@ -26,6 +27,11 @@ import {
 import { CliHandoffController } from "./cli-handoff.js";
 import { policyGuardForUrl } from "./default-policy.js";
 import { evidenceRoot } from "./evidence-root.js";
+import {
+  createConfiguredRepairProposer,
+  hasRepairApiKey,
+  resolveRepairModel,
+} from "./mastra-repair-proposer.js";
 
 /**
  * Parsed `icas-play run` invocation. Identity fields are never taken from `url`.
@@ -38,7 +44,7 @@ export interface PlayRunRequest {
   product: string;
   version?: string;
   inputs: Record<string, unknown>;
-  /** Always false in strict replay; `--assist` is a later pass. */
+  /** When true, ReplayEngine may invoke one bounded {@link RepairProposer}. */
   assist: boolean;
   headed: boolean;
   runId?: string;
@@ -51,8 +57,10 @@ export interface PlayReplaySessionDeps {
   registry: CapabilityRegistry;
   /** Injected so unit tests never launch Chromium. */
   executeReplay?: (invocation: PlayReplayInvocation) => Promise<ExecutionResult>;
-  /** Repair proposer is unused until `--assist` is wired. */
+  /** Repair proposer is unused unless `request.assist` is true. */
   repair?: RepairProposer;
+  /** Process env for `--assist` API-key checks; tests inject a stub. */
+  env?: NodeJS.ProcessEnv;
   evidenceRoot?: string;
   stdin?: NodeJS.ReadableStream;
   stdout?: NodeJS.WritableStream;
@@ -99,13 +107,49 @@ export async function runEnrolledReplay(
   validateInputValues(capability.inputs, request.inputs);
   const invocation: PlayReplayInvocation = { capability, request };
   if (deps.executeReplay !== undefined) {
+    // Tests skip Chromium and Mastra; they still see `request.assist`.
     return await deps.executeReplay(invocation);
   }
-  return await executePlaywrightReplay(invocation, deps);
+  const repair = await resolveRepairProposer(request, deps);
+  return await executePlaywrightReplay(invocation, {
+    ...deps,
+    ...(repair === undefined ? {} : { repair }),
+  });
 }
 
 /**
- * Open Playwright, policy-gate, and run ReplayEngine with no LLM.
+ * Inject Mastra repair only when `--assist` is set and the caller did not
+ * supply a proposer. Missing API keys fail closed rather than silently
+ * running a model-free replay.
+ *
+ * @param request - CLI flags including `assist`
+ * @param deps - Optional injected proposer
+ */
+async function resolveRepairProposer(
+  request: PlayRunRequest,
+  deps: PlayReplaySessionDeps,
+): Promise<RepairProposer | undefined> {
+  if (!request.assist) {
+    return undefined;
+  }
+  if (deps.repair !== undefined) {
+    return deps.repair;
+  }
+  const env = deps.env ?? process.env;
+  if (!hasRepairApiKey(env)) {
+    throw new Error("--assist requires OPENAI_API_KEY or ANTHROPIC_API_KEY");
+  }
+  const configured = await createConfiguredRepairProposer({
+    model: resolveRepairModel(env),
+  });
+  return configured.proposer;
+}
+
+/**
+ * Open Playwright, policy-gate, and run ReplayEngine.
+ *
+ * Strict replay (`assist: false`) never constructs a model client.
+ * `--assist` may inject repair; ReplayEngine still policy-checks each action.
  *
  * @param invocation - Effective capability plus CLI request
  * @param deps - Evidence root and stdin for HITL
