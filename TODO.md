@@ -477,9 +477,9 @@ Thin entry points. Packages own behavior.
 
 ### Pass 6.11 — MCP server + tool catalog
 
-- [ ] Stdio MCP server
-- [ ] One tool per saved capability; typed args from capability inputs
-- [ ] Capability schema stays transport-independent
+- [x] Stdio MCP server
+- [x] One tool per saved capability; typed args from capability inputs
+- [x] Capability schema stays transport-independent
 
 ### Pass 6.12 — MCP invoke → ReplayEngine
 

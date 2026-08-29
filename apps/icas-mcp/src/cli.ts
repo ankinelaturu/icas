@@ -1,21 +1,39 @@
 #!/usr/bin/env node
 /**
- * @file icas-mcp — agent-facing MCP adapter (scaffold).
+ * @file icas-mcp — agent-facing stdio MCP server.
  *
- * Exposes each saved capability as a typed tool. Invocation uses the same
- * `CapabilityResolver` + `ReplayEngine` path as `icas-play`. This app must
- * not glob `capabilities/`, implement replay, or silently use an unenrolled
- * tenant's bare base. Stdio first: stdout is the protocol byte stream.
+ * Stdout is the protocol byte stream. Do not log on stdout.
+ * Tools come from {@link CapabilityRegistry}, not a filesystem glob.
  *
  * SDK is pinned (`@modelcontextprotocol/sdk@1.30.0`); do not depend on `latest`.
  *
- * Stay thin: construct the MCP server and delegate tool calls. A human CLI
- * (`icas-play`) is not the stretch goal this file exists to satisfy.
- *
- * @see docs/01-system-overview.md
  * @see docs/11-agent-facing-mcp.md
  */
 
-// Log on stderr so a later stdio MCP server can keep stdout as the byte stream.
-console.error("icas-mcp scaffold");
-console.error("Planned: start an MCP server (stdio first) and expose each saved capability as a typed tool backed by ReplayEngine.");
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { FileSystemCapabilityRegistry } from "@icas/capability";
+
+import { catalogRoot } from "./catalog-root.js";
+import { createIcasMcpServer } from "./create-server.js";
+
+/**
+ * Start stdio MCP. Catalog root follows `ICAS_CAPABILITIES_ROOT`.
+ */
+export async function startMcpStdio(): Promise<void> {
+  const registry = new FileSystemCapabilityRegistry({ root: catalogRoot() });
+  const server = await createIcasMcpServer(registry);
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+}
+
+const isMain =
+  process.argv[1] !== undefined &&
+  (process.argv[1].endsWith("cli.ts") || process.argv[1].endsWith("cli.js"));
+
+if (isMain) {
+  void startMcpStdio().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(message);
+    process.exitCode = 1;
+  });
+}

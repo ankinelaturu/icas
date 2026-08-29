@@ -10,7 +10,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "tsx src/cli.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "lint": "tsc -p tsconfig.json --noEmit",
     "clean": "rimraf dist"
   },
@@ -18,7 +18,8 @@
     "@icas/browser": "workspace:*",
     "@icas/capability": "workspace:*",
     "@icas/replay": "workspace:*",
-    "@modelcontextprotocol/sdk": "1.30.0"
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "zod": "^4.5.2"
   },
   "devDependencies": {
     "rimraf": "^6.0.1",
