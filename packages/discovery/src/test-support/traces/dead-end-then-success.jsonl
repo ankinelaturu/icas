@@ -1,0 +1,15 @@
+{"type":"observation","payload":{"id":"home","url":"http://localhost/home.html"}}
+{"type":"candidates","payload":{"status":"continue","count":2}}
+{"type":"chosen_action","payload":{"id":"cand-1-0","rank":1,"action":{"type":"click","target":{"strategies":[{"type":"visibleText","text":"Documents"}]},"risk":"safe"},"expectation":"Document library","rationale":"Maybe documents"}}
+{"type":"policy","payload":{"decision":"allow"}}
+{"type":"action_result","payload":{"status":"ok"}}
+{"type":"observation","payload":{"id":"docs","url":"http://localhost/docs.html"}}
+{"type":"candidates","payload":{"status":"stuck","count":0}}
+{"type":"dead_end","payload":{"reason":"proposer stuck","stateId":"http://localhost/docs.html"}}
+{"type":"backtrack","payload":{"from":"http://localhost/docs.html","to":"http://localhost/home.html","restore":"prefix-replay"}}
+{"type":"chosen_action","payload":{"id":"cand-2-1","rank":2,"action":{"type":"click","target":{"strategies":[{"type":"visibleText","text":"Lending"}]},"risk":"safe"},"expectation":"Lending Services","rationale":"Open lending"}}
+{"type":"policy","payload":{"decision":"allow"}}
+{"type":"action_result","payload":{"status":"ok"}}
+{"type":"observation","payload":{"id":"lending","url":"http://localhost/lending.html"}}
+{"type":"candidates","payload":{"status":"success","count":0}}
+{"type":"success"}

@@ -142,7 +142,15 @@ export class DiscoveryAgent {
       const action = candidate.action;
       await trace.record({
         type: "chosen_action",
-        payload: { id: candidate.id, rank: candidate.rank, action },
+        payload: {
+          id: candidate.id,
+          rank: candidate.rank,
+          action,
+          rationale: candidate.rationale,
+          ...(candidate.expectation === undefined
+            ? {}
+            : { expectation: candidate.expectation }),
+        },
       });
 
       const destinationUrl = await this.peekDestination(action);

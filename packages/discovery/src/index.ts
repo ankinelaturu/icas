@@ -19,7 +19,10 @@ export {
   validateCandidateProposal,
 } from "./candidate-action.js";
 export type { CandidateProposer, ProposeContext } from "./candidate-proposer.js";
-export { CapabilityCompiler } from "./capability-compiler.js";
+export type { CompileRequest } from "./capability-compiler.js";
+export { CapabilityCompiler, loadTraceEvents } from "./capability-compiler.js";
+export type { SuccessfulPathStep } from "./extract-successful-path.js";
+export { extractSuccessfulPath } from "./extract-successful-path.js";
 export type { DiscoveryAgentDependencies } from "./discovery-agent.js";
 export { DiscoveryAgent } from "./discovery-agent.js";
 export {

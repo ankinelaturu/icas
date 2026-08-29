@@ -159,7 +159,9 @@ The trace is append-only JSONL plus referenced screenshots/observations.
 
 ## Trace → capability compiler
 
-A capability must be decoupled from the raw model transcript. `CapabilityCompiler` performs a deliberate transformation:
+A capability must be decoupled from the raw model transcript. `CapabilityCompiler.compile` reads in-memory events or a JSONL `tracePath` and reconstructs the executable path as a stack: an ok `action_result` pushes the preceding `chosen_action`; `backtrack` pops. Failed branches remain evidence-only.
+
+`CapabilityCompiler` then performs a deliberate transformation:
 
 1. identify the successful path;
 2. remove failed exploration branches from the executable artifact;

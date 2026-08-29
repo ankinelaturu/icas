@@ -385,9 +385,9 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 
 ### Pass 5.11 — Compiler: successful path only
 
-- [ ] Read a fixture trace; drop failed branches from the executable artifact
-- [ ] Failed branches remain evidence-only
-- [ ] Test: trace with a dead-end then success compiles only the success steps
+- [x] Read a fixture trace; drop failed branches from the executable artifact
+- [x] Failed branches remain evidence-only
+- [x] Test: trace with a dead-end then success compiles only the success steps
 
 ### Pass 5.12 — Compiler: parameterize inputs
 
