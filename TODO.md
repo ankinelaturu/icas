@@ -238,9 +238,9 @@ Callers resolve with `CapabilityResolver` first. `ReplayEngine` never branches o
 
 ### Pass 4.1 — Engine skeleton
 
-- [ ] `run(effectiveCapability, inputs, options)` iterates steps
-- [ ] Return structured `ExecutionResult` (`success` | `business_outcome` | `failure`) with `runId`
-- [ ] Stub step execution; tests for empty-steps success and missing-capability failure shape
+- [x] `run(effectiveCapability, inputs, options)` iterates steps
+- [x] Return structured `ExecutionResult` (`success` | `business_outcome` | `failure`) with `runId`
+- [x] Stub step execution; tests for empty-steps success and missing-capability failure shape
 
 ### Pass 4.2 — Preconditions
 
