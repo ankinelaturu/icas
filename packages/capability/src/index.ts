@@ -2,8 +2,6 @@
  * @file @icas/capability — artifact schema, catalog, tenant overrides, and resolve.
  */
 
-import type { CapabilityArtifact } from "./artifact.js";
-
 export type {
   Assertion,
   CapabilityAction,
@@ -56,12 +54,6 @@ export {
   validatePrimitiveValue,
 } from "./values.js";
 
-/**
- * Catalog of capability artifacts. Pass 1.5 replaces this scaffold with the
- * full registry API from `docs/04-capability-artifact.md`.
- */
-export interface CapabilityRegistry {
-  list(): Promise<CapabilityArtifact[]>;
-  get(id: string): Promise<CapabilityArtifact | undefined>;
-  save(capability: CapabilityArtifact): Promise<void>;
-}
+export type { CapabilityRegistry, CapabilitySummary } from "./registry.js";
+export { FileSystemCapabilityRegistry } from "./filesystem-capability-registry.js";
+export type { FileSystemCapabilityRegistryOptions } from "./filesystem-capability-registry.js";

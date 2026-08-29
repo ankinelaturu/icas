@@ -58,11 +58,11 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 ### Pass 1.5 — Filesystem capability registry
 
-- [ ] Implement `CapabilityRegistry` plus `FileSystemCapabilityRegistry({ root })` as specified in `docs/04-capability-artifact.md`
-- [ ] `list` (latest per id, optional vendor/product filter), `get(id, version?)`, `save` (upsert + validate), `remove`
-- [ ] On-disk layout: `capabilities/<id>/<version>.json`
-- [ ] Do not bake tenant identity into the base artifact
-- [ ] Tests against a temp directory (not the real `capabilities/` submission dir)
+- [x] Implement `CapabilityRegistry` plus `FileSystemCapabilityRegistry({ root })` as specified in `docs/04-capability-artifact.md`
+- [x] `list` (latest per id, optional vendor/product filter), `get(id, version?)`, `save` (upsert + validate), `remove`
+- [x] On-disk layout: `capabilities/<id>/<version>.json`
+- [x] Do not bake tenant identity into the base artifact
+- [x] Tests against a temp directory (not the real `capabilities/` submission dir)
 
 ### Pass 1.6 — Override storage and registry
 
