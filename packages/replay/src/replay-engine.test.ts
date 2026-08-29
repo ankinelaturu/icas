@@ -155,8 +155,7 @@ describe("ReplayEngine execute and postconditions", () => {
   it("fails POSTCONDITION_FAILED when the page does not match after execute", async () => {
     const surface = new FakeSurface();
     const post = { type: "textVisible" as const, value: "Lending Services" };
-    surface.assertHandler = (assertion) =>
-      !(assertion.type === "textVisible" && assertion.value === "Lending Services");
+    surface.assertHandler = () => false;
     const engine = new ReplayEngine(surface);
     const result = await engine.run(
       testCapability({
@@ -264,6 +263,33 @@ describe("ReplayEngine success and outputs", () => {
       status: "failure",
       code: "OUTPUT_EXTRACTION_FAILED",
       runId: "run-extract-fail",
+    });
+  });
+});
+
+describe("ReplayEngine business outcomes", () => {
+  it("returns LOAN_NOT_FOUND as business_outcome when the page says the loan is missing", async () => {
+    const surface = new FakeSurface();
+    surface.assertHandler = (assertion) =>
+      assertion.type === "textVisible" && assertion.value === "Loan not found";
+    const engine = new ReplayEngine(surface);
+    const result = await engine.run(
+      testCapability({
+        steps: [
+          clickStep("search", {
+            postconditions: [{ type: "textVisible", value: "Payoff Statement" }],
+          }),
+        ],
+      }),
+      {},
+      { runId: "run-loan-missing" },
+    );
+    expect(result).toEqual({
+      status: "business_outcome",
+      capabilityId: "loan-payoff",
+      outcome: "LOAN_NOT_FOUND",
+      details: { text: "Loan not found" },
+      runId: "run-loan-missing",
     });
   });
 });

@@ -8,6 +8,7 @@ import type { CapabilityAction, CapabilityArtifact, CapabilityStep } from "@icas
 import type { PolicyGuard } from "@icas/policy";
 import type { Surface } from "@icas/surface";
 
+import { KNOWN_BUSINESS_OUTCOMES } from "./business-outcomes.js";
 import {
   ReplayFailureCode,
   type ExecutionResult,
@@ -203,6 +204,10 @@ export class ReplayEngine {
       const expected = hydrateAssertion(assertion, inputs);
       const ok = await this.surface.assert(expected);
       if (!ok) {
+        const outcome = await this.classifyBusinessOutcome(capabilityId, runId);
+        if (outcome !== undefined) {
+          return outcome;
+        }
         return {
           status: "failure",
           capabilityId,
@@ -210,6 +215,28 @@ export class ReplayEngine {
           stepId: step.id,
           expected,
           observed: false,
+          runId,
+        };
+      }
+    }
+    return undefined;
+  }
+
+  private async classifyBusinessOutcome(
+    capabilityId: string,
+    runId: string,
+  ): Promise<ExecutionResult | undefined> {
+    for (const known of KNOWN_BUSINESS_OUTCOMES) {
+      const visible = await this.surface.assert({
+        type: "textVisible",
+        value: known.text,
+      });
+      if (visible) {
+        return {
+          status: "business_outcome",
+          capabilityId,
+          outcome: known.outcome,
+          details: { text: known.text },
           runId,
         };
       }

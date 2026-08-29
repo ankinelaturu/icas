@@ -270,9 +270,9 @@ Callers resolve with `CapabilityResolver` first. `ReplayEngine` never branches o
 
 ### Pass 4.6 — Business outcomes
 
-- [ ] Domain results such as `LOAN_NOT_FOUND`, `PAYOFF_NOT_AVAILABLE`, `INVALID_PAYOFF_DATE`, `LOAN_ALREADY_PAID`
-- [ ] Return `business_outcome`, not a Playwright exception
-- [ ] Tests: fixture that presents “loan not found” maps to `LOAN_NOT_FOUND`
+- [x] Domain results such as `LOAN_NOT_FOUND`, `PAYOFF_NOT_AVAILABLE`, `INVALID_PAYOFF_DATE`, `LOAN_ALREADY_PAID`
+- [x] Return `business_outcome`, not a Playwright exception
+- [x] Tests: fixture that presents “loan not found” maps to `LOAN_NOT_FOUND`
 
 ### Pass 4.7 — Recoverable waits / retries
 
