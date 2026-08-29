@@ -163,9 +163,9 @@ Cross-cutting runtime used by replay and discovery.
 
 ### Pass 3.1 — Prompt policy loader
 
-- [ ] Load markdown from `packages/policy/prompts/*.md`
-- [ ] Honor `ICAS_PROMPT_POLICY`
-- [ ] Test: default file loads; missing path errors clearly
+- [x] Load markdown from `packages/policy/prompts/*.md`
+- [x] Honor `ICAS_PROMPT_POLICY`
+- [x] Test: default file loads; missing path errors clearly
 
 ### Pass 3.2 — PolicyGuard action allowlist
 
