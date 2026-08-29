@@ -420,8 +420,8 @@ Thin entry points. Packages own behavior.
 
 ### Pass 6.1 — `icas-play list`
 
-- [ ] Load catalog from `CapabilityRegistry`
-- [ ] Print id, name, Vendor+Product, version
+- [x] Load catalog from `CapabilityRegistry`
+- [x] Print id, name, Vendor+Product, version
 
 ### Pass 6.2 — `icas-play describe`
 

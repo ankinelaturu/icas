@@ -10,18 +10,19 @@
     "build": "tsc -p tsconfig.json",
     "start": "tsx src/cli.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "lint": "tsc -p tsconfig.json --noEmit",
     "clean": "rimraf dist"
   },
   "dependencies": {
-    "@icas/replay": "workspace:*",
     "@icas/browser": "workspace:*",
-    "@icas/policy": "workspace:*",
+    "@icas/capability": "workspace:*",
     "@icas/evidence": "workspace:*",
     "@icas/handoff": "workspace:*",
+    "@icas/policy": "workspace:*",
     "@icas/redactor": "workspace:*",
-    "@icas/capability": "workspace:*"
+    "@icas/replay": "workspace:*",
+    "commander": "^14.0.3"
   },
   "devDependencies": {
     "rimraf": "^6.0.1",
