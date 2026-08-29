@@ -8,13 +8,19 @@ import type {
   Surface,
   SurfaceActionResult,
 } from "@icas/surface";
-import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
+import { chromium, type Browser, type BrowserContext, type Locator, type Page } from "playwright";
+
+import { resolveTarget } from "./target-resolver.js";
 
 export interface PlaywrightSurfaceOptions {
   /**
    * When true (default), launch a headed window. Tests pass `false`.
    */
   headed?: boolean;
+  /**
+   * Bound for locator waits, in milliseconds. Default 10_000.
+   */
+  timeoutMs?: number;
 }
 
 /**
@@ -25,12 +31,15 @@ export class PlaywrightSurface implements Surface {
   private context: BrowserContext | undefined;
   private page: Page | undefined;
   private readonly headed: boolean;
+  private readonly timeoutMs: number;
 
   /**
    * @param options.headed - Headed window when true; tests should pass false
+   * @param options.timeoutMs - Locator wait budget; default 10_000
    */
   constructor(options: PlaywrightSurfaceOptions = {}) {
     this.headed = options.headed ?? true;
+    this.timeoutMs = options.timeoutMs ?? 10_000;
   }
 
   /**
@@ -78,8 +87,13 @@ export class PlaywrightSurface implements Surface {
     throw new Error("PlaywrightSurface.assert is a scaffold.");
   }
 
-  async locate(_target: TargetDescriptor): Promise<unknown> {
-    throw new Error("PlaywrightSurface.locate is a scaffold.");
+  /**
+   * Resolve a ranked target to a Playwright locator.
+   *
+   * @throws {SurfaceError} `TARGET_NOT_FOUND` when no strategy matches
+   */
+  async locate(target: TargetDescriptor): Promise<Locator> {
+    return await resolveTarget(this.requirePage(), target, this.timeoutMs);
   }
 
   async handoffToHuman(): Promise<void> {

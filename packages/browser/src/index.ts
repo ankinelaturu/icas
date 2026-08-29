@@ -6,3 +6,4 @@ export {
   PlaywrightSurface,
   type PlaywrightSurfaceOptions,
 } from "./playwright-surface.js";
+export { SurfaceError } from "./surface-error.js";

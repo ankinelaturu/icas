@@ -114,9 +114,9 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 ### Pass 2.3 — Target resolution (semantic)
 
-- [ ] Ranked strategies: `roleText`, `visibleText`, `label`
-- [ ] Try strategies in order; fail with a clear `TARGET_NOT_FOUND`-style error
-- [ ] Tests against Pass 2.1 fixtures
+- [x] Ranked strategies: `roleText`, `visibleText`, `label`
+- [x] Try strategies in order; fail with a clear `TARGET_NOT_FOUND`-style error
+- [x] Tests against Pass 2.1 fixtures
 
 ### Pass 2.4 — Target resolution (fallbacks)
 
