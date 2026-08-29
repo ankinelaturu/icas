@@ -12,6 +12,7 @@ import {
   ReplayFailureCode,
   type ExecutionResult,
 } from "./execution-result.js";
+import { extractOutputs, isExecutionResult } from "./extract-outputs.js";
 import { hydrateAction, hydrateAssertion } from "./hydrate.js";
 import type { ReplayOptions } from "./replay-options.js";
 import { hasSurfaceCode } from "./surface-code.js";
@@ -70,10 +71,41 @@ export class ReplayEngine {
         return blocked;
       }
     }
+    return await this.finishRun(capability, inputs, runId);
+  }
+
+  private async finishRun(
+    capability: CapabilityArtifact,
+    inputs: Record<string, unknown>,
+    runId: string,
+  ): Promise<ExecutionResult> {
+    for (const assertion of capability.success) {
+      const expected = hydrateAssertion(assertion, inputs);
+      const ok = await this.surface.assert(expected);
+      if (!ok) {
+        return {
+          status: "failure",
+          capabilityId: capability.id,
+          code: ReplayFailureCode.unexpectedState,
+          expected,
+          observed: false,
+          runId,
+        };
+      }
+    }
+    const extracted = await extractOutputs({
+      surface: this.surface,
+      capability,
+      runId,
+      ...(this.policy === undefined ? {} : { policy: this.policy }),
+    });
+    if (isExecutionResult(extracted)) {
+      return extracted;
+    }
     return {
       status: "success",
       capabilityId: capability.id,
-      outputs: {},
+      outputs: extracted.outputs,
       runId,
     };
   }

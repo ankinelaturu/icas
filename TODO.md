@@ -263,10 +263,10 @@ Callers resolve with `CapabilityResolver` first. `ReplayEngine` never branches o
 
 ### Pass 4.5 — Success condition + output extraction
 
-- [ ] Overall `success` assertions after all steps
-- [ ] Extract declared outputs; validate types via Pass 1.3 helpers
-- [ ] `OUTPUT_EXTRACTION_FAILED` when missing/invalid
-- [ ] Tests: typed outputs; extraction failure
+- [x] Overall `success` assertions after all steps
+- [x] Extract declared outputs; validate types via Pass 1.3 helpers
+- [x] `OUTPUT_EXTRACTION_FAILED` when missing/invalid
+- [x] Tests: typed outputs; extraction failure
 
 ### Pass 4.6 — Business outcomes
 

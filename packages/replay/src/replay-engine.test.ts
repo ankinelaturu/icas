@@ -19,7 +19,9 @@ describe("ReplayEngine skeleton", () => {
       runId: "run-empty",
     });
     expect(surface.executed).toEqual([]);
-    expect(surface.asserted).toEqual([]);
+    expect(surface.asserted).toEqual([
+      { type: "textVisible", value: "Payoff Statement" },
+    ]);
   });
 
   it("returns a structured failure when the capability is missing", async () => {
@@ -50,7 +52,10 @@ describe("ReplayEngine preconditions", () => {
       { runId: "run-pre-ok" },
     );
     expect(result.status).toBe("success");
-    expect(surface.asserted).toEqual([pre]);
+    expect(surface.asserted).toEqual([
+      pre,
+      { type: "textVisible", value: "Payoff Statement" },
+    ]);
     expect(surface.executed).toHaveLength(2);
   });
 
@@ -141,7 +146,10 @@ describe("ReplayEngine execute and postconditions", () => {
     );
     expect(result.status).toBe("success");
     expect(surface.executed).toHaveLength(1);
-    expect(surface.asserted).toEqual([post]);
+    expect(surface.asserted).toEqual([
+      post,
+      { type: "textVisible", value: "Payoff Statement" },
+    ]);
   });
 
   it("fails POSTCONDITION_FAILED when the page does not match after execute", async () => {
@@ -187,6 +195,75 @@ describe("ReplayEngine execute and postconditions", () => {
       code: "TARGET_NOT_FOUND",
       stepId: "open-lending",
       runId: "run-target",
+    });
+  });
+});
+
+describe("ReplayEngine success and outputs", () => {
+  it("extracts typed money outputs after overall success assertions pass", async () => {
+    const surface = new FakeSurface();
+    surface.executeHandler = (action) => {
+      if (action.type === "read") {
+        return { status: "ok", details: { value: "1234.56" } };
+      }
+      return { status: "ok" };
+    };
+    const engine = new ReplayEngine(surface);
+    const result = await engine.run(
+      testCapability({
+        steps: [clickStep("open-lending")],
+        outputs: {
+          totalPayoffAmount: {
+            type: "money",
+            extract: {
+              target: {
+                strategies: [{ type: "label", label: "Total Payoff Amount" }],
+              },
+            },
+          },
+        },
+      }),
+      {},
+      { runId: "run-outputs" },
+    );
+    expect(result).toEqual({
+      status: "success",
+      capabilityId: "loan-payoff",
+      outputs: { totalPayoffAmount: "1234.56" },
+      runId: "run-outputs",
+    });
+  });
+
+  it("fails OUTPUT_EXTRACTION_FAILED when a declared output cannot be read", async () => {
+    const surface = new FakeSurface();
+    surface.executeHandler = (action) => {
+      if (action.type === "read") {
+        return { status: "ok", details: {} };
+      }
+      return { status: "ok" };
+    };
+    const engine = new ReplayEngine(surface);
+    const result = await engine.run(
+      testCapability({
+        steps: [clickStep("open-lending")],
+        outputs: {
+          totalPayoffAmount: {
+            type: "money",
+            extract: {
+              target: {
+                strategies: [{ type: "label", label: "Total Payoff Amount" }],
+              },
+            },
+          },
+        },
+      }),
+      {},
+      { runId: "run-extract-fail" },
+    );
+    expect(result).toMatchObject({
+      status: "failure",
+      code: "OUTPUT_EXTRACTION_FAILED",
+      runId: "run-extract-fail",
     });
   });
 });

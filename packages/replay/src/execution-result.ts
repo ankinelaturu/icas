@@ -35,4 +35,6 @@ export const ReplayFailureCode = {
   policyBlocked: "POLICY_BLOCKED",
   postconditionFailed: "POSTCONDITION_FAILED",
   targetNotFound: "TARGET_NOT_FOUND",
+  unexpectedState: "UNEXPECTED_STATE",
+  outputExtractionFailed: "OUTPUT_EXTRACTION_FAILED",
 } as const;
