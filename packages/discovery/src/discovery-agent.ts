@@ -8,6 +8,7 @@
 import { randomUUID } from "node:crypto";
 
 import type { CapabilityAction } from "@icas/capability";
+import type { HandoffController } from "@icas/handoff";
 import type { PolicyGuard } from "@icas/policy";
 import type { Observation, Surface } from "@icas/surface";
 
@@ -30,6 +31,7 @@ export interface DiscoveryAgentDependencies {
   /** Required so tests inject a fake and production injects Mastra. */
   proposer: CandidateProposer;
   policy?: PolicyGuard;
+  handoff?: HandoffController;
   now?: () => number;
   /** Pass 3.1 markdown, injected into every proposer call. */
   promptPolicy?: string;
@@ -41,6 +43,7 @@ export interface DiscoveryAgentDependencies {
 export class DiscoveryAgent {
   private readonly proposer: CandidateProposer;
   private readonly policy: PolicyGuard | undefined;
+  private readonly handoff: HandoffController | undefined;
   private readonly now: () => number;
   private readonly promptPolicy: string | undefined;
 
@@ -50,6 +53,7 @@ export class DiscoveryAgent {
   ) {
     this.proposer = deps.proposer;
     this.policy = deps.policy;
+    this.handoff = deps.handoff;
     this.now = deps.now ?? Date.now;
     this.promptPolicy = deps.promptPolicy;
   }
@@ -124,7 +128,6 @@ export class DiscoveryAgent {
         current = retreated;
         continue;
       }
-      current.triedCandidateIds.add(candidate.id);
 
       const action = candidate.action;
       events.push({
@@ -138,14 +141,44 @@ export class DiscoveryAgent {
         destinationUrl === undefined ? {} : { destinationUrl },
       ) ?? { decision: "allow" as const };
       events.push({ type: "policy", payload: decision });
-      if (decision.decision !== "allow") {
-        return {
-          status: "failed",
+      if (decision.decision === "deny") {
+        const paused = await this.pauseForHuman({
           runId,
-          reason: decision.reason,
+          capabilityId: request.id,
+          reason: "policy_block",
+          message: decision.reason,
           events,
-        };
+        });
+        current.triedCandidateIds.add(candidate.id);
+        if (!paused) {
+          return {
+            status: "failed",
+            runId,
+            reason: decision.reason,
+            events,
+          };
+        }
+        continue;
       }
+      if (decision.decision === "require-human") {
+        const paused = await this.pauseForHuman({
+          runId,
+          capabilityId: request.id,
+          reason: "approval_required",
+          message: decision.reason,
+          events,
+        });
+        if (!paused) {
+          current.triedCandidateIds.add(candidate.id);
+          return {
+            status: "failed",
+            runId,
+            reason: decision.reason,
+            events,
+          };
+        }
+      }
+      current.triedCandidateIds.add(candidate.id);
 
       const result = await this.surface.execute(action);
       steps += 1;
@@ -197,6 +230,32 @@ export class DiscoveryAgent {
       payload: { from: current.stateId, to: current.parent.stateId, restore: "prefix-replay" },
     });
     return current.parent;
+  }
+
+  private async pauseForHuman(args: {
+    runId: string;
+    capabilityId: string;
+    reason: "policy_block" | "approval_required" | "discovery_stuck";
+    message: string;
+    events: DiscoveryTraceEvent[];
+  }): Promise<boolean> {
+    if (this.handoff === undefined) {
+      return false;
+    }
+    await this.handoff.request({
+      runId: args.runId,
+      capabilityId: args.capabilityId,
+      reason: args.reason,
+      message: args.message,
+    });
+    args.events.push({
+      type: "intervention",
+      payload: { reason: args.reason, message: args.message },
+    });
+    await this.surface.handoffToHuman();
+    await this.handoff.waitForResume();
+    await this.surface.resumeFromHuman();
+    return true;
   }
 
   private async restorePrefix(

@@ -373,9 +373,9 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 
 ### Pass 5.9 — Discovery HITL
 
-- [ ] Request intervention when stuck, ambiguous, risky, or policy-blocked
-- [ ] Resume into the same search node
-- [ ] Tests: policy-block → intervention; resume continues
+- [x] Request intervention when stuck, ambiguous, risky, or policy-blocked
+- [x] Resume into the same search node
+- [x] Tests: policy-block → intervention; resume continues
 
 ### Pass 5.10 — Discovery trace
 

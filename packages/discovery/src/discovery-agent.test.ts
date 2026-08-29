@@ -2,7 +2,7 @@
  * @file DiscoveryAgent skeleton tests — fake proposer, no live model.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { PolicyGuard } from "@icas/policy";
 
@@ -244,6 +244,43 @@ describe("DiscoveryAgent.run", () => {
       return event.type === "backtrack"
         && (event.payload as { restore?: string }).restore === "prefix-replay";
     })).toBe(true);
+  });
+
+  it("requests HITL on policy-block and resumes the same search node", async () => {
+    const { SessionHandoffController } = await import("@icas/handoff");
+    const handoff = new SessionHandoffController();
+    const surface = new FakeSurface();
+    surface.observation = { id: "home" };
+    surface.executeHandler = () => {
+      surface.observation = { id: "lending" };
+      return { status: "ok" };
+    };
+    const agent = new DiscoveryAgent(surface, {
+      handoff,
+      policy: new PolicyGuard({
+        allowedOrigins: ["http://localhost:4101"],
+        allowedActionTypes: ["click", "fill", "select", "navigate", "read"],
+      }),
+      proposer: new FakeProposer([
+        {
+          status: "continue",
+          candidates: [clickOn("Make a payment", 1), clickOn("Lending", 2)],
+        },
+        { status: "success", candidates: [] },
+      ]),
+    });
+    const running = agent.run(request);
+    await vi.waitFor(() => {
+      expect(handoff.owner()).toBe("human");
+    });
+    handoff.signalResume();
+    const result = await running;
+    expect(result.status).toBe("success");
+    expect(result.events.map((event) => event.type)).toContain("intervention");
+    const labels = surface.executed.map((action) =>
+      action.type === "click" ? action.target.strategies[0]?.text : "",
+    );
+    expect(labels).toEqual(["Lending"]);
   });
 });
 

@@ -206,6 +206,9 @@ importers:
       '@icas/capability':
         specifier: workspace:*
         version: link:../capability
+      '@icas/handoff':
+        specifier: workspace:*
+        version: link:../handoff
       '@icas/policy':
         specifier: workspace:*
         version: link:../policy
