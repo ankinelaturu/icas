@@ -149,6 +149,61 @@ describe("DiscoveryAgent.run", () => {
     expect(result.reason).toBe("maxDepth");
     expect(surface.executed).toHaveLength(1);
   });
+
+  it("backtracks to the next sibling after a dead-end", async () => {
+    const surface = new FakeSurface();
+    surface.observation = { id: "home" };
+    surface.executeHandler = (action) => {
+      const text =
+        action.type === "click" ? action.target.strategies[0]?.text : undefined;
+      surface.observation = { id: text === "Lending" ? "lending" : "documents" };
+      return { status: "ok" };
+    };
+    const agent = new DiscoveryAgent(surface, {
+      proposer: new FakeProposer([
+        {
+          status: "continue",
+          candidates: [clickOn("Documents", 1), clickOn("Lending", 2)],
+        },
+        { status: "stuck", candidates: [], rationale: "grayed out" },
+        { status: "success", candidates: [] },
+      ]),
+    });
+    const result = await agent.run(request);
+    expect(result.status).toBe("success");
+    expect(surface.executed.map((action) => action.type === "click" ? action.target.strategies[0]?.text : "")).toEqual([
+      "Documents",
+      "Lending",
+    ]);
+    expect(result.events.map((event) => event.type)).toContain("backtrack");
+  });
+
+  it("does not loop when an action repeats the current state", async () => {
+    const surface = new FakeSurface();
+    surface.observation = { id: "home", url: "http://localhost/home" };
+    let clicks = 0;
+    surface.executeHandler = () => {
+      clicks += 1;
+      if (clicks === 1) {
+        return { status: "ok" };
+      }
+      surface.observation = { id: "lending", url: "http://localhost/lending" };
+      return { status: "ok" };
+    };
+    const agent = new DiscoveryAgent(surface, {
+      proposer: new FakeProposer([
+        {
+          status: "continue",
+          candidates: [clickOn("Loans", 1), clickOn("Lending", 2)],
+        },
+        { status: "success", candidates: [] },
+      ]),
+    });
+    const result = await agent.run({ ...request, maxSteps: 5 });
+    expect(result.status).toBe("success");
+    expect(clicks).toBe(2);
+    expect(result.events.some((event) => event.type === "dead_end")).toBe(true);
+  });
 });
 
 function clickOn(text: string, rank: number) {

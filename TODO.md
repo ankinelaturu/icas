@@ -361,9 +361,9 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 
 ### Pass 5.7 — Repeated state and backtrack accounting
 
-- [ ] Detect repeated states
-- [ ] Track tried candidates; backtrack to next sibling
-- [ ] Tests: dead-end then sibling tried; repeated state does not loop
+- [x] Detect repeated states
+- [x] Track tried candidates; backtrack to next sibling
+- [x] Tests: dead-end then sibling tried; repeated state does not loop
 
 ### Pass 5.8 — Backtrack restore
 

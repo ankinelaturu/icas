@@ -21,6 +21,7 @@ import type { DiscoveryRequest, DiscoveryResult, DiscoveryTraceEvent } from "./d
 import {
   createSearchNode,
   resolveSearchBudget,
+  stateIdFromObservation,
   type SearchBudget,
   type SearchNode,
 } from "./search-state.js";
@@ -72,6 +73,7 @@ export class DiscoveryAgent {
 
     await this.surface.open(request.target.url);
     let current = createSearchNode({ observation: await this.surface.observe() });
+    const seen = new Set<string>([current.stateId]);
     events.push(observationEvent(current.observation));
 
     while (true) {
@@ -83,10 +85,16 @@ export class DiscoveryAgent {
       }
 
       const filled = await this.fillCandidates(current, request, budget, events);
-      if (filled !== undefined) {
-        return filled.status === "success"
-          ? { status: "success", runId, events }
-          : stuck(runId, events, filled.reason ?? "proposer stuck");
+      if (filled?.status === "success") {
+        return { status: "success", runId, events };
+      }
+      if (filled?.status === "stuck") {
+        const retreated = this.backtrackInMemory(current, events, filled.reason ?? "proposer stuck");
+        if (retreated === undefined) {
+          return stuck(runId, events, filled.reason ?? "proposer stuck");
+        }
+        current = retreated;
+        continue;
       }
 
       if (current.depth >= budget.maxDepth) {
@@ -95,7 +103,12 @@ export class DiscoveryAgent {
 
       const candidate = nextUntried(current);
       if (candidate === undefined || candidate.id === undefined) {
-        return stuck(runId, events, "exhausted");
+        const retreated = this.backtrackInMemory(current, events, "exhausted");
+        if (retreated === undefined) {
+          return stuck(runId, events, "exhausted");
+        }
+        current = retreated;
+        continue;
       }
       current.triedCandidateIds.add(candidate.id);
 
@@ -132,12 +145,38 @@ export class DiscoveryAgent {
         };
       }
 
+      const nextObservation = await this.surface.observe();
+      const nextId = stateIdFromObservation(nextObservation);
+      if (seen.has(nextId)) {
+        events.push({ type: "dead_end", payload: { stateId: nextId, reason: "repeated_state" } });
+        continue;
+      }
+      seen.add(nextId);
       current = createSearchNode({
-        observation: await this.surface.observe(),
+        observation: nextObservation,
         parent: current,
       });
       events.push(observationEvent(current.observation));
     }
+  }
+
+  /**
+   * Pop to the parent node. Surface restore is Pass 5.8.
+   */
+  private backtrackInMemory(
+    current: SearchNode,
+    events: DiscoveryTraceEvent[],
+    reason: string,
+  ): SearchNode | undefined {
+    events.push({ type: "dead_end", payload: { reason, stateId: current.stateId } });
+    if (current.parent === undefined) {
+      return undefined;
+    }
+    events.push({
+      type: "backtrack",
+      payload: { from: current.stateId, to: current.parent.stateId },
+    });
+    return current.parent;
   }
 
   /**
