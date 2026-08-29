@@ -256,10 +256,10 @@ Callers resolve with `CapabilityResolver` first. `ReplayEngine` never branches o
 
 ### Pass 4.4 — Execute + postconditions
 
-- [ ] Execute through `Surface`
-- [ ] Evaluate postconditions
-- [ ] Fail with `POSTCONDITION_FAILED` or `TARGET_NOT_FOUND`
-- [ ] Tests: action+postcondition happy path; postcondition mismatch
+- [x] Execute through `Surface`
+- [x] Evaluate postconditions
+- [x] Fail with `POSTCONDITION_FAILED` or `TARGET_NOT_FOUND`
+- [x] Tests: action+postcondition happy path; postcondition mismatch
 
 ### Pass 4.5 — Success condition + output extraction
 

@@ -127,3 +127,67 @@ describe("ReplayEngine policy gate", () => {
   });
 });
 
+describe("ReplayEngine execute and postconditions", () => {
+  it("succeeds when the action runs and postconditions hold", async () => {
+    const surface = new FakeSurface();
+    const post = { type: "textVisible" as const, value: "Lending Services" };
+    const engine = new ReplayEngine(surface);
+    const result = await engine.run(
+      testCapability({
+        steps: [clickStep("open-lending", { postconditions: [post] })],
+      }),
+      {},
+      { runId: "run-post-ok" },
+    );
+    expect(result.status).toBe("success");
+    expect(surface.executed).toHaveLength(1);
+    expect(surface.asserted).toEqual([post]);
+  });
+
+  it("fails POSTCONDITION_FAILED when the page does not match after execute", async () => {
+    const surface = new FakeSurface();
+    const post = { type: "textVisible" as const, value: "Lending Services" };
+    surface.assertHandler = (assertion) =>
+      !(assertion.type === "textVisible" && assertion.value === "Lending Services");
+    const engine = new ReplayEngine(surface);
+    const result = await engine.run(
+      testCapability({
+        steps: [clickStep("open-lending", { postconditions: [post] })],
+      }),
+      {},
+      { runId: "run-post-fail" },
+    );
+    expect(result).toEqual({
+      status: "failure",
+      capabilityId: "loan-payoff",
+      code: "POSTCONDITION_FAILED",
+      stepId: "open-lending",
+      expected: post,
+      observed: false,
+      runId: "run-post-fail",
+    });
+    expect(surface.executed).toHaveLength(1);
+  });
+
+  it("fails TARGET_NOT_FOUND when execute cannot locate the control", async () => {
+    const surface = new FakeSurface();
+    surface.executeHandler = () => {
+      const error = new Error("no matching control");
+      (error as Error & { code: string }).code = "TARGET_NOT_FOUND";
+      throw error;
+    };
+    const engine = new ReplayEngine(surface);
+    const result = await engine.run(
+      testCapability({ steps: [clickStep("open-lending")] }),
+      {},
+      { runId: "run-target" },
+    );
+    expect(result).toMatchObject({
+      status: "failure",
+      code: "TARGET_NOT_FOUND",
+      stepId: "open-lending",
+      runId: "run-target",
+    });
+  });
+});
+

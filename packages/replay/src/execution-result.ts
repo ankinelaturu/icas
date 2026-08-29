@@ -33,4 +33,6 @@ export const ReplayFailureCode = {
   missingCapability: "MISSING_CAPABILITY",
   preconditionFailed: "PRECONDITION_FAILED",
   policyBlocked: "POLICY_BLOCKED",
+  postconditionFailed: "POSTCONDITION_FAILED",
+  targetNotFound: "TARGET_NOT_FOUND",
 } as const;

@@ -14,6 +14,7 @@ import {
 } from "./execution-result.js";
 import { hydrateAction, hydrateAssertion } from "./hydrate.js";
 import type { ReplayOptions } from "./replay-options.js";
+import { hasSurfaceCode } from "./surface-code.js";
 
 /**
  * Optional collaborators. Policy is required for a safe production run.
@@ -130,7 +131,57 @@ export class ReplayEngine {
         runId,
       };
     }
-    await this.surface.execute(action);
+    try {
+      const result = await this.surface.execute(action);
+      if (result.status !== "ok") {
+        return {
+          status: "failure",
+          capabilityId,
+          code: ReplayFailureCode.targetNotFound,
+          stepId: step.id,
+          expected: action,
+          observed: result,
+          runId,
+        };
+      }
+    } catch (error) {
+      if (hasSurfaceCode(error, ReplayFailureCode.targetNotFound)) {
+        return {
+          status: "failure",
+          capabilityId,
+          code: ReplayFailureCode.targetNotFound,
+          stepId: step.id,
+          expected: action,
+          observed: error instanceof Error ? error.message : error,
+          runId,
+        };
+      }
+      throw error;
+    }
+    return await this.evaluatePostconditions(step, inputs, runId, capabilityId);
+  }
+
+  private async evaluatePostconditions(
+    step: CapabilityStep,
+    inputs: Record<string, unknown>,
+    runId: string,
+    capabilityId: string,
+  ): Promise<ExecutionResult | undefined> {
+    for (const assertion of step.postconditions) {
+      const expected = hydrateAssertion(assertion, inputs);
+      const ok = await this.surface.assert(expected);
+      if (!ok) {
+        return {
+          status: "failure",
+          capabilityId,
+          code: ReplayFailureCode.postconditionFailed,
+          stepId: step.id,
+          expected,
+          observed: false,
+          runId,
+        };
+      }
+    }
     return undefined;
   }
 
