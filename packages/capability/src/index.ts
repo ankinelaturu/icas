@@ -57,3 +57,9 @@ export {
 export type { CapabilityRegistry, CapabilitySummary } from "./registry.js";
 export { FileSystemCapabilityRegistry } from "./filesystem-capability-registry.js";
 export type { FileSystemCapabilityRegistryOptions } from "./filesystem-capability-registry.js";
+export {
+  assertCatalogId,
+  assertCatalogVersion,
+  compareCapabilityVersion,
+  parseBaseCapabilityPin,
+} from "./catalog-ids.js";

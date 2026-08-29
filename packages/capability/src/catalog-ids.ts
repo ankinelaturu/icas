@@ -1,5 +1,5 @@
 /**
- * @file Catalog path helpers — keep capability ids and versions inside the registry root.
+ * @file Catalog path helpers — keep capability ids, versions, and tenant names inside the registry root.
  */
 
 const ID_PATTERN = /^[A-Za-z0-9._-]+$/;
@@ -44,6 +44,27 @@ export function assertCatalogVersion(version: string): string {
     throw new Error(`invalid capability version "${version}"`);
   }
   return version;
+}
+
+/**
+ * Split a `baseCapability` pin (`id@version`) into catalog id and version.
+ *
+ * @throws {Error} When the pin is missing a three-part version
+ */
+export function parseBaseCapabilityPin(pin: string): {
+  id: string;
+  version: string;
+} {
+  const separator = pin.lastIndexOf("@");
+  if (separator <= 0 || separator === pin.length - 1) {
+    throw new Error(
+      `baseCapability must pin a version, e.g. "loan-payoff@1.0.0"`,
+    );
+  }
+  return {
+    id: assertCatalogId(pin.slice(0, separator)),
+    version: assertCatalogVersion(pin.slice(separator + 1)),
+  };
 }
 
 function parseVersion(version: string): [number, number, number] {

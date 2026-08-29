@@ -1,8 +1,9 @@
 /**
- * @file CapabilityRegistry — catalog CRUD for base capabilities (overrides land in Pass 1.6).
+ * @file CapabilityRegistry — catalog CRUD for base capabilities and tenant overrides.
  */
 
 import type { CapabilityArtifact } from "./artifact.js";
+import type { CapabilityOverride } from "./capability-override.js";
 
 /**
  * Latest-version listing row for catalog UIs.
@@ -50,4 +51,36 @@ export interface CapabilityRegistry {
    * @returns `true` when at least one file was removed
    */
   remove(id: string, version?: string): Promise<boolean>;
+
+  /**
+   * List stored tenant overrides, optionally filtered by tenant and/or pin.
+   */
+  listOverrides(filter?: {
+    tenant?: string;
+    baseCapability?: string;
+  }): Promise<CapabilityOverride[]>;
+
+  /**
+   * Load the override for one enrolled tenant and pinned base version.
+   */
+  getOverride(
+    tenant: string,
+    baseCapability: string,
+  ): Promise<CapabilityOverride | undefined>;
+
+  /**
+   * Validate and upsert a tenant override. The pinned base version must already
+   * be stored. Header-only `overrides: {}` is valid.
+   *
+   * @throws {CapabilityOverrideValidationError} When the override is invalid
+   * @throws {Error} When the pinned base version is not in the catalog
+   */
+  saveOverride(override: CapabilityOverride): Promise<void>;
+
+  /**
+   * Remove one tenant override.
+   *
+   * @returns `true` when a file was removed
+   */
+  removeOverride(tenant: string, baseCapability: string): Promise<boolean>;
 }

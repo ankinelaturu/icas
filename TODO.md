@@ -66,11 +66,11 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 ### Pass 1.6 — Override storage and registry
 
-- [ ] On-disk layout: `capabilities/<id>/overrides/<tenant>.json` pinned to `id@version`
-- [ ] Empty `overrides: {}` is valid (header-only enrollment)
-- [ ] `listOverrides` / `getOverride` / `saveOverride` / `removeOverride`
-- [ ] `saveOverride` rejects if the pinned base version is not stored
-- [ ] Tests for round-trip save/load and header-only override
+- [x] On-disk layout: `capabilities/<id>/overrides/<tenant>.json` pinned to `id@version`
+- [x] Empty `overrides: {}` is valid (header-only enrollment)
+- [x] `listOverrides` / `getOverride` / `saveOverride` / `removeOverride`
+- [x] `saveOverride` rejects if the pinned base version is not stored
+- [x] Tests for round-trip save/load and header-only override
 
 ### Pass 1.7 — Resolver: version pin + whole-step replace
 

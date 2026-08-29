@@ -10,9 +10,12 @@ import {
   assertCatalogId,
   assertCatalogVersion,
   compareCapabilityVersion,
+  parseBaseCapabilityPin,
 } from "./catalog-ids.js";
+import type { CapabilityOverride } from "./capability-override.js";
 import type { CapabilityRegistry, CapabilitySummary } from "./registry.js";
 import { validateCapabilityArtifact } from "./validate-capability.js";
+import { validateCapabilityOverride } from "./validate-override.js";
 
 export interface FileSystemCapabilityRegistryOptions {
   /** Catalog root. Production is repo `capabilities/`; tests pass a temp directory. */
@@ -20,7 +23,8 @@ export interface FileSystemCapabilityRegistryOptions {
 }
 
 /**
- * Filesystem-backed {@link CapabilityRegistry}. Layout: `<root>/<id>/<version>.json`.
+ * Filesystem-backed {@link CapabilityRegistry}.
+ * Layout: `<root>/<id>/<version>.json` and `<root>/<id>/overrides/<tenant>.json`.
  */
 export class FileSystemCapabilityRegistry implements CapabilityRegistry {
   private readonly root: string;
@@ -125,8 +129,122 @@ export class FileSystemCapabilityRegistry implements CapabilityRegistry {
     }
   }
 
+  async listOverrides(filter?: {
+    tenant?: string;
+    baseCapability?: string;
+  }): Promise<CapabilityOverride[]> {
+    const ids = await this.readCapabilityIds();
+    const found: CapabilityOverride[] = [];
+    for (const id of ids) {
+      const dir = join(this.root, id, "overrides");
+      let files: string[];
+      try {
+        files = await readdir(dir);
+      } catch (error) {
+        if (isNotFound(error)) {
+          continue;
+        }
+        throw error;
+      }
+      for (const file of files) {
+        if (!file.endsWith(".json")) {
+          continue;
+        }
+        const tenant = file.slice(0, -".json".length);
+        const override = await this.readOverrideFile(id, tenant);
+        if (override === undefined) {
+          continue;
+        }
+        if (filter?.tenant !== undefined && override.target.tenant !== filter.tenant) {
+          continue;
+        }
+        if (
+          filter?.baseCapability !== undefined &&
+          override.baseCapability !== filter.baseCapability
+        ) {
+          continue;
+        }
+        found.push(override);
+      }
+    }
+    return found;
+  }
+
+  async getOverride(
+    tenant: string,
+    baseCapability: string,
+  ): Promise<CapabilityOverride | undefined> {
+    const pin = parseBaseCapabilityPin(baseCapability);
+    const override = await this.readOverrideFile(pin.id, tenant);
+    if (override === undefined) {
+      return undefined;
+    }
+    if (override.baseCapability !== baseCapability) {
+      return undefined;
+    }
+    return override;
+  }
+
+  async saveOverride(override: CapabilityOverride): Promise<void> {
+    const valid = validateCapabilityOverride(override);
+    const pin = parseBaseCapabilityPin(valid.baseCapability);
+    const tenant = assertCatalogId(valid.target.tenant);
+    const base = await this.get(pin.id, pin.version);
+    if (base === undefined) {
+      throw new Error(
+        `pinned base version ${valid.baseCapability} is not stored`,
+      );
+    }
+    const dir = join(this.root, pin.id, "overrides");
+    await mkdir(dir, { recursive: true });
+    const json = `${JSON.stringify(valid, null, 2)}\n`;
+    await writeFile(this.overridePath(pin.id, tenant), json, "utf8");
+  }
+
+  async removeOverride(
+    tenant: string,
+    baseCapability: string,
+  ): Promise<boolean> {
+    const pin = parseBaseCapabilityPin(baseCapability);
+    const safeTenant = assertCatalogId(tenant);
+    const existing = await this.getOverride(safeTenant, baseCapability);
+    if (existing === undefined) {
+      return false;
+    }
+    try {
+      await rm(this.overridePath(pin.id, safeTenant));
+      return true;
+    } catch (error) {
+      if (isNotFound(error)) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
   private artifactPath(id: string, version: string): string {
     return join(this.root, id, `${version}.json`);
+  }
+
+  private overridePath(id: string, tenant: string): string {
+    return join(this.root, id, "overrides", `${tenant}.json`);
+  }
+
+  private async readOverrideFile(
+    id: string,
+    tenant: string,
+  ): Promise<CapabilityOverride | undefined> {
+    const safeId = assertCatalogId(id);
+    const safeTenant = assertCatalogId(tenant);
+    try {
+      const raw = await readFile(this.overridePath(safeId, safeTenant), "utf8");
+      return validateCapabilityOverride(JSON.parse(raw) as unknown);
+    } catch (error) {
+      if (isNotFound(error)) {
+        return undefined;
+      }
+      throw error;
+    }
   }
 
   private async readCapabilityIds(): Promise<string[]> {
