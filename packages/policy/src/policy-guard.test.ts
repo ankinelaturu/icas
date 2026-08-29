@@ -85,3 +85,40 @@ describe("PolicyGuard origin checks", () => {
     });
   });
 });
+
+describe("PolicyGuard risky actions", () => {
+  const guard = new PolicyGuard({
+    allowedOrigins: ["https://bank.example"],
+    allowedActionTypes: ["click", "fill"],
+  });
+
+  it("requires a human for risk: risky", () => {
+    expect(
+      guard.check({
+        type: "click",
+        target: { strategies: [{ type: "visibleText", text: "Continue" }] },
+        risk: "risky",
+      }),
+    ).toEqual({
+      decision: "require-human",
+      reason: "Risky action requires human approval.",
+    });
+  });
+
+  it("denies transfer/payment-like control text even when the model marks it safe", () => {
+    expect(
+      guard.check({
+        type: "click",
+        target: { strategies: [{ type: "roleText", role: "button", text: "Transfer Funds" }] },
+        intent: "Move money to another account",
+        risk: "safe",
+      }),
+    ).toMatchObject({ decision: "deny", reason: /Dangerous control text/ });
+    expect(
+      guard.check({
+        type: "click",
+        target: { strategies: [{ type: "visibleText", text: "Make a Payment" }] },
+      }),
+    ).toMatchObject({ decision: "deny" });
+  });
+});

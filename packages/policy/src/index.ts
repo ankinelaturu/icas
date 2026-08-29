@@ -7,7 +7,7 @@ export type {
   PolicyDecision,
   RuntimePolicy,
 } from "./policy-types.js";
-export { PolicyGuard } from "./policy-guard.js";
+export { dangerousActionReason, collectActionText } from "./action-text.js";
 export {
   defaultPromptPolicyPath,
   loadPromptPolicy,

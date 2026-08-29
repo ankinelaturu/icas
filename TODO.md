@@ -180,9 +180,9 @@ Cross-cutting runtime used by replay and discovery.
 
 ### Pass 3.4 — Risky action escalation
 
-- [ ] `require-human` for `risk: "risky"`
-- [ ] Independent check of dangerous control text/intent (do not trust model self-classification alone)
-- [ ] Tests: risky → human; transfer/payment-like text → deny or human
+- [x] `require-human` for `risk: "risky"`
+- [x] Independent check of dangerous control text/intent (do not trust model self-classification alone)
+- [x] Tests: risky → human; transfer/payment-like text → deny or human
 
 ### Pass 3.5 — Redactor profiles
 

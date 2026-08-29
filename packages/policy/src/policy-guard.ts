@@ -4,6 +4,7 @@
 
 import type { CapabilityAction } from "@icas/capability";
 
+import { dangerousActionReason } from "./action-text.js";
 import type {
   PolicyCheckContext,
   PolicyDecision,
@@ -25,6 +26,10 @@ export class PolicyGuard {
         decision: "deny",
         reason: `Action type ${action.type} is not allowed.`,
       };
+    }
+    const dangerous = dangerousActionReason(action);
+    if (dangerous !== undefined) {
+      return { decision: "deny", reason: dangerous };
     }
     if ("risk" in action && action.risk === "risky") {
       const required = this.policy.approvalRequiredForRisk ?? ["risky"];
