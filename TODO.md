@@ -451,8 +451,8 @@ Thin entry points. Packages own behavior.
 
 ### Pass 6.6 — `icas-adapt` guarded replay
 
-- [ ] Replay existing Vendor+Product capability against a new tenant URL
-- [ ] Stop at first meaningful checkpoint mismatch with expected vs observed
+- [x] Replay existing Vendor+Product capability against a new tenant URL
+- [x] Stop at first meaningful checkpoint mismatch with expected vs observed
 
 ### Pass 6.7 — `icas-adapt` override generation
 

@@ -16,3 +16,5 @@ export type {
   RepairProposal,
   RepairProposer,
 } from "./repair-proposer.js";
+export type { GuardedReplayReport } from "./guarded-replay.js";
+export { classifyGuardedReplay } from "./guarded-replay.js";

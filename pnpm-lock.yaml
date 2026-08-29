@@ -41,9 +41,21 @@ importers:
       '@icas/evidence':
         specifier: workspace:*
         version: link:../../packages/evidence
+      '@icas/handoff':
+        specifier: workspace:*
+        version: link:../../packages/handoff
+      '@icas/policy':
+        specifier: workspace:*
+        version: link:../../packages/policy
+      '@icas/redactor':
+        specifier: workspace:*
+        version: link:../../packages/redactor
       '@icas/replay':
         specifier: workspace:*
         version: link:../../packages/replay
+      commander:
+        specifier: ^14.0.3
+        version: 14.0.3
     devDependencies:
       rimraf:
         specifier: ^6.0.1

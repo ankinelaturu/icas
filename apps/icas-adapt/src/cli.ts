@@ -1,20 +1,210 @@
 #!/usr/bin/env node
 /**
- * @file icas-adapt — cross-tenant specialization CLI (scaffold).
+ * @file icas-adapt — cross-tenant specialization CLI.
  *
- * Separates tenant enrollment from both full discovery and production replay.
- * `--tenant` is required here; do not default it to `icas-bank` when
- * specializing a second institution. `--vendor` / `--product` still default
- * to `icas-bank`. Do not mint a new capability id or re-run the natural-
- * language goal as discovery.
+ * Guarded replay of a Vendor+Product base against a new tenant URL.
+ * `--tenant` is required; do not default it to `icas-bank`. `--url` is only
+ * the surface entry. This pass reports the first checkpoint mismatch and
+ * does not write an override.
  *
- * Stay thin: guarded `ReplayEngine` first, then bounded patch + re-verify.
- * Compatible adapt still writes a header-only override. Material flow
- * divergence stops adaptation rather than accumulating a brittle patch.
- *
- * @see docs/01-system-overview.md
  * @see docs/06-multi-tenant-and-adaptation.md
  */
 
-console.log("icas-adapt scaffold");
-console.log("Planned: icas-adapt <id> --tenant <t> --url <u> (vendor/product default icas-bank); enroll header-only or patch.");
+import { Command, CommanderError } from "commander";
+
+import {
+  FileSystemCapabilityRegistry,
+  type CapabilityRegistry,
+} from "@icas/capability";
+import type { ExecutionResult, GuardedReplayReport } from "@icas/replay";
+
+import { runGuardedAdapt, type AdaptReplayInvocation, type AdaptRunRequest } from "./adapt-session.js";
+import { catalogRoot } from "./catalog-root.js";
+import { coerceInputValues } from "./coerce-inputs.js";
+import { DEFAULT_ICAS_IDENTITY } from "./defaults.js";
+import { parseCapabilityInputFlags } from "./parse-cli-inputs.js";
+
+export interface AdaptCliDeps {
+  registry?: CapabilityRegistry;
+  stdout?: (line: string) => void;
+  stderr?: (line: string) => void;
+  executeReplay?: (invocation: AdaptReplayInvocation) => Promise<ExecutionResult>;
+  env?: NodeJS.ProcessEnv;
+}
+
+function collectInput(value: string, previous: string[]): string[] {
+  return [...previous, value];
+}
+
+export function createAdaptProgram(deps: AdaptCliDeps = {}): Command {
+  const write = deps.stdout ?? ((line: string) => {
+    console.log(line);
+  });
+  const writeErr = deps.stderr ?? ((line: string) => {
+    console.error(line);
+  });
+  const resolveRegistry = (): CapabilityRegistry =>
+    deps.registry ?? new FileSystemCapabilityRegistry({ root: catalogRoot() });
+
+  const program = new Command();
+  program
+    .name("icas-adapt")
+    .description("Guarded replay of a Vendor+Product capability against a new tenant")
+    .showHelpAfterError()
+    .exitOverride()
+    .configureOutput({
+      writeOut: (str) => {
+        write(str.replace(/\n$/, ""));
+      },
+      writeErr: (str) => {
+        writeErr(str.replace(/\n$/, ""));
+      },
+    });
+
+  program
+    .argument("<id>", "Capability id")
+    .argument("[tokens...]", "Typed --name value inputs")
+    .requiredOption("--tenant <tenant>", "Tenant to specialize (required; not defaulted)")
+    .requiredOption("--url <url>", "Surface entry URL (not tenant identity)")
+    .option("--vendor <vendor>", "Vendor identity", DEFAULT_ICAS_IDENTITY)
+    .option("--product <product>", "Product identity", DEFAULT_ICAS_IDENTITY)
+    .option("--version <semver>", "Pin a capabilityVersion instead of latest")
+    .option("--input <name=value>", "Typed capability input (repeatable)", collectInput, [])
+    .option("--headless", "Launch Chromium without a window")
+    .allowUnknownOption()
+    .allowExcessArguments()
+    .action(async (id: string, tokens: string[], opts: AdaptCommandOptions) => {
+      await executeAdaptCommand(id, tokens, opts, {
+        registry: resolveRegistry(),
+        write,
+        writeErr,
+        env: deps.env ?? process.env,
+        ...(deps.executeReplay === undefined ? {} : { executeReplay: deps.executeReplay }),
+      });
+    });
+
+  return program;
+}
+
+interface AdaptCommandOptions {
+  tenant: string;
+  url: string;
+  vendor: string;
+  product: string;
+  version?: string;
+  input: string[];
+  headless?: boolean;
+}
+
+async function executeAdaptCommand(
+  id: string,
+  tokens: string[],
+  opts: AdaptCommandOptions,
+  io: {
+    registry: CapabilityRegistry;
+    write: (line: string) => void;
+    writeErr: (line: string) => void;
+    executeReplay?: (invocation: AdaptReplayInvocation) => Promise<ExecutionResult>;
+    env: NodeJS.ProcessEnv;
+  },
+): Promise<void> {
+  try {
+    const fromRepeatable = parseCapabilityInputFlags(
+      opts.input.map((pair) => `--input=${pair}`),
+    );
+    const fromUnknown = parseCapabilityInputFlags(tokens);
+    const raw = { ...fromRepeatable, ...fromUnknown };
+    const preview =
+      opts.version === undefined
+        ? await io.registry.get(id)
+        : await io.registry.get(id, opts.version);
+    if (preview === undefined) {
+      throw new Error(`capability "${id}" is not in the catalog`);
+    }
+    const request: AdaptRunRequest = {
+      id,
+      url: opts.url,
+      tenant: opts.tenant,
+      vendor: opts.vendor,
+      product: opts.product,
+      inputs: coerceInputValues(preview.inputs, raw),
+      headed: resolveHeaded(opts.headless === true, io.env),
+      ...(opts.version === undefined ? {} : { version: opts.version }),
+    };
+    const report = await runGuardedAdapt(request, {
+      registry: io.registry,
+      ...(io.executeReplay === undefined ? {} : { executeReplay: io.executeReplay }),
+    });
+    io.write(formatAdaptReport(report, opts.tenant));
+    process.exitCode = report.status === "compatible" ? 0 : 1;
+  } catch (error) {
+    io.writeErr(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
+}
+
+/**
+ * Human-readable guarded-replay outcome. JSON is avoided on purpose.
+ */
+function formatAdaptReport(report: GuardedReplayReport, tenant: string): string {
+  const lines = [`tenant: ${tenant}`, `status: ${report.status}`];
+  if (report.status === "compatible") {
+    lines.push(`runId: ${report.result.runId}`);
+    lines.push("base capability checkpoints passed; override not written in this pass");
+    return lines.join("\n");
+  }
+  if (report.status === "business_outcome") {
+    lines.push(`outcome: ${report.result.outcome}`);
+    lines.push(`runId: ${report.result.runId}`);
+    return lines.join("\n");
+  }
+  lines.push(`step: ${report.stepId}`);
+  lines.push(`code: ${report.result.code}`);
+  lines.push(`expected: ${JSON.stringify(report.expected)}`);
+  lines.push(`observed: ${JSON.stringify(report.observed)}`);
+  lines.push(`runId: ${report.result.runId}`);
+  return lines.join("\n");
+}
+
+function resolveHeaded(headlessFlag: boolean, env: NodeJS.ProcessEnv): boolean {
+  if (headlessFlag) {
+    return false;
+  }
+  if (env.ICAS_HEADLESS === "1" || env.CI === "true") {
+    return false;
+  }
+  return true;
+}
+
+export async function runAdapt(
+  argv: string[] = process.argv,
+  deps: AdaptCliDeps = {},
+): Promise<void> {
+  const writeErr = deps.stderr ?? ((line: string) => {
+    console.error(line);
+  });
+  try {
+    await createAdaptProgram(deps).parseAsync(argv);
+  } catch (error) {
+    if (error instanceof CommanderError) {
+      if (error.code !== "commander.helpDisplayed") {
+        writeErr(error.message);
+      }
+      process.exitCode = error.exitCode === 0 ? 0 : 1;
+      return;
+    }
+    throw error;
+  }
+}
+
+const isMain =
+  process.argv[1] !== undefined &&
+  (process.argv[1].endsWith("cli.ts") || process.argv[1].endsWith("cli.js"));
+
+if (isMain) {
+  void runAdapt().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(message);
+    process.exitCode = 1;
+  });
+}
