@@ -15,11 +15,14 @@ import type {
 } from "@icas/capability";
 import { resolveValueRef } from "@icas/capability";
 import type {
+  ControlOwner,
   Observation,
   Surface,
   SurfaceActionResult,
 } from "@icas/surface";
 import { chromium, type Browser, type BrowserContext, type Locator, type Page } from "playwright";
+
+import { SurfaceError } from "./surface-error.js";
 
 import { resolveTarget } from "./target-resolver.js";
 
@@ -53,6 +56,7 @@ export class PlaywrightSurface implements Surface {
   private readonly timeoutMs: number;
   private readonly pollingMs: number;
   private readonly screenshotDir: string;
+  private owner: ControlOwner = "automation";
 
   /**
    * @param options.headed - Headed window when true; tests should pass false
@@ -86,6 +90,7 @@ export class PlaywrightSurface implements Surface {
     this.page = undefined;
     this.context = undefined;
     this.browser = undefined;
+    this.owner = "automation";
     if (browser !== undefined) {
       await browser.close();
     }
@@ -123,8 +128,15 @@ export class PlaywrightSurface implements Surface {
    * Run one semantic action. `ValueRef` inputs must already be resolved to literals.
    */
   async execute(action: CapabilityAction): Promise<SurfaceActionResult> {
+    if (action.type !== "handoff") {
+      this.assertAutomation();
+    }
     const page = this.requirePage();
     switch (action.type) {
+      case "handoff": {
+        await this.handoffToHuman();
+        return { status: "ok", details: { reason: action.reason } };
+      }
       case "click": {
         const control = await this.locate(action.target);
         const destinationUrl = await hrefOf(control, page.url());
@@ -154,8 +166,6 @@ export class PlaywrightSurface implements Surface {
         const value = await readControlValue(control);
         return { status: "ok", details: { value } };
       }
-      case "handoff":
-        throw new Error("PlaywrightSurface.execute handoff is implemented in pass 2.9.");
       default: {
         const exhaustive: never = action;
         return exhaustive;
@@ -167,6 +177,7 @@ export class PlaywrightSurface implements Surface {
    * Check an assertion with bounded waits. Returns false on timeout or mismatch.
    */
   async assert(assertion: Assertion): Promise<boolean> {
+    this.assertAutomation();
     const page = this.requirePage();
     try {
       switch (assertion.type) {
@@ -233,6 +244,7 @@ export class PlaywrightSurface implements Surface {
    * @throws {SurfaceError} `TARGET_NOT_FOUND` when no strategy matches
    */
   async locate(target: TargetDescriptor): Promise<Locator> {
+    this.assertAutomation();
     return await resolveTarget(this.requirePage(), target, this.timeoutMs);
   }
 
@@ -240,12 +252,41 @@ export class PlaywrightSurface implements Surface {
    * Resolve an in-page href to an absolute URL when the target is an anchor.
    */
   async peekDestination(target: TargetDescriptor): Promise<string | undefined> {
+    this.assertAutomation();
     const control = await this.locate(target);
     return await hrefOf(control, this.requirePage().url());
   }
 
+  /**
+   * Pause automation. The headed session stays open for a human operator.
+   */
   async handoffToHuman(): Promise<void> {
-    throw new Error("PlaywrightSurface.handoffToHuman is a scaffold.");
+    this.requirePage();
+    this.owner = "human";
+  }
+
+  /**
+   * Resume automation on the same session.
+   */
+  async resumeFromHuman(): Promise<void> {
+    this.requirePage();
+    this.owner = "automation";
+  }
+
+  /**
+   * Who currently may issue actions.
+   */
+  controlOwner(): ControlOwner {
+    return this.owner;
+  }
+
+  private assertAutomation(): void {
+    if (this.owner === "human") {
+      throw new SurfaceError(
+        "automation is paused; human owns the session",
+        "HUMAN_HAS_CONTROL",
+      );
+    }
   }
 
   private requirePage(): Page {

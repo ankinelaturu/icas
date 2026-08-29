@@ -28,6 +28,11 @@ export interface SurfaceActionResult {
 }
 
 /**
+ * Who currently issues actions on the live session.
+ */
+export type ControlOwner = "automation" | "human";
+
+/**
  * How a capability observes and acts on a UI. Playwright is the first
  * implementation, not the artifact model.
  */
@@ -50,5 +55,12 @@ export interface Surface {
    * Absolute URL a click would navigate to, when known (e.g. an anchor href).
    */
   peekDestination(target: TargetDescriptor): Promise<string | undefined>;
+  /**
+   * Pause automation and leave the same session open for a human.
+   */
   handoffToHuman(): Promise<void>;
+  /**
+   * Return control to automation on the same session.
+   */
+  resumeFromHuman(): Promise<void>;
 }

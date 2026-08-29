@@ -150,10 +150,10 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 ### Pass 2.9 — Browser handoff seam
 
-- [ ] `handoffToHuman`: stop issuing automation actions; keep the same session alive
-- [ ] Resume returns control to automation
-- [ ] Test: execute is rejected while human owns the session; allowed after resume
-- [ ] Full CLI takeover UX waits for Phase 3 / 4
+- [x] `handoffToHuman`: stop issuing automation actions; keep the same session alive
+- [x] Resume returns control to automation
+- [x] Test: execute is rejected while human owns the session; allowed after resume
+- [x] Full CLI takeover UX waits for Phase 3 / 4
 
 ---
 

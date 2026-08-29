@@ -16,10 +16,11 @@ interface Surface {
   locate(target: TargetDescriptor): Promise<unknown>;
   peekDestination(target: TargetDescriptor): Promise<string | undefined>;
   handoffToHuman(): Promise<void>;
+  resumeFromHuman(): Promise<void>;
 }
 ```
 
-`close` is explicit teardown and must be safe to call twice. `peekDestination` exposes a known navigation URL (anchor href) before click so policy can deny off-origin destinations.
+`close` is explicit teardown and must be safe to call twice. `peekDestination` exposes a known navigation URL (anchor href) before click so policy can deny off-origin destinations. `handoffToHuman` / `resumeFromHuman` flip `ControlOwner` on the same session; automation actions are rejected while a human owns control.
 
 ## Implemented surface
 

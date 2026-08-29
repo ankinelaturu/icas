@@ -345,3 +345,34 @@ describe("PlaywrightSurface navigation hooks", () => {
     });
   });
 });
+
+describe("PlaywrightSurface handoff", () => {
+  const surface = new PlaywrightSurface({ headed: false, timeoutMs: 2_000 });
+
+  afterEach(async () => {
+    await surface.close();
+  });
+
+  it("rejects execute while a human owns the session and allows it after resume", async () => {
+    await surface.open(pageUrl("loan-search.html"));
+    await surface.handoffToHuman();
+    expect(surface.controlOwner()).toBe("human");
+    await expect(
+      surface.execute({
+        type: "fill",
+        target: { strategies: [{ type: "label", label: "Loan Account" }] },
+        value: { literal: "987654" },
+      }),
+    ).rejects.toMatchObject({
+      code: "HUMAN_HAS_CONTROL",
+    });
+    await surface.resumeFromHuman();
+    expect(surface.controlOwner()).toBe("automation");
+    const result = await surface.execute({
+      type: "fill",
+      target: { strategies: [{ type: "label", label: "Loan Account" }] },
+      value: { literal: "987654" },
+    });
+    expect(result.status).toBe("ok");
+  });
+});
