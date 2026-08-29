@@ -15,10 +15,10 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
-    "@icas/replay": "workspace:*",
     "@icas/browser": "workspace:*",
     "@icas/capability": "workspace:*",
-    "@modelcontextprotocol/sdk": "latest"
+    "@icas/replay": "workspace:*",
+    "@modelcontextprotocol/sdk": "1.30.0"
   },
   "devDependencies": {
     "rimraf": "^6.0.1",

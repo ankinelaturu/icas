@@ -7,6 +7,8 @@
  * not glob `capabilities/`, implement replay, or silently use an unenrolled
  * tenant's bare base. Stdio first: stdout is the protocol byte stream.
  *
+ * SDK is pinned (`@modelcontextprotocol/sdk@1.30.0`); do not depend on `latest`.
+ *
  * Stay thin: construct the MCP server and delegate tool calls. A human CLI
  * (`icas-play`) is not the stretch goal this file exists to satisfy.
  *

@@ -472,8 +472,8 @@ Thin entry points. Packages own behavior.
 
 ### Pass 6.10 — Pin MCP SDK
 
-- [ ] Replace `@modelcontextprotocol/sdk: latest` with a concrete stable version
-- [ ] No server behavior yet
+- [x] Replace `@modelcontextprotocol/sdk: latest` with a concrete stable version
+- [x] No server behavior yet
 
 ### Pass 6.11 — MCP server + tool catalog
 
