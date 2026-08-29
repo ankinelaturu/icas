@@ -1,3 +1,9 @@
+import { existsSync } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { existsSync } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -277,5 +283,30 @@ describe("PlaywrightSurface assert", () => {
         value: { literal: "999" },
       }),
     ).toBe(false);
+  });
+});
+
+describe("PlaywrightSurface observe", () => {
+  let screenshotDir: string;
+  let surface: PlaywrightSurface;
+
+  afterEach(async () => {
+    await surface.close();
+    await rm(screenshotDir, { recursive: true, force: true });
+  });
+
+  it("writes a screenshot and metadata for a fixture page", async () => {
+    screenshotDir = await mkdtemp(join(tmpdir(), "icas-obs-"));
+    surface = new PlaywrightSurface({
+      headed: false,
+      screenshotDir,
+    });
+    await surface.open(pageUrl("home.html"));
+    const observation = await surface.observe();
+    expect(observation.url).toMatch(/home\.html$/);
+    expect(observation.metadata?.title).toBe("Home");
+    expect(observation.imagePath).toBeDefined();
+    expect(existsSync(observation.imagePath ?? "")).toBe(true);
+    expect(observation.accessibilitySnapshot).toBeDefined();
   });
 });

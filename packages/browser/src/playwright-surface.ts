@@ -2,7 +2,17 @@
  * @file PlaywrightSurface — Playwright implementation of the Surface seam.
  */
 
-import type { Assertion, CapabilityAction, TargetDescriptor, ValueRef } from "@icas/capability";
+import { randomUUID } from "node:crypto";
+import { mkdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import type {
+  Assertion,
+  CapabilityAction,
+  TargetDescriptor,
+  ValueRef,
+} from "@icas/capability";
 import { resolveValueRef } from "@icas/capability";
 import type {
   Observation,
@@ -26,6 +36,10 @@ export interface PlaywrightSurfaceOptions {
    * Poll interval for value/state assertions, in milliseconds. Default 250.
    */
   pollingMs?: number;
+  /**
+   * Directory for observation screenshots. Defaults to the OS temp dir.
+   */
+  screenshotDir?: string;
 }
 
 /**
@@ -38,16 +52,19 @@ export class PlaywrightSurface implements Surface {
   private readonly headed: boolean;
   private readonly timeoutMs: number;
   private readonly pollingMs: number;
+  private readonly screenshotDir: string;
 
   /**
    * @param options.headed - Headed window when true; tests should pass false
    * @param options.timeoutMs - Locator wait budget; default 10_000
    * @param options.pollingMs - Assertion poll interval; default 250
+   * @param options.screenshotDir - Where observe() writes PNGs
    */
   constructor(options: PlaywrightSurfaceOptions = {}) {
     this.headed = options.headed ?? true;
     this.timeoutMs = options.timeoutMs ?? 10_000;
     this.pollingMs = options.pollingMs ?? 250;
+    this.screenshotDir = options.screenshotDir ?? tmpdir();
   }
 
   /**
@@ -83,8 +100,23 @@ export class PlaywrightSurface implements Surface {
     return this.requirePage().url();
   }
 
+  /**
+   * Capture a full-page screenshot plus optional accessibility tree.
+   */
   async observe(): Promise<Observation> {
-    throw new Error("PlaywrightSurface.observe is a scaffold.");
+    const page = this.requirePage();
+    const id = randomUUID();
+    await mkdir(this.screenshotDir, { recursive: true });
+    const imagePath = join(this.screenshotDir, `${id}.png`);
+    await page.screenshot({ path: imagePath, fullPage: true });
+    const accessibilitySnapshot = await page.locator("body").ariaSnapshot();
+    return {
+      id,
+      url: page.url(),
+      imagePath,
+      accessibilitySnapshot,
+      metadata: { title: await page.title() },
+    };
   }
 
   /**

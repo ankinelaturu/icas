@@ -138,9 +138,9 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 ### Pass 2.7 — Observation capture
 
-- [ ] Screenshot to a path; optional accessibility/DOM supplement
-- [ ] Do not require clean test IDs
-- [ ] Test: observe fixture page produces an image file + metadata
+- [x] Screenshot to a path; optional accessibility/DOM supplement
+- [x] Do not require clean test IDs
+- [x] Test: observe fixture page produces an image file + metadata
 
 ### Pass 2.8 — Navigation / origin hooks
 
