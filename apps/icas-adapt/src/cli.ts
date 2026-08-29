@@ -141,7 +141,7 @@ async function executeAdaptCommand(
       ...(io.specializer === undefined ? {} : { specializer: io.specializer }),
     });
     io.write(formatAdaptReport(report, opts.tenant, override?.provenance.createdBy));
-    process.exitCode = report.status === "compatible" ? 0 : 1;
+    process.exitCode = 0;
   } catch (error) {
     io.writeErr(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
@@ -168,6 +168,7 @@ function formatAdaptReport(
   if (report.status === "business_outcome") {
     lines.push(`outcome: ${report.result.outcome}`);
     lines.push(`runId: ${report.result.runId}`);
+    lines.push("re-verified effective capability; enrollment kept");
     return lines.join("\n");
   }
   lines.push(`step: ${report.stepId}`);
@@ -175,6 +176,7 @@ function formatAdaptReport(
   lines.push(`expected: ${JSON.stringify(report.expected)}`);
   lines.push(`observed: ${JSON.stringify(report.observed)}`);
   lines.push(`runId: ${report.result.runId}`);
+  lines.push("re-verified effective capability; enrollment kept");
   return lines.join("\n");
 }
 

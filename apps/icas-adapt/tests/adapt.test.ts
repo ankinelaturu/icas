@@ -83,14 +83,23 @@ describe("icas-adapt override generation", () => {
             runId: "run-adapt-ok",
           };
         }
+        // First call is the unenrolled base (mismatch). Second is resolve+replay.
+        if (invocations.length === 1) {
+          return {
+            status: "failure" as const,
+            capabilityId: invocation.capability.id,
+            code: "TARGET_NOT_FOUND",
+            stepId: "open-lending",
+            expected: { type: "textVisible", value: "Lending" },
+            observed: false,
+            runId: "run-adapt-miss",
+          };
+        }
         return {
-          status: "failure" as const,
+          status: "success" as const,
           capabilityId: invocation.capability.id,
-          code: "TARGET_NOT_FOUND",
-          stepId: "open-lending",
-          expected: { type: "textVisible", value: "Lending" },
-          observed: false,
-          runId: "run-adapt-miss",
+          outputs: {},
+          runId: "run-adapt-reverify",
         };
       },
     };
@@ -129,6 +138,16 @@ describe("icas-adapt override generation", () => {
     expect(overrides[0]?.overrides.steps?.["open-lending"]?.target?.strategies[0]).toMatchObject({
       text: "Member Lending",
     });
+    expect(invocations).toHaveLength(2);
+    const reverified = invocations[1]?.capability.steps.find((step) => step.id === "open-lending");
+    expect(reverified?.action).toMatchObject({
+      type: "click",
+      target: {
+        strategies: expect.arrayContaining([
+          expect.objectContaining({ text: "Member Lending" }),
+        ]),
+      },
+    });
   });
 
   it("writes a header-only verified override when the base already matches", async () => {
@@ -155,5 +174,43 @@ describe("icas-adapt override generation", () => {
     const overrides = await registry.listOverrides({ tenant: "loki-bank" });
     expect(overrides[0]?.overrides).toEqual({});
     expect(overrides[0]?.provenance.createdBy).toBe("verified");
+    expect(invocations).toHaveLength(2);
+  });
+
+  it("rolls back the override when re-verify checkpoints fail", async () => {
+    await registry.save(loadLoanPayoff());
+    await runAdapt(
+      [
+        "node",
+        "icas-adapt",
+        "loan-payoff",
+        "--tenant",
+        "loki-bank",
+        "--url",
+        "https://loki.example/home",
+        "--loanAccountId",
+        "987654",
+        "--payoffDate",
+        "2026-09-30",
+      ],
+      {
+        ...deps("mismatch", memberLendingSpecializer),
+        executeReplay: async (invocation: AdaptReplayInvocation) => {
+          invocations.push(invocation);
+          return {
+            status: "failure" as const,
+            capabilityId: invocation.capability.id,
+            code: "TARGET_NOT_FOUND",
+            stepId: "open-lending",
+            expected: { type: "textVisible", value: "Lending" },
+            observed: false,
+            runId: "run-adapt-fail-both",
+          };
+        },
+      },
+    );
+    expect(process.exitCode).toBe(1);
+    expect(errors.join("\n")).toMatch(/failed re-verify/);
+    expect(await registry.listOverrides({ tenant: "loki-bank" })).toEqual([]);
   });
 });

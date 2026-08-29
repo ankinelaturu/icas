@@ -4,6 +4,8 @@
  * Loads the base artifact (not an enrolled resolve). ReplayEngine stops at the
  * first checkpoint mismatch. Compatible enrollments write a header-only override
  * (`createdBy: "verified"`). A one-step mismatch writes `createdBy: "icas-adapt"`.
+ * Enrollment is kept only when a second ReplayEngine run of the resolved
+ * effective capability passes every checkpoint.
  */
 
 import { randomUUID } from "node:crypto";
@@ -14,7 +16,7 @@ import type {
   CapabilityOverride,
   CapabilityRegistry,
 } from "@icas/capability";
-import { validateInputValues } from "@icas/capability";
+import { CapabilityResolver, validateInputValues } from "@icas/capability";
 import { FileSystemEvidenceWriter } from "@icas/evidence";
 import { createRedactor } from "@icas/redactor";
 import {
@@ -109,7 +111,43 @@ export async function runGuardedAdapt(
     ...(deps.specializer === undefined ? {} : { specializer: deps.specializer }),
   });
   await deps.registry.saveOverride(override);
+  const verified = await reverifyOverride(request, base, deps);
+  if (!verified) {
+    await deps.registry.removeOverride(
+      request.tenant,
+      `${base.id}@${base.capabilityVersion}`,
+    );
+    throw new Error(
+      `override for tenant "${request.tenant}" failed re-verify; enrollment was rolled back`,
+    );
+  }
   return { report, capability: base, override };
+}
+
+/**
+ * Resolve the just-written override and replay the effective capability.
+ *
+ * Header-only enrollment is proven the same way as a one-step patch. Failure
+ * rolls back so `icas-play` cannot run an unverified tenant.
+ *
+ * @returns true when every checkpoint passes
+ */
+async function reverifyOverride(
+  request: AdaptRunRequest,
+  base: CapabilityArtifact,
+  deps: AdaptSessionDeps,
+): Promise<boolean> {
+  const effective = await new CapabilityResolver(deps.registry).resolve({
+    id: base.id,
+    tenant: request.tenant,
+    ...(request.version === undefined ? {} : { version: request.version }),
+  });
+  const invocation: AdaptReplayInvocation = { capability: effective, request };
+  const result =
+    deps.executeReplay === undefined
+      ? await executePlaywrightReplay(invocation, deps)
+      : await deps.executeReplay(invocation);
+  return result.status === "success";
 }
 
 /**

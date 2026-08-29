@@ -461,8 +461,8 @@ Thin entry points. Packages own behavior.
 
 ### Pass 6.8 — `icas-adapt` re-verify
 
-- [ ] Resolve base + override; run `ReplayEngine` again
-- [ ] Override is verified only if all checkpoints pass
+- [x] Resolve base + override; run `ReplayEngine` again
+- [x] Override is verified only if all checkpoints pass
 
 ### Pass 6.9 — `icas-adapt` abort to rediscovery
 
