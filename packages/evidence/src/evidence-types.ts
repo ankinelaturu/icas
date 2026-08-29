@@ -33,10 +33,10 @@ export interface EvidenceEvent {
 }
 
 /**
- * Persist run-scoped evidence. Implementations redact before disk in a later pass.
+ * Persist run-scoped evidence. Text and JSON are redacted before disk.
  */
 export interface EvidenceWriter {
   append(event: EvidenceEvent): Promise<void>;
   writeSummary(summary: RunSummary): Promise<void>;
-  captureRichSignal?(kind: "screenshot" | "dom" | "trace", value: unknown): Promise<void>;
+  captureRichSignal(kind: "screenshot" | "dom" | "trace", value: unknown): Promise<void>;
 }

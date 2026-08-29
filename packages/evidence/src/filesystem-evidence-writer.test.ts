@@ -2,11 +2,26 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { createRedactor } from "@icas/redactor";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { EvidenceError } from "./evidence-error.js";
 import { FileSystemEvidenceWriter } from "./filesystem-evidence-writer.js";
 import type { EvidenceEvent, RunSummary } from "./evidence-types.js";
+
+function createWriter(
+  root: string,
+  runType: "discovery" | "replay" = "discovery",
+  runId = "run-001",
+): FileSystemEvidenceWriter {
+  return new FileSystemEvidenceWriter({
+    root,
+    capabilityId: "loan-payoff",
+    runId,
+    runType,
+    redactor: createRedactor("evidence"),
+  });
+}
 
 describe("FileSystemEvidenceWriter", () => {
   let root: string;
@@ -20,12 +35,7 @@ describe("FileSystemEvidenceWriter", () => {
   });
 
   it("appends two events and writes summary.json under a temp run directory", async () => {
-    const writer = new FileSystemEvidenceWriter({
-      root,
-      capabilityId: "loan-payoff",
-      runId: "run-001",
-      runType: "discovery",
-    });
+    const writer = createWriter(root);
     const first: EvidenceEvent = {
       timestamp: "2026-08-28T00:00:00.000Z",
       runId: "run-001",
@@ -64,12 +74,7 @@ describe("FileSystemEvidenceWriter", () => {
   });
 
   it("writes replay events to log.jsonl, not trace.jsonl", async () => {
-    const writer = new FileSystemEvidenceWriter({
-      root,
-      capabilityId: "loan-payoff",
-      runId: "run-002",
-      runType: "replay",
-    });
+    const writer = createWriter(root, "replay", "run-002");
     await writer.append({
       timestamp: "2026-08-28T00:00:00.000Z",
       runId: "run-002",
@@ -89,7 +94,48 @@ describe("FileSystemEvidenceWriter", () => {
           capabilityId: "../escape",
           runId: "run-001",
           runType: "replay",
+          redactor: createRedactor("evidence"),
         }),
     ).toThrow(EvidenceError);
+  });
+
+  it("redacts payloads before they are written to disk", async () => {
+    const writer = createWriter(root);
+    await writer.append({
+      timestamp: "2026-08-28T00:00:00.000Z",
+      runId: "run-001",
+      type: "observation",
+      payload: { note: "SSN 123-45-6789" },
+    });
+    const line = (await readFile(writer.eventsPath(), "utf8")).trimEnd();
+    expect(JSON.parse(line)).toMatchObject({
+      payload: { note: "SSN [REDACTED_SSN]" },
+    });
+  });
+
+  it("writes a screenshot under observations/ and records its path", async () => {
+    const writer = createWriter(root);
+    const png = Buffer.from("fake-png-bytes");
+    await writer.captureRichSignal("screenshot", png);
+    const relative = "observations/screenshot-001.png";
+    expect(await readFile(join(writer.runDirectory(), relative))).toEqual(png);
+    const event = JSON.parse(
+      (await readFile(writer.eventsPath(), "utf8")).trimEnd(),
+    ) as EvidenceEvent;
+    expect(event).toMatchObject({
+      type: "rich_signal",
+      payload: { kind: "screenshot", path: relative },
+    });
+  });
+
+  it("redacts DOM captures before writing observations JSON", async () => {
+    const writer = createWriter(root);
+    await writer.captureRichSignal("dom", {
+      html: "contact teller@bank.example",
+    });
+    const relative = "observations/dom-001.json";
+    expect(
+      JSON.parse(await readFile(join(writer.runDirectory(), relative), "utf8")),
+    ).toEqual({ html: "contact [REDACTED_EMAIL]" });
   });
 });

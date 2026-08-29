@@ -198,10 +198,10 @@ Cross-cutting runtime used by replay and discovery.
 
 ### Pass 3.7 — Evidence rich signals + redaction
 
-- [ ] Observations directory for discovery screenshots
-- [ ] Rich failure signal (screenshot/DOM) on failure and HITL
-- [ ] Persist only after `Redactor`
-- [ ] Tests: redacted payload on disk; screenshot path recorded
+- [x] Observations directory for discovery screenshots
+- [x] Rich failure signal (screenshot/DOM) on failure and HITL
+- [x] Persist only after `Redactor`
+- [x] Tests: redacted payload on disk; screenshot path recorded
 
 ### Pass 3.8 — Evidence run typing
 
