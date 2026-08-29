@@ -89,10 +89,10 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 ### Pass 1.9 — Resolver: insert / disable
 
-- [ ] `insertBefore` / `insertAfter` a known step id
-- [ ] `disabledSteps`
-- [ ] Error when the referenced step id does not exist
-- [ ] Tests: insert, disable, unknown step id
+- [x] `insertBefore` / `insertAfter` a known step id
+- [x] `disabledSteps`
+- [x] Error when the referenced step id does not exist
+- [x] Tests: insert, disable, unknown step id
 
 ---
 

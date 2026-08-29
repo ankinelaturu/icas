@@ -37,6 +37,21 @@ function headerOverride(): CapabilityOverride {
   return validateCapabilityOverride(JSON.parse(raw) as unknown);
 }
 
+function extraStep(id: string): CapabilityStep {
+  return {
+    id,
+    preconditions: [],
+    action: {
+      type: "click",
+      target: {
+        strategies: [{ type: "visibleText", text: "Continue" }],
+      },
+      risk: "safe",
+    },
+    postconditions: [],
+  };
+}
+
 function replacementStep(): CapabilityStep {
   return {
     id: "open-lending",
@@ -214,5 +229,63 @@ describe("CapabilityResolver", () => {
     expect(step?.postconditions).toEqual(postconditions);
     expect(step?.action).toEqual(original?.action);
     expect(step?.preconditions).toEqual(original?.preconditions);
+  });
+
+  it("inserts steps before and after a known step id", async () => {
+    const base = loadLoanPayoff();
+    await registry.save(base);
+    await registry.saveOverride({
+      ...headerOverride(),
+      overrides: {
+        insertBefore: {
+          "open-loan-search": [extraStep("accept-disclosure")],
+        },
+        insertAfter: {
+          "open-loan-search": [extraStep("confirm-search")],
+        },
+      },
+    });
+    const effective = await resolver.resolve({
+      id: "loan-payoff",
+      tenant: "icas",
+    });
+    expect(effective.steps.map((step) => step.id)).toEqual([
+      "open-lending",
+      "accept-disclosure",
+      "open-loan-search",
+      "confirm-search",
+      "enter-loan-account",
+    ]);
+  });
+
+  it("disables a known step", async () => {
+    const base = loadLoanPayoff();
+    await registry.save(base);
+    await registry.saveOverride({
+      ...headerOverride(),
+      overrides: { disabledSteps: ["open-loan-search"] },
+    });
+    const effective = await resolver.resolve({
+      id: "loan-payoff",
+      tenant: "icas",
+    });
+    expect(effective.steps.map((step) => step.id)).toEqual([
+      "open-lending",
+      "enter-loan-account",
+    ]);
+  });
+
+  it("errors when the referenced step id does not exist", async () => {
+    const base = loadLoanPayoff();
+    await registry.save(base);
+    await registry.saveOverride({
+      ...headerOverride(),
+      overrides: {
+        insertBefore: { "missing-step": [extraStep("ghost")] },
+      },
+    });
+    await expect(
+      resolver.resolve({ id: "loan-payoff", tenant: "icas" }),
+    ).rejects.toThrow(/unknown step id "missing-step"/);
   });
 });
