@@ -468,7 +468,7 @@ Thin entry points. Packages own behavior.
 
 - [ ] If divergence is large, downstream preconditions cannot be restored, or the business flow differs, stop
 - [ ] Do not accumulate a large brittle patch
-- [ ] `tests/integration/tenant-adaptation.test.ts` (fixtures; full Tenant B in Phase 7)
+- [ ] `tests/integration/tenant-adaptation.test.ts` (fixtures; full Loki Bank in Phase 7)
 
 ### Pass 6.10 — Pin MCP SDK
 
@@ -490,7 +490,7 @@ Thin entry points. Packages own behavior.
 
 ## Phase 7 — Synthetic tenant apps
 
-`tenants/icas-bank` (done for the happy path + not-found), `tenants/tenant-b` later.
+`tenants/icas-bank` (happy path + not-found), `tenants/loki-bank` (same product, label drift).
 
 Same fictional Vendor+Product: `icas-bank` / `icas-bank`. Tenant catalog id for the default demo is `icas-bank`. The second institution stays a separate app folder. No login flow. No real PII.
 
@@ -516,11 +516,11 @@ Same fictional Vendor+Product: `icas-bank` / `icas-bank`. Tenant catalog id for 
 - [x] Loan details → Payoff → date → Calculate/Generate → statement
 - [x] Outputs: `totalPayoffAmount`, `principalBalance`, `perDiemInterest`
 
-### Pass 7.5 — Tenant B shell + drift
+### Pass 7.5 — Loki Bank shell + drift
 
-- [ ] Runnable on `http://localhost:4102`
-- [ ] Same product/workflow as icas-bank
-- [ ] Small UI drift (labels/nav/module names) that fails icas-bank locators/checkpoints at a known step
+- [x] Runnable on `http://localhost:4102`
+- [x] Same product/workflow as icas-bank
+- [x] Small UI drift (labels/nav/module names) that fails icas-bank locators/checkpoints at a known step
 
 ### Pass 7.6 — `LOAN_NOT_FOUND`
 
@@ -564,7 +564,7 @@ Do not hand-author `capabilities/` merely to look complete. Commit artifacts pro
 - [ ] Pause, same browser, recorded human actions, resume
 - [ ] Commit handoff evidence
 
-### Pass 8.6 — Tenant B adaptation evidence
+### Pass 8.6 — Loki Bank adaptation evidence
 
 - [ ] `icas-adapt` produces a verified override
 - [ ] Commit override + adaptation evidence

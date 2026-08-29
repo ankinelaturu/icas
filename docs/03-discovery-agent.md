@@ -21,7 +21,7 @@ interface DiscoveryRequest {
 
 `--id`, `--url`, and `--goal` are required. Vendor, product, and tenant may be omitted on the CLI; each defaults to `icas-bank`. ICAS is not responsible for inferring vendor, product, tenant, or capability id from the URL.
 
-`--id` is unique in the catalog. It names the Vendor+Product capability, not a tenant copy. A later institution uses `icas-adapt --id loan-payoff --tenant tenant-b`, not a second discover with a new id.
+`--id` is unique in the catalog. It names the Vendor+Product capability, not a tenant copy. A later institution uses `icas-adapt --id loan-payoff --tenant loki-bank`, not a second discover with a new id.
 
 On success the compiler:
 

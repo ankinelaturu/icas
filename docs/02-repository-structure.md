@@ -11,7 +11,7 @@ icas/
 │   └── icas-mcp/
 ├── tenants/
 │   ├── icas-bank/
-│   └── tenant-b/
+│   └── loki-bank/
 ├── packages/
 │   ├── capability/
 │   ├── discovery/

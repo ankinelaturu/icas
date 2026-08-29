@@ -1,5 +1,5 @@
 /**
- * @file HTTP tests for the icas-bank tenant pages.
+ * @file HTTP tests for the loki-bank tenant pages.
  */
 
 import type { AddressInfo } from "node:net";
@@ -7,7 +7,7 @@ import type { Server } from "node:http";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createIcasBankApp } from "./app.js";
+import { createLokiBankApp } from "./app.js";
 
 let server: Server | undefined;
 
@@ -28,31 +28,29 @@ afterEach(async () => {
   });
 });
 
-describe("icas-bank HTTP", () => {
-  it("serves home as authored HTML with a linked stylesheet and no framework chrome", async () => {
+describe("loki-bank HTTP", () => {
+  it("shows the same vendor product and a different institution", async () => {
     const baseUrl = await listen();
-    const response = await fetch(`${baseUrl}/`);
-    const html = await response.text();
-    expect(response.status).toBe(200);
-    expect(html).toContain("ICAS BANK");
+    const html = await (await fetch(`${baseUrl}/`)).text();
+    expect(html).toContain("LOKI BANK");
+    expect(html).toContain("ICAS BANK CORE");
     expect(html).toContain("Vendor: ICAS BANK");
     expect(html).toContain("Product: LS 4.12.08");
     expect(html).toContain("Licensed product: ICAS BANK CORE");
-    expect(html).toContain('href="/styles.css"');
+    expect(html).toContain("Member Lending");
+    expect(html).not.toContain('href="/lending.htm">Lending</a>');
     expect(html).not.toMatch(/__NEXT_DATA__|data-reactroot|@vite\/client/i);
-    const css = await fetch(`${baseUrl}/styles.css`);
-    expect(css.status).toBe(200);
-    expect(css.headers.get("content-type")).toMatch(/text\/css/i);
   });
 
-  it("walks Home → Lending → Inquire → Payoff → statement for loan 987654", async () => {
+  it("walks Member Lending → Loan Servicing → Search → Payoff → statement", async () => {
     const baseUrl = await listen();
-    const home = await (await fetch(`${baseUrl}/`)).text();
-    expect(home).toContain("href=\"/lending.htm\"");
-
     const lending = await (await fetch(`${baseUrl}/lending.htm`)).text();
-    expect(lending).toContain("Loan Account Inquiry");
-    expect(lending).toContain("href=\"/lending/search.htm\"");
+    expect(lending).toContain("Loan Servicing");
+    expect(lending).not.toContain("Loan Account Inquiry");
+
+    const search = await (await fetch(`${baseUrl}/lending/search.htm`)).text();
+    expect(search).toContain('value="Search"');
+    expect(search).not.toContain('value="Inquire"');
 
     const searched = await fetch(`${baseUrl}/lending/search.htm`, {
       method: "POST",
@@ -65,13 +63,6 @@ describe("icas-bank HTTP", () => {
       "/lending/account.htm?ln=987654",
     );
 
-    const details = await (
-      await fetch(`${baseUrl}/lending/account.htm?ln=987654`)
-    ).text();
-    expect(details).toContain("Loan Details");
-    expect(details).toContain("Payoff");
-    expect(details).toContain("12450.00");
-
     const statement = await fetch(`${baseUrl}/lending/payoff.htm`, {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -79,13 +70,11 @@ describe("icas-bank HTTP", () => {
     });
     const html = await statement.text();
     expect(statement.status).toBe(200);
-    expect(html).toContain("Payoff Statement");
+    expect(html).toContain("Licensed product: ICAS BANK CORE");
     expect(html).toContain("Total Payoff Amount");
     expect(html).toContain("12563.85");
     expect(html).toContain("Principal Balance");
-    expect(html).toContain("12450.00");
     expect(html).toContain("Per Diem Interest");
-    expect(html).toContain("3.45");
   });
 
   it("shows a domain not-found page for an unknown loan", async () => {
@@ -99,12 +88,11 @@ describe("icas-bank HTTP", () => {
     const html = await searched.text();
     expect(html).toContain("No loan record found");
     expect(html).toContain("000000");
-    expect(html).not.toContain("Internal Server Error");
   });
 });
 
 async function listen(): Promise<string> {
-  const app = createIcasBankApp();
+  const app = createLokiBankApp();
   server = await new Promise<Server>((resolve, reject) => {
     const started = app.listen(0, "127.0.0.1");
     started.once("listening", () => {

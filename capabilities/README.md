@@ -12,7 +12,7 @@ capabilities/
     1.0.0.json           # base CapabilityArtifact (Vendor+Product)
     overrides/
       icas-bank.json      # header-only enrollment after first discover
-      tenant-b.json      # header-only if compatible, or a declarative patch
+      loki-bank.json      # header-only if compatible, or a declarative patch
 ```
 
 The effective capability (base + override) is never stored here. See `docs/04-capability-artifact.md`.

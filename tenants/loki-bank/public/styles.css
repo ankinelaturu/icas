@@ -1,0 +1,206 @@
+/* Loki Bank — ICAS BANK CORE LS 4.12 (same vendor product, CU skin) */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #efe6d0;
+  color: #1a1a14;
+  font-family: Georgia, "Times New Roman", Times, serif;
+  font-size: 14px;
+}
+
+a {
+  color: #6b4f00;
+  text-decoration: underline;
+}
+
+a:visited {
+  color: #4a3a12;
+}
+
+a:active {
+  color: #8b0000;
+}
+
+table.shell {
+  width: 100%;
+  border-collapse: collapse;
+  background: #efe6d0;
+}
+
+td.banner {
+  background: #1b4d3e;
+  color: #f4e4b2;
+  padding: 6px 10px;
+  font-weight: bold;
+}
+
+td.banner .prod {
+  font-size: 16px;
+  letter-spacing: 1px;
+  color: #f4e4b2;
+}
+
+td.banner .meta {
+  font-weight: normal;
+  font-size: 14px;
+  text-align: right;
+  color: #e8d9a0;
+}
+
+tr.subbar td {
+  background: #0f3329;
+  color: #e8c547;
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+td.nav {
+  width: 200px;
+  background: #e4d7b8;
+  border-right: 3px solid #1b4d3e;
+  vertical-align: top;
+  padding: 10px 6px;
+}
+
+table.menu {
+  width: 188px;
+  border: 2px solid #1b4d3e;
+  background: #f7f0dc;
+}
+
+td.menu-hd {
+  background: #1b4d3e;
+  color: #f4e4b2;
+  font-weight: bold;
+  padding: 4px 8px;
+}
+
+td.menu-item {
+  padding: 5px 8px;
+  border-top: 1px solid #c4b48a;
+}
+
+td.menu-item a {
+  color: #1b4d3e;
+  text-decoration: none;
+}
+
+td.menu-item a:hover {
+  text-decoration: underline;
+}
+
+td.work {
+  vertical-align: top;
+  padding: 12px 14px;
+  background: #efe6d0;
+}
+
+td.status {
+  background: #d4c6a0;
+  border-top: 2px solid #1b4d3e;
+  padding: 4px 10px;
+  font-size: 13px;
+  color: #1a1a14;
+}
+
+.section-hd {
+  background: #e8c547;
+  border: 1px solid #1b4d3e;
+  padding: 4px 8px;
+  font-weight: bold;
+  color: #1b4d3e;
+  margin: 0 0 8px 0;
+}
+
+table.grid {
+  border-collapse: collapse;
+  background: #fffdf6;
+  border: 1px solid #1b4d3e;
+}
+
+table.grid td, table.grid th {
+  border: 1px solid #1b4d3e;
+  padding: 5px 10px;
+  font-size: 14px;
+}
+
+table.grid th {
+  background: #1b4d3e;
+  color: #f4e4b2;
+  font-weight: bold;
+  text-align: left;
+}
+
+td.lbl {
+  background: #e8dcc0;
+  width: 200px;
+}
+
+td.val {
+  background: #fffdf6;
+}
+
+td.amt {
+  font-family: "Courier New", Courier, monospace;
+  text-align: right;
+  white-space: nowrap;
+}
+
+input[type="text"] {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 15px;
+  border: 2px inset #c4b48a;
+  background: #fffdf6;
+  color: #1a1a14;
+}
+
+input[type="submit"], input[type="reset"], input[type="button"] {
+  font-family: Georgia, "Times New Roman", Times, serif;
+  font-size: 14px;
+  background: #e8c547;
+  border: 2px outset #f4e4b2;
+  padding: 4px 14px;
+  color: #1b4d3e;
+}
+
+p.note {
+  color: #1b4d3e;
+  margin: 8px 0 0 0;
+}
+
+p.warn {
+  color: #8b0000;
+  font-weight: bold;
+  margin: 8px 0;
+}
+
+tr.err td {
+  background: #f4d4c8;
+  color: #8b0000;
+  font-weight: bold;
+}
+
+.stmt-box {
+  border: 3px double #1b4d3e;
+  background: #fffdf6;
+  padding: 12px;
+  width: 640px;
+}
+
+h1 {
+  font-size: 18px;
+  margin: 0 0 8px 0;
+  color: #1b4d3e;
+}
+
+h2 {
+  font-size: 15px;
+  margin: 10px 0 4px 0;
+  color: #1a1a14;
+}
+
+iframe.rates {
+  border: 2px inset #c4b48a;
+  background: #fffdf6;
+}

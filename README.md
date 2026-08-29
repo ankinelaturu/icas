@@ -56,10 +56,11 @@ pnpm icas-play -- \
   --loanAccountId 987654 \
   --payoffDate 2026-09-30
 
-# Adapt to another tenant running the same vendor/product
+# Adapt to Loki Bank (same vendor/product, label drift)
+pnpm loki-bank
 pnpm icas-adapt -- \
   loan-payoff \
-  --tenant tenant-b \
+  --tenant loki-bank \
   --url http://localhost:4102
 
 # Expose capabilities over MCP

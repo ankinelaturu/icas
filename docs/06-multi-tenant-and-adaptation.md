@@ -57,12 +57,12 @@ icas-agent discover --id loan-payoff --url … --goal …
 → discovery evidence
 ```
 
-For Tenant B with same Vendor+Product:
+For Loki Bank with same Vendor+Product:
 
 ```text
-icas-adapt loan-payoff --tenant tenant-b --url …
+icas-adapt loan-payoff --tenant loki-bank --url …
 → guarded ReplayEngine verification against C
-→ success: write header-only override for tenant-b (createdBy: "verified")
+→ success: write header-only override for loki-bank (createdBy: "verified")
 → mismatch: write a small declarative patch and re-verify
 ```
 
@@ -116,7 +116,7 @@ Preferred model:
 Base capability:
 s1 → s2 → s3 → s4 → s5
 
-Tenant B override:
+Loki Bank override:
           s3'
 
 Effective capability:
@@ -151,7 +151,7 @@ Example override:
 {
   "baseCapability": "loan-payoff@1.0.0",
   "target": {
-    "tenant": "tenant-b"
+    "tenant": "loki-bank"
   },
   "overrides": {
     "steps": {
@@ -190,7 +190,7 @@ Provenance example:
 
 ```json
 {
-  "tenant": "tenant-b",
+  "tenant": "loki-bank",
   "baseCapability": "loan-payoff@1.0.0",
   "createdBy": "icas-adapt",
   "reason": "step s3 precondition mismatch",
@@ -224,7 +224,7 @@ Tenant overrides are subject to the same pre/post checkpoint validation as the b
 
 ## Repository tenant fixtures
 
-`tenants/icas-bank` is the first institution. `tenants/tenant-b` remains a later, separate install of the **same fictional Vendor+Product** (`icas-bank` / `icas-bank`) with small UI drift. This gives the project a concrete environment for:
+`tenants/icas-bank` is the first institution. `tenants/loki-bank` is a separate install of the **same fictional Vendor+Product** (`icas-bank` / `icas-bank`) with CU branding and small label drift. This gives the project a concrete environment for:
 
 - capability reuse;
 - guarded replay;

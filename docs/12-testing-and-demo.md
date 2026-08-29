@@ -94,7 +94,7 @@ tests/integration/
 
 ### 6. Tenant adaptation
 
-- Tenant B runs same fictional Vendor+Product but has a small UI variation;
+- Loki Bank runs same fictional Vendor+Product but has a small UI variation;
 - guarded replay detects the mismatch;
 - `icas-adapt` specializes the affected region and proves re-entry.
 

@@ -1,6 +1,8 @@
 # ICAS Bank — synthetic tenant
 
-Local stand-in for one institution running the fictional **icas-bank** vendor product. No login. No real PII.
+The large banner is the **institution** (`ICAS BANK`). Vendor/product chrome matches Loki: `Vendor: ICAS BANK`, `Product: LS 4.12.08`, `Licensed product: ICAS BANK CORE`.
+
+Same fictional vendor product as `tenants/loki-bank` (label-drift twin on `:4102`).
 
 - Catalog: `--vendor icas-bank --product icas-bank --tenant icas-bank` (CLI defaults)
 - URL: `http://localhost:4101`

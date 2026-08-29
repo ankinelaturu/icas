@@ -78,7 +78,7 @@ Every tenant that has been discovered or verified gets an override file for that
 ```text
 capabilities/loan-payoff/1.0.0.json
 capabilities/loan-payoff/overrides/icas-bank.json  # header only after first discover
-capabilities/loan-payoff/overrides/tenant-b.json  # header only if compatible, or a real patch
+capabilities/loan-payoff/overrides/loki-bank.json  # header only if compatible, or a real patch
 ```
 
 Rules:
@@ -418,7 +418,7 @@ capabilities/
     1.0.0.json              # base CapabilityArtifact
     overrides/
       icas-bank.json         # header-only after discover --id loan-payoff
-      tenant-b.json         # header-only or a real patch
+      loki-bank.json         # header-only or a real patch
                             # baseCapability: "loan-payoff@1.0.0"
 ```
 
