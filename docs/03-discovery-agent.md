@@ -107,22 +107,23 @@ Suggested state:
 interface SearchNode {
   stateId: string;
   observation: Observation;
-  candidates?: CandidateAction[];
+  candidates: CandidateAction[];
   triedCandidateIds: Set<string>;
   parent?: SearchNode;
+  depth: number;
 }
 ```
 
-Suggested limits:
+Suggested limits (`resolveSearchBudget`, defaults for a synthetic tenant):
 
-- max total actions/steps;
-- max depth;
-- max candidates per state;
-- overall timeout;
+- max total actions/steps (40);
+- max depth (20);
+- max candidates per state (5);
+- overall timeout (120s);
 - repeated-state detection;
 - maximum retries/backtracks.
 
-Exact defaults should be tuned against the tenant app rather than over-designed in advance.
+Exact defaults should be tuned against the tenant app rather than over-designed in advance. The controller stores this graph in ICAS memory, not in Mastra conversation state.
 
 ## Backtracking
 

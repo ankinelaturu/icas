@@ -21,6 +21,13 @@ export {
   sortCandidatesByRank,
   validateCandidateProposal,
 } from "./candidate-action.js";
+export type { SearchBudget, SearchNode } from "./search-state.js";
+export {
+  createSearchNode,
+  DEFAULT_SEARCH_BUDGET,
+  resolveSearchBudget,
+  stateIdFromObservation,
+} from "./search-state.js";
 
 export interface DiscoveryTarget {
   vendor: string;

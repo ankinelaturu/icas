@@ -329,9 +329,9 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 
 ### Pass 5.2 — Search state and budgets
 
-- [ ] `SearchNode` (state id, observation, candidates, tried ids, parent)
-- [ ] Limits: max steps, max depth, max candidates per state, timeout
-- [ ] Tests: budget fields exist and are applied as numbers (enforcement in later passes)
+- [x] `SearchNode` (state id, observation, candidates, tried ids, parent)
+- [x] Limits: max steps, max depth, max candidates per state, timeout
+- [x] Tests: budget fields exist and are applied as numbers (enforcement in later passes)
 
 ### Pass 5.3 — Discovery loop skeleton (no live model)
 
