@@ -3,7 +3,7 @@
   "capabilityVersion": "1.0.0",
   "id": "loan-payoff",
   "name": "Generate Loan Payoff Statement",
-  "description": "TEST FIXTURE ONLY: synthetic example of the intended artifact shape.",
+  "description": "TEST FIXTURE ONLY: icas-bank locators for replay tests. Not a submission catalog artifact.",
   "target": {
     "vendor": "icas-bank",
     "product": "icas-bank"
@@ -29,8 +29,11 @@
       "extract": {
         "target": {
           "strategies": [
-            { "type": "label", "label": "Total Payoff Amount" },
-            { "type": "visibleText", "text": "Total Payoff" }
+            {
+              "type": "relative",
+              "text": "Total Payoff Amount",
+              "xpath": "following-sibling::td[1]"
+            }
           ]
         }
       }
@@ -40,7 +43,11 @@
       "extract": {
         "target": {
           "strategies": [
-            { "type": "label", "label": "Principal Balance" }
+            {
+              "type": "relative",
+              "text": "Principal Balance",
+              "xpath": "following-sibling::td[1]"
+            }
           ]
         }
       }
@@ -50,7 +57,11 @@
       "extract": {
         "target": {
           "strategies": [
-            { "type": "label", "label": "Per Diem Interest" }
+            {
+              "type": "relative",
+              "text": "Per Diem Interest",
+              "xpath": "following-sibling::td[1]"
+            }
           ]
         }
       }
@@ -66,7 +77,7 @@
         "type": "click",
         "target": {
           "strategies": [
-            { "type": "roleText", "role": "button", "text": "Lending" },
+            { "type": "roleText", "role": "link", "text": "Lending" },
             { "type": "visibleText", "text": "Lending" }
           ]
         },
@@ -74,7 +85,8 @@
         "risk": "safe"
       },
       "postconditions": [
-        { "type": "textVisible", "value": "Lending Services" }
+        { "type": "textVisible", "value": "Lending Services" },
+        { "type": "urlMatches", "pattern": "lending.htm" }
       ]
     },
     {
@@ -84,7 +96,8 @@
           "type": "controlPresent",
           "target": {
             "strategies": [
-              { "type": "visibleText", "text": "Loan Search" }
+              { "type": "roleText", "role": "link", "text": "Loan Account Inquiry" },
+              { "type": "visibleText", "text": "Loan Account Inquiry" }
             ]
           }
         }
@@ -93,7 +106,8 @@
         "type": "click",
         "target": {
           "strategies": [
-            { "type": "visibleText", "text": "Loan Search" }
+            { "type": "roleText", "role": "link", "text": "Loan Account Inquiry" },
+            { "type": "visibleText", "text": "Loan Account Inquiry" }
           ]
         },
         "intent": "Open existing-loan search",
@@ -110,7 +124,8 @@
           "type": "controlPresent",
           "target": {
             "strategies": [
-              { "type": "label", "label": "Loan Account" }
+              { "type": "relative", "text": "LN Acct #" },
+              { "type": "css", "selector": "input[name='txtAcct']" }
             ]
           }
         }
@@ -119,7 +134,8 @@
         "type": "fill",
         "target": {
           "strategies": [
-            { "type": "label", "label": "Loan Account" }
+            { "type": "relative", "text": "LN Acct #" },
+            { "type": "css", "selector": "input[name='txtAcct']" }
           ]
         },
         "value": { "input": "loanAccountId" },
@@ -131,11 +147,136 @@
           "type": "valueEquals",
           "target": {
             "strategies": [
-              { "type": "label", "label": "Loan Account" }
+              { "type": "relative", "text": "LN Acct #" },
+              { "type": "css", "selector": "input[name='txtAcct']" }
             ]
           },
           "value": { "input": "loanAccountId" }
         }
+      ]
+    },
+    {
+      "id": "inquire-loan",
+      "preconditions": [
+        {
+          "type": "controlPresent",
+          "target": {
+            "strategies": [
+              { "type": "roleText", "role": "button", "text": "Inquire" },
+              { "type": "visibleText", "text": "Inquire" }
+            ]
+          }
+        }
+      ],
+      "action": {
+        "type": "click",
+        "target": {
+          "strategies": [
+            { "type": "roleText", "role": "button", "text": "Inquire" },
+            { "type": "visibleText", "text": "Inquire" }
+          ]
+        },
+        "intent": "Submit loan inquiry",
+        "risk": "safe"
+      },
+      "postconditions": [
+        { "type": "textVisible", "value": "Loan Details" },
+        { "type": "urlMatches", "pattern": "account.htm" }
+      ]
+    },
+    {
+      "id": "open-payoff",
+      "preconditions": [
+        {
+          "type": "controlPresent",
+          "target": {
+            "strategies": [
+              { "type": "roleText", "role": "link", "text": "Payoff" },
+              { "type": "visibleText", "text": "Payoff" }
+            ]
+          }
+        }
+      ],
+      "action": {
+        "type": "click",
+        "target": {
+          "strategies": [
+            { "type": "roleText", "role": "link", "text": "Payoff" },
+            { "type": "visibleText", "text": "Payoff" }
+          ]
+        },
+        "intent": "Open payoff quote",
+        "risk": "safe"
+      },
+      "postconditions": [
+        { "type": "textVisible", "value": "Payoff Dt" },
+        { "type": "urlMatches", "pattern": "payoff.htm" }
+      ]
+    },
+    {
+      "id": "enter-payoff-date",
+      "preconditions": [
+        {
+          "type": "controlPresent",
+          "target": {
+            "strategies": [
+              { "type": "relative", "text": "Payoff Dt" },
+              { "type": "css", "selector": "input[name='dtPayoff']" }
+            ]
+          }
+        }
+      ],
+      "action": {
+        "type": "fill",
+        "target": {
+          "strategies": [
+            { "type": "relative", "text": "Payoff Dt" },
+            { "type": "css", "selector": "input[name='dtPayoff']" }
+          ]
+        },
+        "value": { "input": "payoffDate" },
+        "intent": "Enter requested payoff date",
+        "risk": "safe"
+      },
+      "postconditions": [
+        {
+          "type": "valueEquals",
+          "target": {
+            "strategies": [
+              { "type": "relative", "text": "Payoff Dt" },
+              { "type": "css", "selector": "input[name='dtPayoff']" }
+            ]
+          },
+          "value": { "input": "payoffDate" }
+        }
+      ]
+    },
+    {
+      "id": "generate-statement",
+      "preconditions": [
+        {
+          "type": "controlPresent",
+          "target": {
+            "strategies": [
+              { "type": "roleText", "role": "button", "text": "Calculate / Generate" },
+              { "type": "visibleText", "text": "Calculate / Generate" }
+            ]
+          }
+        }
+      ],
+      "action": {
+        "type": "click",
+        "target": {
+          "strategies": [
+            { "type": "roleText", "role": "button", "text": "Calculate / Generate" },
+            { "type": "visibleText", "text": "Calculate / Generate" }
+          ]
+        },
+        "intent": "Generate payoff statement",
+        "risk": "safe"
+      },
+      "postconditions": [
+        { "type": "textVisible", "value": "Payoff Statement" }
       ]
     }
   ],

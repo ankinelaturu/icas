@@ -255,6 +255,10 @@ describe("CapabilityResolver", () => {
       "open-loan-search",
       "confirm-search",
       "enter-loan-account",
+      "inquire-loan",
+      "open-payoff",
+      "enter-payoff-date",
+      "generate-statement",
     ]);
   });
 
@@ -272,6 +276,10 @@ describe("CapabilityResolver", () => {
     expect(effective.steps.map((step) => step.id)).toEqual([
       "open-lending",
       "enter-loan-account",
+      "inquire-loan",
+      "open-payoff",
+      "enter-payoff-date",
+      "generate-statement",
     ]);
   });
 
