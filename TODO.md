@@ -430,11 +430,11 @@ Thin entry points. Packages own behavior.
 
 ### Pass 6.3 — `icas-play run` (strict)
 
-- [ ] Parse typed inputs from CLI
-- [ ] `--url` required; `--tenant` / `--vendor` / `--product` default to `icas-bank`
-- [ ] Do not infer tenant from the URL
-- [ ] `resolve({ id, tenant })` requires an existing override (not enrolled → fail)
-- [ ] Then `ReplayEngine` (no LLM)
+- [x] Parse typed inputs from CLI
+- [x] `--url` required; `--tenant` / `--vendor` / `--product` default to `icas-bank`
+- [x] Do not infer tenant from the URL
+- [x] `resolve({ id, tenant })` requires an existing override (not enrolled → fail)
+- [x] Then `ReplayEngine` (no LLM)
 
 ### Pass 6.4 — `icas-play run --assist`
 
