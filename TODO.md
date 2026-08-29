@@ -132,9 +132,9 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 ### Pass 2.6 — Assertions with bounded waits
 
-- [ ] Implement assertion families: `textVisible`, `controlPresent`, `valueEquals`, `urlMatches`, `state`
-- [ ] Bounded `timeoutMs` / polling; no fixed sleep as the primary wait
-- [ ] Tests: pass, timeout-fail, value mismatch
+- [x] Implement assertion families: `textVisible`, `controlPresent`, `valueEquals`, `urlMatches`, `state`
+- [x] Bounded `timeoutMs` / polling; no fixed sleep as the primary wait
+- [x] Tests: pass, timeout-fail, value mismatch
 
 ### Pass 2.7 — Observation capture
 

@@ -22,6 +22,10 @@ export interface PlaywrightSurfaceOptions {
    * Bound for locator waits, in milliseconds. Default 10_000.
    */
   timeoutMs?: number;
+  /**
+   * Poll interval for value/state assertions, in milliseconds. Default 250.
+   */
+  pollingMs?: number;
 }
 
 /**
@@ -33,14 +37,17 @@ export class PlaywrightSurface implements Surface {
   private page: Page | undefined;
   private readonly headed: boolean;
   private readonly timeoutMs: number;
+  private readonly pollingMs: number;
 
   /**
    * @param options.headed - Headed window when true; tests should pass false
    * @param options.timeoutMs - Locator wait budget; default 10_000
+   * @param options.pollingMs - Assertion poll interval; default 250
    */
   constructor(options: PlaywrightSurfaceOptions = {}) {
     this.headed = options.headed ?? true;
     this.timeoutMs = options.timeoutMs ?? 10_000;
+    this.pollingMs = options.pollingMs ?? 250;
   }
 
   /**
@@ -120,8 +127,68 @@ export class PlaywrightSurface implements Surface {
     }
   }
 
-  async assert(_assertion: Assertion): Promise<boolean> {
-    throw new Error("PlaywrightSurface.assert is a scaffold.");
+  /**
+   * Check an assertion with bounded waits. Returns false on timeout or mismatch.
+   */
+  async assert(assertion: Assertion): Promise<boolean> {
+    const page = this.requirePage();
+    try {
+      switch (assertion.type) {
+        case "textVisible": {
+          const text = assertionString(assertion.value);
+          await page
+            .getByText(text)
+            .first()
+            .waitFor({ state: "visible", timeout: this.timeoutMs });
+          return true;
+        }
+        case "controlPresent":
+          await this.locate(assertion.target);
+          return true;
+        case "valueEquals": {
+          const control = await this.locate(assertion.target);
+          const expected = assertionString(assertion.value);
+          const deadline = Date.now() + this.timeoutMs;
+          while (Date.now() < deadline) {
+            const actual = await readControlValue(control);
+            if (actual === expected) {
+              return true;
+            }
+            await page.waitForTimeout(this.pollingMs);
+          }
+          return false;
+        }
+        case "urlMatches": {
+          const pattern = assertion.pattern;
+          await page.waitForURL(
+            (url) =>
+              url.href.includes(pattern) || new RegExp(pattern).test(url.href),
+            { timeout: this.timeoutMs },
+          );
+          return true;
+        }
+        case "state": {
+          const expected = assertionString(assertion.value);
+          const loc = page.locator(`[data-icas-state="${assertion.key}"]`);
+          await loc.waitFor({ state: "visible", timeout: this.timeoutMs });
+          await page.waitForFunction(
+            ({ key, expectedValue }) => {
+              const el = document.querySelector(`[data-icas-state="${key}"]`);
+              return el?.textContent?.trim() === expectedValue;
+            },
+            { key: assertion.key, expectedValue: expected },
+            { timeout: this.timeoutMs, polling: this.pollingMs },
+          );
+          return true;
+        }
+        default: {
+          const exhaustive: never = assertion;
+          return exhaustive;
+        }
+      }
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -143,6 +210,13 @@ export class PlaywrightSurface implements Surface {
     }
     return this.page;
   }
+}
+
+function assertionString(value: string | ValueRef): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  return literalString(value);
 }
 
 function literalString(ref: ValueRef): string {

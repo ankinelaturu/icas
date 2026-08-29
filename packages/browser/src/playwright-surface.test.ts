@@ -202,3 +202,80 @@ describe("PlaywrightSurface execute", () => {
     expect(surface.url()).toMatch(/lending\.html$/);
   });
 });
+
+describe("PlaywrightSurface assert", () => {
+  const surface = new PlaywrightSurface({
+    headed: false,
+    timeoutMs: 400,
+    pollingMs: 50,
+  });
+
+  afterEach(async () => {
+    await surface.close();
+  });
+
+  it("passes textVisible, controlPresent, urlMatches, and state", async () => {
+    await surface.open(pageUrl("home.html"));
+    expect(
+      await surface.assert({ type: "textVisible", value: "Home" }),
+    ).toBe(true);
+    expect(
+      await surface.assert({
+        type: "controlPresent",
+        target: {
+          strategies: [{ type: "roleText", role: "button", text: "Lending" }],
+        },
+      }),
+    ).toBe(true);
+    expect(
+      await surface.assert({ type: "urlMatches", pattern: "home.html" }),
+    ).toBe(true);
+    await surface.open(pageUrl("loan-search.html"));
+    expect(
+      await surface.assert({
+        type: "state",
+        key: "accountStatus",
+        value: "Active",
+      }),
+    ).toBe(true);
+  });
+
+  it("passes valueEquals after a fill", async () => {
+    await surface.open(pageUrl("loan-search.html"));
+    await surface.execute({
+      type: "fill",
+      target: { strategies: [{ type: "label", label: "Loan Account" }] },
+      value: { literal: "987654" },
+    });
+    expect(
+      await surface.assert({
+        type: "valueEquals",
+        target: { strategies: [{ type: "label", label: "Loan Account" }] },
+        value: { literal: "987654" },
+      }),
+    ).toBe(true);
+  });
+
+  it("returns false when a wait times out", async () => {
+    await surface.open(pageUrl("home.html"));
+    expect(
+      await surface.assert({ type: "textVisible", value: "Never appears" }),
+    ).toBe(false);
+  });
+
+  it("returns false on a value mismatch", async () => {
+    await surface.open(pageUrl("loan-search.html"));
+    await surface.execute({
+      type: "fill",
+      target: { strategies: [{ type: "label", label: "Loan Account" }] },
+      value: { literal: "111" },
+    });
+    expect(
+      await surface.assert({
+        type: "valueEquals",
+        target: { strategies: [{ type: "label", label: "Loan Account" }] },
+        value: { literal: "999" },
+      }),
+    ).toBe(false);
+  });
+});
