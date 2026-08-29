@@ -335,9 +335,9 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 
 ### Pass 5.3 — Discovery loop skeleton (no live model)
 
-- [ ] `DiscoveryAgent.run` always discovers (never silent replay)
-- [ ] Loop: observe → (stub) candidates → policy → execute → record → stop on budget
-- [ ] Tests with a fake proposer: one successful click path; timeout stop
+- [x] `DiscoveryAgent.run` always discovers (never silent replay)
+- [x] Loop: observe → (stub) candidates → policy → execute → record → stop on budget
+- [x] Tests with a fake proposer: one successful click path; timeout stop
 
 ### Pass 5.4 — Mastra tool/LLM adapter
 

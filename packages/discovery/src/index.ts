@@ -5,9 +5,6 @@
  * state stays in ICAS; Mastra is wired in a later pass as the proposer only.
  */
 
-import type { CapabilityArtifact } from "@icas/capability";
-import type { Surface } from "@icas/surface";
-
 export type {
   CandidateAction,
   CandidateProposal,
@@ -21,6 +18,16 @@ export {
   sortCandidatesByRank,
   validateCandidateProposal,
 } from "./candidate-action.js";
+export type { CandidateProposer, ProposeContext } from "./candidate-proposer.js";
+export { CapabilityCompiler } from "./capability-compiler.js";
+export type { DiscoveryAgentDependencies } from "./discovery-agent.js";
+export { DiscoveryAgent } from "./discovery-agent.js";
+export type {
+  DiscoveryRequest,
+  DiscoveryResult,
+  DiscoveryTarget,
+  DiscoveryTraceEvent,
+} from "./discovery-types.js";
 export type { SearchBudget, SearchNode } from "./search-state.js";
 export {
   createSearchNode,
@@ -28,42 +35,3 @@ export {
   resolveSearchBudget,
   stateIdFromObservation,
 } from "./search-state.js";
-
-export interface DiscoveryTarget {
-  vendor: string;
-  product: string;
-  tenant: string;
-  url: string;
-}
-
-export interface DiscoveryRequest {
-  /** Unique catalog id, e.g. `loan-payoff`. */
-  id: string;
-  target: DiscoveryTarget;
-  goal: string;
-  maxSteps?: number;
-  maxDepth?: number;
-  maxCandidatesPerState?: number;
-  timeoutMs?: number;
-}
-
-export interface DiscoveryResult {
-  status: "success" | "stuck" | "failed";
-  capability?: CapabilityArtifact;
-  runId: string;
-  reason?: string;
-}
-
-export class DiscoveryAgent {
-  constructor(private readonly surface: Surface) {}
-
-  async run(_request: DiscoveryRequest): Promise<DiscoveryResult> {
-    throw new Error("DiscoveryAgent.run is a scaffold. Implement Mastra + bounded UI search here.");
-  }
-}
-
-export class CapabilityCompiler {
-  async compile(_tracePath: string): Promise<CapabilityArtifact> {
-    throw new Error("CapabilityCompiler.compile is a scaffold.");
-  }
-}

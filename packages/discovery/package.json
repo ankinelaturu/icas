@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@icas/capability": "workspace:*",
+    "@icas/policy": "workspace:*",
     "@icas/surface": "workspace:*",
     "zod": "^4.5.2"
   }
