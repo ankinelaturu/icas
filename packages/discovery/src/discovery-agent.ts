@@ -8,6 +8,7 @@
 import { randomUUID } from "node:crypto";
 
 import type { CapabilityAction } from "@icas/capability";
+import type { EvidenceWriter } from "@icas/evidence";
 import type { HandoffController } from "@icas/handoff";
 import type { PolicyGuard } from "@icas/policy";
 import type { Observation, Surface } from "@icas/surface";
@@ -19,6 +20,7 @@ import {
 } from "./candidate-action.js";
 import type { CandidateProposer } from "./candidate-proposer.js";
 import type { DiscoveryRequest, DiscoveryResult, DiscoveryTraceEvent } from "./discovery-types.js";
+import { DiscoveryTrace } from "./discovery-trace.js";
 import {
   createSearchNode,
   resolveSearchBudget,
@@ -32,6 +34,7 @@ export interface DiscoveryAgentDependencies {
   proposer: CandidateProposer;
   policy?: PolicyGuard;
   handoff?: HandoffController;
+  evidence?: EvidenceWriter;
   now?: () => number;
   /** Pass 3.1 markdown, injected into every proposer call. */
   promptPolicy?: string;
@@ -44,6 +47,7 @@ export class DiscoveryAgent {
   private readonly proposer: CandidateProposer;
   private readonly policy: PolicyGuard | undefined;
   private readonly handoff: HandoffController | undefined;
+  private readonly evidence: EvidenceWriter | undefined;
   private readonly now: () => number;
   private readonly promptPolicy: string | undefined;
 
@@ -54,6 +58,7 @@ export class DiscoveryAgent {
     this.proposer = deps.proposer;
     this.policy = deps.policy;
     this.handoff = deps.handoff;
+    this.evidence = deps.evidence;
     this.now = deps.now ?? Date.now;
     this.promptPolicy = deps.promptPolicy;
   }
@@ -71,7 +76,11 @@ export class DiscoveryAgent {
         : { maxCandidatesPerState: request.maxCandidatesPerState }),
       ...(request.timeoutMs === undefined ? {} : { timeoutMs: request.timeoutMs }),
     });
-    const events: DiscoveryTraceEvent[] = [];
+    const trace = new DiscoveryTrace({
+      runId,
+      capabilityId: request.id,
+      ...(this.evidence === undefined ? {} : { evidence: this.evidence }),
+    });
     const startedAt = this.now();
     let steps = 0;
     const entryUrl = request.target.url;
@@ -80,57 +89,58 @@ export class DiscoveryAgent {
     await this.surface.open(request.target.url);
     let current = createSearchNode({ observation: await this.surface.observe() });
     const seen = new Set<string>([current.stateId]);
-    events.push(observationEvent(current.observation));
+    await trace.record(observationEvent(current.observation));
 
     while (true) {
       if (this.now() - startedAt >= budget.timeoutMs) {
-        return stuck(runId, events, "timeout");
+        return await finishStuck(trace, runId, "timeout");
       }
       if (steps >= budget.maxSteps) {
-        return stuck(runId, events, "maxSteps");
+        return await finishStuck(trace, runId, "maxSteps");
       }
 
-      const filled = await this.fillCandidates(current, request, budget, events);
+      const filled = await this.fillCandidates(current, request, budget, trace);
       if (filled?.status === "success") {
-        return { status: "success", runId, events };
+        await trace.finish("success");
+        return { status: "success", runId, events: trace.events };
       }
       if (filled?.status === "stuck") {
         const retreated = await this.backtrack(
           current,
-          events,
+          trace,
           filled.reason ?? "proposer stuck",
           entryUrl,
           pathActions,
         );
         if (retreated === undefined) {
-          return stuck(runId, events, filled.reason ?? "proposer stuck");
+          return await finishStuck(trace, runId, filled.reason ?? "proposer stuck");
         }
         current = retreated;
         continue;
       }
 
       if (current.depth >= budget.maxDepth) {
-        return stuck(runId, events, "maxDepth");
+        return await finishStuck(trace, runId, "maxDepth");
       }
 
       const candidate = nextUntried(current);
       if (candidate === undefined || candidate.id === undefined) {
         const retreated = await this.backtrack(
           current,
-          events,
+          trace,
           "exhausted",
           entryUrl,
           pathActions,
         );
         if (retreated === undefined) {
-          return stuck(runId, events, "exhausted");
+          return await finishStuck(trace, runId, "exhausted");
         }
         current = retreated;
         continue;
       }
 
       const action = candidate.action;
-      events.push({
+      await trace.record({
         type: "chosen_action",
         payload: { id: candidate.id, rank: candidate.rank, action },
       });
@@ -140,22 +150,23 @@ export class DiscoveryAgent {
         action,
         destinationUrl === undefined ? {} : { destinationUrl },
       ) ?? { decision: "allow" as const };
-      events.push({ type: "policy", payload: decision });
+      await trace.record({ type: "policy", payload: decision });
       if (decision.decision === "deny") {
         const paused = await this.pauseForHuman({
           runId,
           capabilityId: request.id,
           reason: "policy_block",
           message: decision.reason,
-          events,
+          trace,
         });
         current.triedCandidateIds.add(candidate.id);
         if (!paused) {
+          await trace.finish("failure");
           return {
             status: "failed",
             runId,
             reason: decision.reason,
-            events,
+            events: trace.events,
           };
         }
         continue;
@@ -166,15 +177,16 @@ export class DiscoveryAgent {
           capabilityId: request.id,
           reason: "approval_required",
           message: decision.reason,
-          events,
+          trace,
         });
         if (!paused) {
           current.triedCandidateIds.add(candidate.id);
+          await trace.finish("failure");
           return {
             status: "failed",
             runId,
             reason: decision.reason,
-            events,
+            events: trace.events,
           };
         }
       }
@@ -183,20 +195,21 @@ export class DiscoveryAgent {
       const result = await this.surface.execute(action);
       steps += 1;
       pathActions.push(action);
-      events.push({ type: "action_result", payload: result });
+      await trace.record({ type: "action_result", payload: result });
       if (result.status !== "ok") {
+        await trace.finish("failure");
         return {
           status: "failed",
           runId,
           reason: "action failed",
-          events,
+          events: trace.events,
         };
       }
 
       const nextObservation = await this.surface.observe();
       const nextId = stateIdFromObservation(nextObservation);
       if (seen.has(nextId)) {
-        events.push({ type: "dead_end", payload: { stateId: nextId, reason: "repeated_state" } });
+        await trace.record({ type: "dead_end", payload: { stateId: nextId, reason: "repeated_state" } });
         continue;
       }
       seen.add(nextId);
@@ -204,7 +217,7 @@ export class DiscoveryAgent {
         observation: nextObservation,
         parent: current,
       });
-      events.push(observationEvent(current.observation));
+      await trace.record(observationEvent(current.observation));
     }
   }
 
@@ -214,18 +227,18 @@ export class DiscoveryAgent {
    */
   private async backtrack(
     current: SearchNode,
-    events: DiscoveryTraceEvent[],
+    trace: DiscoveryTrace,
     reason: string,
     entryUrl: string,
     pathActions: CapabilityAction[],
   ): Promise<SearchNode | undefined> {
-    events.push({ type: "dead_end", payload: { reason, stateId: current.stateId } });
+    await trace.record({ type: "dead_end", payload: { reason, stateId: current.stateId } });
     if (current.parent === undefined) {
       return undefined;
     }
     pathActions.pop();
     await this.restorePrefix(entryUrl, pathActions);
-    events.push({
+    await trace.record({
       type: "backtrack",
       payload: { from: current.stateId, to: current.parent.stateId, restore: "prefix-replay" },
     });
@@ -237,7 +250,7 @@ export class DiscoveryAgent {
     capabilityId: string;
     reason: "policy_block" | "approval_required" | "discovery_stuck";
     message: string;
-    events: DiscoveryTraceEvent[];
+    trace: DiscoveryTrace;
   }): Promise<boolean> {
     if (this.handoff === undefined) {
       return false;
@@ -248,7 +261,7 @@ export class DiscoveryAgent {
       reason: args.reason,
       message: args.message,
     });
-    args.events.push({
+    await args.trace.record({
       type: "intervention",
       payload: { reason: args.reason, message: args.message },
     });
@@ -275,7 +288,7 @@ export class DiscoveryAgent {
     node: SearchNode,
     request: DiscoveryRequest,
     budget: SearchBudget,
-    events: DiscoveryTraceEvent[],
+    trace: DiscoveryTrace,
   ): Promise<{ status: "success" } | { status: "stuck"; reason?: string } | undefined> {
     if (node.candidates.length > 0) {
       return undefined;
@@ -283,17 +296,17 @@ export class DiscoveryAgent {
     const proposal = await this.proposer.propose({
       goal: request.goal,
       observation: node.observation,
-      history: events
+      history: trace.events
         .filter((event) => event.type === "chosen_action")
         .map((event) => JSON.stringify(event.payload)),
       ...(this.promptPolicy === undefined ? {} : { promptPolicy: this.promptPolicy }),
     });
-    events.push({
+    await trace.record({
       type: "candidates",
       payload: { status: proposal.status, count: proposal.candidates.length },
     });
     if (proposal.status === "success") {
-      events.push({ type: "success" });
+      await trace.record({ type: "success" });
       return { status: "success" };
     }
     if (proposal.status === "stuck") {
@@ -328,13 +341,21 @@ function nextUntried(node: SearchNode): CandidateAction | undefined {
 }
 
 function observationEvent(observation: Observation): DiscoveryTraceEvent {
-  return { type: "observation", payload: { id: observation.id, url: observation.url } };
+  return {
+    type: "observation",
+    payload: {
+      id: observation.id,
+      url: observation.url,
+      imagePath: observation.imagePath,
+    },
+  };
 }
 
-function stuck(
+async function finishStuck(
+  trace: DiscoveryTrace,
   runId: string,
-  events: DiscoveryTraceEvent[],
   reason: string,
-): DiscoveryResult {
-  return { status: "stuck", runId, reason, events };
+): Promise<DiscoveryResult> {
+  await trace.finish("stuck");
+  return { status: "stuck", runId, reason, events: trace.events };
 }

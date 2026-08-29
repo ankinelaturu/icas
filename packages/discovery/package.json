@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@icas/capability": "workspace:*",
+    "@icas/evidence": "workspace:*",
     "@icas/handoff": "workspace:*",
     "@icas/policy": "workspace:*",
     "@icas/surface": "workspace:*",

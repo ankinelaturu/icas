@@ -379,9 +379,9 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 
 ### Pass 5.10 — Discovery trace
 
-- [ ] Append-only JSONL: observation, ranked candidates, chosen action, policy, result, dead-end, backtrack, intervention, success
-- [ ] Screenshots referenced from the trace
-- [ ] Test: fixture run produces expected event types in order
+- [x] Append-only JSONL: observation, ranked candidates, chosen action, policy, result, dead-end, backtrack, intervention, success
+- [x] Screenshots referenced from the trace
+- [x] Test: fixture run produces expected event types in order
 
 ### Pass 5.11 — Compiler: successful path only
 

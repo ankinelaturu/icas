@@ -45,6 +45,7 @@ export type {
   DiscoveryTraceEvent,
 } from "./discovery-types.js";
 export type { SearchBudget, SearchNode } from "./search-state.js";
+export { DISCOVERY_TRACE_TYPES, DiscoveryTrace } from "./discovery-trace.js";
 export {
   createSearchNode,
   DEFAULT_SEARCH_BUDGET,
