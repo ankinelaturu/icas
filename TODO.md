@@ -295,10 +295,10 @@ Callers resolve with `CapabilityResolver` first. `ReplayEngine` never branches o
 
 ### Pass 4.10 — Assisted fallback (repair)
 
-- [ ] `--assist` / `options.assist`: on one failed step, freeze context and ask model for a bounded repair
-- [ ] Run proposed actions through `PolicyGuard` and a strict budget
-- [ ] Record as assisted-fallback evidence, not deterministic actions
-- [ ] Tests: policy-blocked repair is not executed; budget exceeded stops
+- [x] `--assist` / `options.assist`: on one failed step, freeze context and ask model for a bounded repair
+- [x] Run proposed actions through `PolicyGuard` and a strict budget
+- [x] Record as assisted-fallback evidence, not deterministic actions
+- [x] Tests: policy-blocked repair is not executed; budget exceeded stops
 
 ### Pass 4.11 — Assisted fallback (rejoin)
 

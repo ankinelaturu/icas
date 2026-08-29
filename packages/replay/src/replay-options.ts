@@ -3,8 +3,10 @@
  */
 
 export interface ReplayOptions {
-  /** When true, a later pass may attempt one bounded LLM repair. */
+  /** When true, one bounded repair may run after a failed step. */
   assist?: boolean;
+  /** Max repair actions executed in one assist attempt (default 3). */
+  assistBudget?: number;
   /** Bounded attempts for recoverable waits (default 2). Semantic mismatches do not retry. */
   maxRetries?: number;
   /** Stable id for tests; generated when omitted. */

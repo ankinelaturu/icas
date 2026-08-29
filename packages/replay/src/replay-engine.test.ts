@@ -552,6 +552,84 @@ describe("ReplayEngine hard failures and evidence", () => {
   });
 });
 
+describe("ReplayEngine assisted fallback repair", () => {
+  const policy = new PolicyGuard({
+    allowedOrigins: ["https://bank.example"],
+    allowedActionTypes: ["click", "fill", "read"],
+  });
+
+  it("does not execute a policy-blocked repair action", async () => {
+    const surface = new FakeSurface();
+    surface.assertHandler = () => false;
+    const engine = new ReplayEngine(surface, {
+      policy,
+      repair: {
+        propose: async () => ({
+          actions: [{ type: "navigate", path: "/invented" }],
+          rationale: "try another page",
+        }),
+      },
+    });
+    const result = await engine.run(
+      testCapability({
+        steps: [
+          clickStep("open-lending", {
+            postconditions: [{ type: "textVisible", value: "Lending Services" }],
+          }),
+        ],
+      }),
+      {},
+      { runId: "run-assist-deny", assist: true },
+    );
+    expect(result).toMatchObject({
+      status: "failure",
+      code: "POLICY_BLOCKED",
+      runId: "run-assist-deny",
+    });
+    expect(surface.executed.some((action) => action.type === "navigate")).toBe(false);
+  });
+
+  it("stops when the repair proposal exceeds the assist budget", async () => {
+    const surface = new FakeSurface();
+    surface.assertHandler = () => false;
+    const clicks = Array.from({ length: 5 }, () => ({
+      type: "click" as const,
+      target: { strategies: [{ type: "visibleText" as const, text: "Next" }] },
+    }));
+    const engine = new ReplayEngine(surface, {
+      policy,
+      repair: {
+        propose: async () => ({ actions: clicks, rationale: "spam clicks" }),
+      },
+    });
+    const result = await engine.run(
+      testCapability({
+        steps: [
+          clickStep("open-lending", {
+            postconditions: [{ type: "textVisible", value: "Lending Services" }],
+          }),
+        ],
+      }),
+      {},
+      { runId: "run-assist-budget", assist: true, assistBudget: 2 },
+    );
+    expect(result).toMatchObject({
+      status: "failure",
+      observed: "assist budget exceeded",
+      runId: "run-assist-budget",
+    });
+    const repairClicks = surface.executed.filter(
+      (action) =>
+        action.type === "click" &&
+        action.target.strategies.some(
+          (strategy) => strategy.type === "visibleText" && strategy.text === "Next",
+        ),
+    );
+    expect(repairClicks).toHaveLength(2);
+  });
+});
+
+
 describe("ReplayEngine HITL", () => {
   it("pauses a risky encoded action and continues the same step after resume", async () => {
     const surface = new FakeSurface();

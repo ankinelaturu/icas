@@ -5,7 +5,7 @@
 import { randomUUID } from "node:crypto";
 
 import type { CapabilityAction, CapabilityArtifact, CapabilityStep } from "@icas/capability";
-import type { EvidenceWriter } from "@icas/evidence";
+import { ASSISTED_FALLBACK_EVENT, type EvidenceWriter } from "@icas/evidence";
 import type { HandoffController } from "@icas/handoff";
 import type { PolicyGuard } from "@icas/policy";
 import type { Surface } from "@icas/surface";
@@ -18,6 +18,7 @@ import {
 import { extractOutputs, isExecutionResult } from "./extract-outputs.js";
 import { hydrateAction, hydrateAssertion } from "./hydrate.js";
 import { INTERSTITIAL_CONTINUE, INTERSTITIAL_TEXTS } from "./recoverable.js";
+import type { RepairProposer } from "./repair-proposer.js";
 import type { ReplayOptions } from "./replay-options.js";
 import { hasSurfaceCode } from "./surface-code.js";
 
@@ -28,6 +29,7 @@ export interface ReplayEngineDependencies {
   policy?: PolicyGuard;
   evidence?: EvidenceWriter;
   handoff?: HandoffController;
+  repair?: RepairProposer;
 }
 
 /**
@@ -38,7 +40,12 @@ export class ReplayEngine {
   private readonly policy: PolicyGuard | undefined;
   private readonly evidence: EvidenceWriter | undefined;
   private readonly handoff: HandoffController | undefined;
+  private readonly repair: RepairProposer | undefined;
   private maxAttempts = 2;
+  private assistBudget = 3;
+  private assistEnabled = false;
+  private assistUsed = false;
+  private currentCapability: CapabilityArtifact | undefined;
   private startedAt = "";
 
   constructor(
@@ -48,6 +55,7 @@ export class ReplayEngine {
     this.policy = deps.policy;
     this.evidence = deps.evidence;
     this.handoff = deps.handoff;
+    this.repair = deps.repair;
   }
 
   /**
@@ -66,6 +74,9 @@ export class ReplayEngine {
   ): Promise<ExecutionResult> {
     const runId = options.runId ?? randomUUID();
     this.maxAttempts = options.maxRetries ?? 2;
+    this.assistEnabled = options.assist === true;
+    this.assistBudget = options.assistBudget ?? 3;
+    this.assistUsed = false;
     this.startedAt = new Date().toISOString();
     const result = await this.runLoop(capability, inputs, runId);
     if (result.status === "failure") {
@@ -87,6 +98,7 @@ export class ReplayEngine {
         runId,
       };
     }
+    this.currentCapability = capability;
     for (const step of capability.steps) {
       const preFailure = await this.evaluatePreconditions(step, inputs, runId, capability.id);
       if (preFailure !== undefined) {
@@ -221,7 +233,7 @@ export class ReplayEngine {
     try {
       const result = await this.surface.execute(action);
       if (result.status !== "ok") {
-        return {
+        return await this.maybeAssist(step, inputs, runId, capabilityId, {
           status: "failure",
           capabilityId,
           code: ReplayFailureCode.unexpectedState,
@@ -229,11 +241,11 @@ export class ReplayEngine {
           expected: action,
           observed: result,
           runId,
-        };
+        });
       }
     } catch (error) {
       if (hasSurfaceCode(error, ReplayFailureCode.targetNotFound)) {
-        return {
+        return await this.maybeAssist(step, inputs, runId, capabilityId, {
           status: "failure",
           capabilityId,
           code: ReplayFailureCode.targetNotFound,
@@ -241,11 +253,80 @@ export class ReplayEngine {
           expected: action,
           observed: error instanceof Error ? error.message : error,
           runId,
-        };
+        });
       }
       throw error;
     }
-    return await this.evaluatePostconditions(step, inputs, runId, capabilityId);
+    const post = await this.evaluatePostconditions(step, inputs, runId, capabilityId);
+    if (post !== undefined) {
+      return await this.maybeAssist(step, inputs, runId, capabilityId, post);
+    }
+    return undefined;
+  }
+
+  private canAssist(): boolean {
+    return this.assistEnabled && this.repair !== undefined && !this.assistUsed;
+  }
+
+  private async maybeAssist(
+    step: CapabilityStep,
+    inputs: Record<string, unknown>,
+    runId: string,
+    capabilityId: string,
+    failure: ExecutionResult,
+  ): Promise<ExecutionResult> {
+    if (failure.status !== "failure" || !this.canAssist() || this.repair === undefined) {
+      return failure;
+    }
+    if (this.currentCapability === undefined) {
+      return failure;
+    }
+    this.assistUsed = true;
+    const observation = await this.surface.observe();
+    const proposal = await this.repair.propose({
+      step,
+      capability: this.currentCapability,
+      failure,
+      observation,
+    });
+    let executed = 0;
+    for (const raw of proposal.actions) {
+      if (executed >= this.assistBudget) {
+        return {
+          status: "failure",
+          capabilityId,
+          code: ReplayFailureCode.unexpectedState,
+          stepId: step.id,
+          expected: { budget: this.assistBudget },
+          observed: "assist budget exceeded",
+          runId,
+        };
+      }
+      const repairAction = hydrateAction(raw, inputs);
+      const decision = this.policy?.check(repairAction) ?? { decision: "allow" as const };
+      if (decision.decision !== "allow") {
+        return {
+          status: "failure",
+          capabilityId,
+          code: ReplayFailureCode.policyBlocked,
+          stepId: step.id,
+          expected: repairAction,
+          observed: decision,
+          runId,
+        };
+      }
+      await this.surface.execute(repairAction);
+      executed += 1;
+      await this.evidence?.append({
+        timestamp: new Date().toISOString(),
+        runId,
+        runType: "replay",
+        type: ASSISTED_FALLBACK_EVENT,
+        actor: "agent",
+        payload: { action: repairAction, rationale: proposal.rationale },
+      });
+    }
+    return failure;
   }
 
   private async evaluatePostconditions(
