@@ -1,5 +1,9 @@
 /**
  * @file Primitive value checks and ValueRef resolution against an input map.
+ *
+ * Replay uses these after the artifact schema has already passed. Schema
+ * checks shape; this module checks runtime values (ISO dates, money, missing
+ * required keys) so a typed invocation cannot smuggle the wrong primitive.
  */
 
 import type { CapabilityArtifact, PrimitiveType, ValueRef } from "./artifact.js";
@@ -20,6 +24,9 @@ const MONEY_STRING = /^-?\d+(\.\d+)?$/;
 
 /**
  * Return true when `value` is a real calendar date in `YYYY-MM-DD` form.
+ *
+ * Reconstruct a UTC date and compare components so `2026-02-31` is rejected.
+ * `Date.parse` would roll that forward to March.
  */
 function isIsoDate(value: string): boolean {
   const match = ISO_DATE.exec(value);
@@ -39,6 +46,10 @@ function isIsoDate(value: string): boolean {
 
 /**
  * Check that `value` matches the declared primitive `type`.
+ *
+ * `date` is a calendar string, not a `Date` object, so JSON round-trips.
+ * `money` accepts a finite number or a decimal string — computed amounts vs
+ * catalog literals that must not become IEEE floats.
  *
  * @throws {CapabilityTypeError} When the runtime type does not match
  */
@@ -89,6 +100,10 @@ export function validatePrimitiveValue(
 /**
  * Check every provided input against the capability's declared input types.
  *
+ * Unknown keys fail first so a typo is not silently ignored. Optional declared
+ * keys may be absent; required keys may not. Type-check only values that are
+ * present so an optional input does not demand `undefined` match a primitive.
+ *
  * @throws {CapabilityTypeError} On missing required keys, unknown keys, or type mismatch
  */
 export function validateInputValues(
@@ -122,6 +137,10 @@ export function validateInputValues(
 /**
  * Check extracted outputs against the capability's declared output types.
  *
+ * Unlike inputs, every declared output must be present — this is the success
+ * contract, not an invocation form. Unknown keys still fail so extra extract
+ * noise cannot pass as a complete result.
+ *
  * @throws {CapabilityTypeError} On missing declared keys, unknown keys, or type mismatch
  */
 export function validateOutputValues(
@@ -151,6 +170,11 @@ export function validateOutputValues(
 /**
  * Return the concrete value for a ValueRef from `inputs` or the literal.
  *
+ * Runtime XOR mirrors the schema refine: mixed or empty refs fail here too in
+ * case a caller built a ValueRef in code without going through Zod. A missing
+ * input name throws rather than returning `undefined` (that would look like a
+ * successful empty fill).
+ *
  * @param ref - Exactly one of `input` or `literal`
  * @param inputs - Invocation parameter map
  * @returns The referenced input value or the literal
@@ -176,6 +200,11 @@ export function resolveValueRef(
   return ref.literal;
 }
 
+/**
+ * Human-readable type tag for error messages.
+ *
+ * Quote strings so an empty `""` is visible; other values use `typeof`.
+ */
 function describe(value: unknown): string {
   if (value === null) {
     return "null";

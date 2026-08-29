@@ -1,14 +1,15 @@
 ---
-description: File headers, TSDoc, and technical writing for TypeScript and markdown
-globs: "**/*.{ts,tsx,md}"
-alwaysApply: false
+description: Thorough inline comments, TSDoc, and technical writing for all project code
+alwaysApply: true
 ---
 
-# File headers and TSDoc
+# Comments and TSDoc
 
-Follow [Google’s technical writing style](https://developers.google.com/tech-writing): active voice, present tense, short sentences, define terms once, lists/tables when they clarify. Restate the change objective in one sentence before editing.
+Always include thorough inline comments, JSDoc/docstrings for functions, and explanations for complex logic. This applies to **all** project code, not one package or algorithm.
 
-Every new `.ts` file starts with a file header (purpose, not a changelog):
+Follow [Google’s technical writing style](https://developers.google.com/tech-writing): active voice, present tense, short sentences. Prefer why over what. Restate the change objective in one sentence before editing.
+
+Every new source file starts with a file header (purpose, not a changelog):
 
 ```ts
 /**
@@ -16,25 +17,20 @@ Every new `.ts` file starts with a file header (purpose, not a changelog):
  */
 ```
 
-Document **exported** classes, functions, methods, and public types with TSDoc. Use only [TypeDoc-compatible](https://typedoc.org/documents/Tags.html) tags (`@param`, `@returns`, `@throws`, `@example`, `@file`, `@see`).
+Document every non-trivial function, method, class, and public type with TSDoc (TypeDoc tags only: `@param`, `@returns`, `@throws`, `@example`, `@file`, `@see`). Imperative summary. `@param` / `@returns` / `@throws` when the signature is not enough. Do not restate the type in prose. Do not TSDoc trivial one-liners.
 
-- Summary line: imperative mood (“Load the capability by id.”).
-- `@param` / `@returns` / `@throws` when the signature is not enough.
-- `@example` only for non-obvious call patterns.
-- Do not TSDoc trivial private one-liners.
-- Do not restate the type in prose (`@param id - a string`).
-- Keep comments current. Prefer why over what.
+A file header plus function TSDoc is not enough. Comment the **body** at branches, invariants, failure modes, and non-obvious ordering. Skip narration of obvious assignments (`const n = items.length`).
 
 ```ts
 /**
- * Load the latest capability version for `id`, or a specific version when given.
+ * Load the tenant override pinned to this base version.
  *
- * @param id - Catalog capability id (e.g. `loan-payoff`)
- * @param version - Semver capability version; omitted means latest
- * @returns The artifact, or `undefined` if it is not in the catalog
+ * @param tenant - Enrolled tenant id
+ * @returns The override, or `undefined` if the tenant is not enrolled
  */
-export async function get(
-  id: string,
-  version?: string,
-): Promise<CapabilityArtifact | undefined> {
+export async function getOverride(tenant: string): Promise<CapabilityOverride | undefined> {
+  const override = await this.readOverrideFile(tenant);
+  // Fail closed in the caller: missing file means not enrolled, never "use base as-is".
+  return override;
+}
 ```

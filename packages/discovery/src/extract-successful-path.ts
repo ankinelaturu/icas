@@ -14,6 +14,10 @@ import {
 import { classifyHumanIntervention } from "./classify-intervention.js";
 import type { DiscoveryTraceEvent } from "./discovery-types.js";
 
+/**
+ * Compact observation used as checkpoint context. `url` is optional because
+ * some observes only carry an id.
+ */
 export interface PathObservation {
   id: string;
   url?: string;
@@ -34,6 +38,13 @@ export interface SuccessfulPathStep {
 
 /**
  * Walk the trace with a stack: execute-ok pushes; backtrack pops.
+ *
+ * `pending` holds a chosen action until its result arrives. A failed result,
+ * a backtrack, or a replacement `chosen_action` drops it so dead-ends never
+ * become capability steps.
+ *
+ * @param events - In-memory or JSONL events in append order
+ * @returns Remaining stack after the last event (the compiled success path)
  */
 export function extractSuccessfulPath(
   events: readonly DiscoveryTraceEvent[],
@@ -46,6 +57,7 @@ export function extractSuccessfulPath(
     if (event.type === "observation") {
       lastObservation = parseObservation(event.payload);
       const top = stack[stack.length - 1];
+      // The observe after an ok execute is that step's post-state.
       if (top !== undefined && top.after === undefined && lastObservation !== undefined) {
         top.after = lastObservation;
       }
@@ -60,6 +72,8 @@ export function extractSuccessfulPath(
     }
     if (event.type === "intervention") {
       const reason = interventionReason(event.payload);
+      // Only stamp the pending action. Exceptional HITL (policy_block, stuck)
+      // stays evidence and must not become a replay handoff step.
       if (
         pending !== undefined &&
         reason !== undefined &&
@@ -70,6 +84,7 @@ export function extractSuccessfulPath(
       continue;
     }
     if (event.type === "action_result") {
+      // Push only on status ok. A failed execute leaves pending off the stack.
       if (pending !== undefined && actionSucceeded(event.payload)) {
         stack.push(pending);
       }
@@ -80,6 +95,8 @@ export function extractSuccessfulPath(
       stack.pop();
       pending = undefined;
       const restored = restoreObservation(event.payload);
+      // Parent stateId is a coarse lastObservation so the next chosen_action
+      // can attach `before` after prefix-replay; it is not a new surface observe.
       if (restored !== undefined) {
         lastObservation = restored;
       }
@@ -94,6 +111,7 @@ function parseObservation(payload: unknown): PathObservation | undefined {
     return undefined;
   }
   const record = payload as { id?: unknown; url?: unknown };
+  // Id is required; a missing id is not a usable checkpoint.
   if (typeof record.id !== "string" || record.id.length === 0) {
     return undefined;
   }
@@ -103,6 +121,10 @@ function parseObservation(payload: unknown): PathObservation | undefined {
   };
 }
 
+/**
+ * Reconstruct a PathObservation from the backtrack `to` stateId.
+ * `url` is set to the same string because the payload does not carry a separate URL.
+ */
 function restoreObservation(payload: unknown): PathObservation | undefined {
   if (payload === null || typeof payload !== "object") {
     return undefined;
@@ -123,6 +145,7 @@ function parseChosenAction(payload: unknown): SuccessfulPathStep | undefined {
     expectation?: unknown;
     rationale?: unknown;
   };
+  // Skip malformed actions rather than failing compile; they never entered the stack.
   const parsed = CapabilityActionSchema.safeParse(record.action);
   if (!parsed.success) {
     return undefined;
@@ -152,9 +175,11 @@ function interventionMessage(payload: unknown, fallback: string): string {
       return message;
     }
   }
+  // Reason string is a valid handoff.reason when the payload has no message.
   return fallback;
 }
 
+/** Compiler stack only keeps execute-ok; any other status is a failed branch. */
 function actionSucceeded(payload: unknown): boolean {
   if (payload === null || typeof payload !== "object") {
     return false;

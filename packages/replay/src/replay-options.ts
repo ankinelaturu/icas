@@ -1,7 +1,14 @@
 /**
  * @file ReplayOptions — flags for a single ReplayEngine.run invocation.
+ *
+ * Strict replay is the default (no LLM). `assist` is an explicit opt-in and
+ * still requires an injected {@link RepairProposer}.
  */
 
+/**
+ * Per-run knobs. Tenant identity is not a flag — the caller already resolved
+ * the effective capability.
+ */
 export interface ReplayOptions {
   /** When true, one bounded repair may run after a failed step. */
   assist?: boolean;

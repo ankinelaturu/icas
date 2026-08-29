@@ -1,5 +1,8 @@
 /**
  * @file @icas/replay — deterministic capability execution.
+ *
+ * Public surface for `icas-play`, MCP, and adapt verification. Callers pass
+ * an already-resolved effective capability; this package does not glob the catalog.
  */
 
 export type { ExecutionResult } from "./execution-result.js";

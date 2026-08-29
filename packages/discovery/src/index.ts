@@ -2,7 +2,9 @@
  * @file @icas/discovery — LLM-driven discovery, bounded DFS, trace, and compiler.
  *
  * Model output is {@link CandidateProposal}, never free-form prose. Search
- * state stays in ICAS; Mastra proposes structured candidates only.
+ * state stays in ICAS; Mastra proposes structured candidates only (one
+ * `generate` per DFS node). The compiler reconstructs the success path as a
+ * stack: ok `chosen_action` pushes, `backtrack` pops.
  */
 
 export type {

@@ -1,11 +1,18 @@
 /**
  * @file Discovery trace — append-only JSONL plus screenshot refs via EvidenceWriter.
+ *
+ * In-memory `events` always accumulate so the compiler can run without disk.
+ * Disk writes happen only when an {@link EvidenceWriter} is injected.
  */
 
 import type { EvidenceWriter, RunSummary } from "@icas/evidence";
 
 import type { DiscoveryTraceEvent } from "./discovery-types.js";
 
+/**
+ * Event type strings the agent records. The compiler stack only reacts to
+ * `chosen_action` + ok `action_result` (push) and `backtrack` (pop).
+ */
 export const DISCOVERY_TRACE_TYPES = [
   "observation",
   "candidates",
@@ -21,6 +28,7 @@ export const DISCOVERY_TRACE_TYPES = [
 export interface DiscoveryTraceOptions {
   runId: string;
   capabilityId: string;
+  /** Omit in unit tests that only need in-memory `events`. */
   evidence?: EvidenceWriter;
 }
 
@@ -32,6 +40,7 @@ export class DiscoveryTrace {
   private readonly runId: string;
   private readonly capabilityId: string;
   private readonly evidence: EvidenceWriter | undefined;
+  /** Counted from `action_result` / `backtrack` for the run summary. */
   private steps = 0;
   private backtracks = 0;
 
@@ -43,6 +52,9 @@ export class DiscoveryTrace {
 
   /**
    * Append one event. Observations with `imagePath` also capture a screenshot ref.
+   *
+   * Counters only move on `action_result` and `backtrack` so the summary matches
+   * executed work and DFS retreats, not every observation.
    */
   async record(event: DiscoveryTraceEvent): Promise<void> {
     this.events.push(event);
@@ -68,6 +80,11 @@ export class DiscoveryTrace {
     }
   }
 
+  /**
+   * Write the run summary. No-op when evidence is unwired so tests stay disk-free.
+   *
+   * @param status - Final search outcome recorded on the summary
+   */
   async finish(status: RunSummary["status"]): Promise<void> {
     if (this.evidence === undefined) {
       return;
@@ -84,6 +101,10 @@ export class DiscoveryTrace {
   }
 }
 
+/**
+ * Screenshot refs live on observation payloads only. Other event types must
+ * not pull a stale imagePath from a nested object.
+ */
 function screenshotPath(event: DiscoveryTraceEvent): string | undefined {
   if (event.type !== "observation" || event.payload === undefined) {
     return undefined;

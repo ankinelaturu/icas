@@ -1,5 +1,9 @@
 /**
  * @file Surface — observation/action seam independent of Playwright.
+ *
+ * Playwright is the first implementation, not the artifact model. A future
+ * desktop backend can map the same semantic actions to OS automation while
+ * capability JSON stays unchanged.
  */
 
 import type {
@@ -10,6 +14,9 @@ import type {
 
 /**
  * One captured view of the live surface (screenshot plus optional extras).
+ *
+ * `imagePath` is the visual-first signal. Accessibility/DOM extras help
+ * evidence and repair, but locators should not depend on clean test ids.
  */
 export interface Observation {
   id: string;
@@ -21,6 +28,9 @@ export interface Observation {
 
 /**
  * Result of executing one semantic action.
+ *
+ * `blocked` / `failed` stay structured so ReplayEngine classifies instead
+ * of catching a throw for every denied click.
  */
 export interface SurfaceActionResult {
   status: "ok" | "blocked" | "failed";
@@ -29,6 +39,9 @@ export interface SurfaceActionResult {
 
 /**
  * Who currently issues actions on the live session.
+ *
+ * HITL flips this on the same session. Automation must not click while
+ * `human` owns control.
  */
 export type ControlOwner = "automation" | "human";
 
@@ -47,12 +60,30 @@ export interface Surface {
    */
   close(): Promise<void>;
 
+  /**
+   * Capture a screenshot and optional accessibility extras for evidence/repair.
+   */
   observe(): Promise<Observation>;
+
+  /**
+   * Run one semantic action. ValueRefs must already be literals.
+   */
   execute(action: CapabilityAction): Promise<SurfaceActionResult>;
+
+  /**
+   * Bounded wait/check. Return false on timeout rather than throwing.
+   */
   assert(assertion: Assertion): Promise<boolean>;
+
+  /**
+   * Resolve a ranked {@link TargetDescriptor} to a surface-native handle.
+   */
   locate(target: TargetDescriptor): Promise<unknown>;
   /**
    * Absolute URL a click would navigate to, when known (e.g. an anchor href).
+   *
+   * Policy uses this before execute so off-origin destinations can be denied
+   * without clicking them.
    */
   peekDestination(target: TargetDescriptor): Promise<string | undefined>;
   /**

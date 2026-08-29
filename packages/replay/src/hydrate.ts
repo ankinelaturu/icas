@@ -1,5 +1,9 @@
 /**
  * @file hydrate — resolve ValueRefs to literals before Surface.assert / execute.
+ *
+ * The Surface seam stays tenant-agnostic: it must not receive the input map.
+ * Replay binds invocation params here so Playwright (or a future desktop
+ * surface) only sees literals.
  */
 
 import {
@@ -27,6 +31,8 @@ export function hydrateAssertion(
 
 /**
  * Replace ValueRefs on fill/select so {@link Surface.execute} receives literals.
+ *
+ * Click/navigate/read have no bound value. Those actions pass through unchanged.
  */
 export function hydrateAction(
   action: CapabilityAction,
@@ -38,6 +44,9 @@ export function hydrateAction(
   return action;
 }
 
+/**
+ * Coerce a text assertion value to a string the surface can wait on.
+ */
 function hydrateText(
   value: string | ValueRef,
   inputs: Readonly<Record<string, unknown>>,
@@ -48,6 +57,10 @@ function hydrateText(
   return stringify(resolveValueRef(value, inputs));
 }
 
+/**
+ * Wrap the resolved value as `{ literal }` so a later execute against an empty
+ * input map (PlaywrightSurface) does not try to re-resolve a `{ fromInput }`.
+ */
 function asLiteralRef(
   ref: ValueRef,
   inputs: Readonly<Record<string, unknown>>,
@@ -55,6 +68,10 @@ function asLiteralRef(
   return { literal: resolveValueRef(ref, inputs) };
 }
 
+/**
+ * Stringify only primitives. Objects would JSON-dump into a fill and hide a
+ * catalog/type error until the bank form rejected the text.
+ */
 function stringify(value: unknown): string {
   if (typeof value === "string") {
     return value;

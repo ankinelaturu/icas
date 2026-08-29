@@ -14,11 +14,16 @@ import { z } from "zod";
  * `rank` 1 is tried before `rank` 2 (confidence-ordered DFS).
  */
 export const CandidateActionSchema = z.strictObject({
+  // ICAS assigns this when omitted so DFS can mark tried siblings without
+  // storing graph state in the proposer's conversation memory.
   id: z.string().min(1).optional(),
   action: CapabilityActionSchema,
   rationale: z.string().min(1),
+  // Lowest number is tried first. Not a calibrated probability.
   rank: z.number(),
+  // Visible text the model expects after execute; compiler turns this into checkpoints.
   expectation: z.string().min(1).optional(),
+  // Optional hint for PolicyGuard (risky → require-human). Not a search ranking.
   risk: z.enum(["safe", "risky"]).optional(),
 });
 
@@ -35,9 +40,12 @@ export const CandidateProposalSchema = z
   .strictObject({
     status: z.enum(["continue", "success", "stuck"]),
     candidates: z.array(CandidateActionSchema),
+    // Optional on success/stuck so the model can explain without extra candidates.
     rationale: z.string().min(1).optional(),
   })
   .superRefine((proposal, ctx) => {
+    // continue with zero candidates would exhaust the node immediately and
+    // look like a model-declared stuck without an explicit stuck status.
     if (proposal.status === "continue" && proposal.candidates.length === 0) {
       ctx.addIssue({
         code: "custom",
@@ -52,10 +60,15 @@ export type CandidateProposal = z.infer<typeof CandidateProposalSchema>;
 
 /**
  * Thrown when model output does not match {@link CandidateProposalSchema}.
+ *
+ * Callers catch this type instead of depending on Zod's error class.
  */
 export class CandidateValidationError extends Error {
   readonly issues: z.core.$ZodIssue[];
 
+  /**
+   * @param error - Zod failure from {@link CandidateProposalSchema}
+   */
   constructor(error: z.ZodError) {
     super(`Invalid candidate proposal: ${z.prettifyError(error)}`);
     this.name = "CandidateValidationError";
@@ -72,6 +85,7 @@ export class CandidateValidationError extends Error {
  */
 export function validateCandidateProposal(value: unknown): CandidateProposal {
   const result = CandidateProposalSchema.safeParse(value);
+  // Wrap Zod so discovery callers catch CandidateValidationError, not a Zod type.
   if (!result.success) {
     throw new CandidateValidationError(result.error);
   }
@@ -80,11 +94,15 @@ export function validateCandidateProposal(value: unknown): CandidateProposal {
 
 /**
  * Assign stable ids so DFS can record tried branches without conversation memory.
+ *
+ * @param candidates - Ranked siblings from one proposer call
+ * @returns The same actions, with an `id` on every element
  */
 export function assignCandidateIds(
   candidates: CandidateAction[],
 ): CandidateAction[] {
   return candidates.map((candidate, index) => {
+    // Preserve a model-supplied id so traces stay stable across retries.
     if (candidate.id !== undefined) {
       return candidate;
     }
@@ -97,6 +115,11 @@ export function assignCandidateIds(
 
 /**
  * Lowest rank first (try highest-confidence untried sibling first).
+ *
+ * Copies the array so the proposer's return value stays untouched.
+ *
+ * @param candidates - Unordered or model-ordered siblings
+ * @returns New array, rank ascending
  */
 export function sortCandidatesByRank(
   candidates: CandidateAction[],

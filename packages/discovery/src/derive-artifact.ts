@@ -1,5 +1,9 @@
 /**
  * @file Derive semantic locators, checkpoints, and outputs from a success path.
+ *
+ * Replay prefers labels and visible text over screenshot coordinates.
+ * Checkpoints come from the model's expectation and observed URLs, not from
+ * re-running the LLM.
  */
 
 import type {
@@ -13,6 +17,10 @@ import type { SuccessfulPathStep } from "./extract-successful-path.js";
 
 /**
  * Drop coordinate locators when a semantic strategy exists.
+ *
+ * Coordinate-only targets stay intact so the step remains executable.
+ *
+ * @param action - Success-path action after parameterization
  */
 export function semanticAction(action: CapabilityAction): CapabilityAction {
   if (!("target" in action)) {
@@ -21,6 +29,10 @@ export function semanticAction(action: CapabilityAction): CapabilityAction {
   return { ...action, target: semanticTarget(action.target) };
 }
 
+/**
+ * Keep non-coordinate strategies. If filtering would empty `strategies`,
+ * return the original descriptor so a last-resort click still has a target.
+ */
 export function semanticTarget(target: TargetDescriptor): TargetDescriptor {
   const strategies = target.strategies.filter((strategy) => strategy.type !== "coordinates");
   if (strategies.length === 0) {
@@ -32,6 +44,9 @@ export function semanticTarget(target: TargetDescriptor): TargetDescriptor {
 /**
  * Preconditions from prior state; postconditions from the model's expectation
  * and the observation after the action.
+ *
+ * Prefer the previous step's expectation as `textVisible` because the model
+ * named what should be on screen. Fall back to the prior URL pathname.
  */
 export function deriveCheckpoints(
   step: SuccessfulPathStep,
@@ -58,6 +73,12 @@ export function deriveCheckpoints(
   return { preconditions, postconditions };
 }
 
+/**
+ * Final success assertions from the last kept step.
+ *
+ * Always returns at least one assertion so the artifact is valid. Prefer the
+ * last expectation; else the last URL pathname; else a generic visible string.
+ */
 export function deriveSuccess(path: readonly SuccessfulPathStep[]): Assertion[] {
   const last = path[path.length - 1];
   if (last?.expectation !== undefined) {
@@ -72,6 +93,9 @@ export function deriveSuccess(path: readonly SuccessfulPathStep[]): Assertion[] 
 
 /**
  * `read` actions become named outputs with extract targets.
+ *
+ * Names that look like amounts or balances are typed `money` for banking UIs.
+ * Other reads stay `string`.
  */
 export function deriveOutputs(
   steps: readonly CapabilityStep[],
@@ -92,6 +116,14 @@ export function deriveOutputs(
   return outputs;
 }
 
+/**
+ * Stable step id from action type plus locator text. Suffix on collision
+ * so two clicks with the same label do not share an id.
+ *
+ * @param action - Already parameterized / semantic action
+ * @param index - Success-path index, used when the locator has no text
+ * @param used - Ids already assigned on this compile
+ */
 export function uniqueStepId(action: CapabilityAction, index: number, used: Set<string>): string {
   const label = actionLabel(action);
   const base = label.length > 0 ? `${action.type}-${slug(label)}` : `${action.type}-${String(index + 1)}`;
@@ -110,6 +142,7 @@ type CapabilityArtifactOutputs = Record<
   { type: "string" | "number" | "boolean" | "date" | "money"; extract?: { target: TargetDescriptor } }
 >;
 
+/** Prefer `read` intent (model-named); else camelCase the locator text. */
 function outputName(step: CapabilityStep): string {
   if (step.action.type === "read" && step.action.intent !== undefined) {
     return step.action.intent;
@@ -129,6 +162,7 @@ function actionLabel(action: CapabilityAction): string {
   if (first === undefined) {
     return "";
   }
+  // Prefer visible text, then accessible label — the same cues replay uses.
   if ("text" in first && typeof first.text === "string") {
     return first.text;
   }
@@ -138,6 +172,12 @@ function actionLabel(action: CapabilityAction): string {
   return "";
 }
 
+/**
+ * Pathname-only pattern so replay is not pinned to a discovery host.
+ *
+ * `http`/`https` use `pathname`. Other schemes take the last path segment.
+ * Invalid URLs that already look like a path are kept.
+ */
 export function urlPattern(url: string | undefined): string | undefined {
   if (url === undefined || url.length === 0) {
     return undefined;
@@ -155,6 +195,7 @@ export function urlPattern(url: string | undefined): string | undefined {
 }
 
 function slug(value: string): string {
+  // Cap length so step ids stay readable in the catalog JSON.
   return value
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -164,6 +205,7 @@ function slug(value: string): string {
 
 function camelCase(value: string): string {
   const parts = slug(value).split("-").filter((part) => part.length > 0);
+  // Empty slug (punctuation-only label) still needs a valid output name.
   if (parts.length === 0) {
     return "extractedValue";
   }

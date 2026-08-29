@@ -1,5 +1,18 @@
 /**
  * @file FileSystemCapabilityRegistry — filesystem catalog of base capability JSON files.
+ *
+ * Layout under the injectable `root` (production: repo `capabilities/`; tests:
+ * a temp directory, never the submission catalog):
+ *
+ * ```
+ * <root>/<id>/<version>.json           # Vendor+Product base
+ * <root>/<id>/overrides/<tenant>.json  # one enrolled tenant, possibly header-only
+ * ```
+ *
+ * Tenant identity is not in the base filename. A missing override file means
+ * not enrolled — `getOverride` returns `undefined`; resolve fails closed
+ * rather than replaying the bare base. Path segments go through
+ * {@link assertCatalogId} so `../` cannot escape `root`.
  */
 
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -25,6 +38,9 @@ export interface FileSystemCapabilityRegistryOptions {
 /**
  * Filesystem-backed {@link CapabilityRegistry}.
  * Layout: `<root>/<id>/<version>.json` and `<root>/<id>/overrides/<tenant>.json`.
+ *
+ * REST and database backends are intentionally absent. Inject `root` so unit
+ * tests never write the submission catalog.
  */
 export class FileSystemCapabilityRegistry implements CapabilityRegistry {
   private readonly root: string;
@@ -36,6 +52,12 @@ export class FileSystemCapabilityRegistry implements CapabilityRegistry {
     this.root = options.root;
   }
 
+  /**
+   * List the latest version per id, optionally filtered by Vendor+Product.
+   *
+   * Empty id directories (no valid `N.N.N.json`) are skipped. Sort by id so
+   * catalog UIs stay stable across readdir order.
+   */
   async list(filter?: {
     vendor?: string;
     product?: string;
@@ -68,6 +90,13 @@ export class FileSystemCapabilityRegistry implements CapabilityRegistry {
     return summaries;
   }
 
+  /**
+   * Load one artifact by id, or the latest version when `version` is omitted.
+   *
+   * Assert the id before joining paths. Missing file is `undefined`, not a
+   * throw, so list can skip empty dirs. Corrupt JSON still throws — do not
+   * treat parse failure as "not in catalog".
+   */
   async get(
     id: string,
     version?: string,
@@ -92,6 +121,12 @@ export class FileSystemCapabilityRegistry implements CapabilityRegistry {
     }
   }
 
+  /**
+   * Schema-validate then upsert `<root>/<id>/<version>.json`.
+   *
+   * Validate first so invalid artifacts never land on disk. Pretty-print with
+   * a trailing newline so git diffs stay reviewable.
+   */
   async save(capability: CapabilityArtifact): Promise<void> {
     const valid = validateCapabilityArtifact(capability);
     const id = assertCatalogId(valid.id);
@@ -102,6 +137,12 @@ export class FileSystemCapabilityRegistry implements CapabilityRegistry {
     await writeFile(this.artifactPath(id, version), json, "utf8");
   }
 
+  /**
+   * Remove one version file, or the whole id directory when `version` is omitted.
+   *
+   * Omitting version also deletes `overrides/` — that unenrolls every tenant
+   * for this id. `force: false` so a missing dir is `false`, not a silent ok.
+   */
   async remove(id: string, version?: string): Promise<boolean> {
     const safeId = assertCatalogId(id);
     if (version === undefined) {
@@ -129,6 +170,12 @@ export class FileSystemCapabilityRegistry implements CapabilityRegistry {
     }
   }
 
+  /**
+   * Scan `<id>/overrides/*.json` across catalog ids.
+   *
+   * A missing `overrides/` directory is "no tenants enrolled", not an error.
+   * Skip non-`.json` entries so a stray `.DS_Store` cannot become a tenant.
+   */
   async listOverrides(filter?: {
     tenant?: string;
     baseCapability?: string;
@@ -170,6 +217,13 @@ export class FileSystemCapabilityRegistry implements CapabilityRegistry {
     return found;
   }
 
+  /**
+   * Load one tenant override pinned to an exact `id@version`.
+   *
+   * Fail closed on pin mismatch: a file for `loan-payoff@1.0.0` must not be
+   * returned when the caller asked for `loan-payoff@2.0.0`. Missing file is
+   * `undefined` (not enrolled).
+   */
   async getOverride(
     tenant: string,
     baseCapability: string,
@@ -185,6 +239,13 @@ export class FileSystemCapabilityRegistry implements CapabilityRegistry {
     return override;
   }
 
+  /**
+   * Schema-validate then upsert `<root>/<id>/overrides/<tenant>.json`.
+   *
+   * Refuse when the pinned base version is not stored — enrollment cannot
+   * point at a missing `capabilityVersion`. Header-only `overrides: {}` is a
+   * valid write; that is how first discover enrolls the discovering tenant.
+   */
   async saveOverride(override: CapabilityOverride): Promise<void> {
     const valid = validateCapabilityOverride(override);
     const pin = parseBaseCapabilityPin(valid.baseCapability);
@@ -201,6 +262,12 @@ export class FileSystemCapabilityRegistry implements CapabilityRegistry {
     await writeFile(this.overridePath(pin.id, tenant), json, "utf8");
   }
 
+  /**
+   * Delete one tenant override after confirming the pin matches.
+   *
+   * `getOverride` first so a file pinned to a different version is left
+   * untouched (`false`) rather than unenrolling the wrong pin.
+   */
   async removeOverride(
     tenant: string,
     baseCapability: string,
@@ -222,14 +289,22 @@ export class FileSystemCapabilityRegistry implements CapabilityRegistry {
     }
   }
 
+  /** `<root>/<id>/<version>.json` — tenant is never in this path. */
   private artifactPath(id: string, version: string): string {
     return join(this.root, id, `${version}.json`);
   }
 
+  /** `<root>/<id>/overrides/<tenant>.json` — one enrolled tenant per file. */
   private overridePath(id: string, tenant: string): string {
     return join(this.root, id, "overrides", `${tenant}.json`);
   }
 
+  /**
+   * Read and schema-validate one override file.
+   *
+   * ENOENT is `undefined` (not enrolled). Other IO and validation errors
+   * propagate — a corrupt override must not look like a missing tenant.
+   */
   private async readOverrideFile(
     id: string,
     tenant: string,
@@ -247,6 +322,12 @@ export class FileSystemCapabilityRegistry implements CapabilityRegistry {
     }
   }
 
+  /**
+   * Directory names under `root` that look like catalog ids.
+   *
+   * Skip names that fail {@link assertCatalogId} so a junk folder cannot
+   * become a capability id. Missing `root` is an empty catalog, not a throw.
+   */
   private async readCapabilityIds(): Promise<string[]> {
     try {
       const entries = await readdir(this.root, { withFileTypes: true });
@@ -269,6 +350,13 @@ export class FileSystemCapabilityRegistry implements CapabilityRegistry {
     }
   }
 
+  /**
+   * Newest three-part semver among `<id>/*.json` filenames.
+   *
+   * `overrides/` is a directory, so it never appears in this list. Invalid
+   * filenames are skipped so a stray `notes.json` cannot become a version.
+   * Sort with {@link compareCapabilityVersion} so `1.10.0` wins over `1.9.0`.
+   */
   private async latestVersion(id: string): Promise<string | undefined> {
     const dir = join(this.root, id);
     try {
@@ -295,6 +383,12 @@ export class FileSystemCapabilityRegistry implements CapabilityRegistry {
   }
 }
 
+/**
+ * True only for missing-path errors.
+ *
+ * Other codes (EACCES, EISDIR) must surface. Mapping every failure to
+ * `undefined` would hide a broken catalog as "not enrolled".
+ */
 function isNotFound(error: unknown): boolean {
   return (
     typeof error === "object" &&

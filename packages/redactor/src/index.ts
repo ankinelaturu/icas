@@ -1,5 +1,9 @@
 /**
  * @file @icas/redactor — independently configurable redaction profiles.
+ *
+ * Policy allow / deny / require-human is `@icas/policy`. This package only
+ * masks identifiers. Evidence must redact before persist; do not embed these
+ * rules in the evidence writer.
  */
 
 export type { RedactionProfile, RedactionRule } from "./redactor.js";

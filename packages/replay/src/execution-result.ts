@@ -1,7 +1,17 @@
 /**
  * @file ExecutionResult — structured replay outcome contract.
+ *
+ * CLI, MCP, and adapt verification all consume this union. Discriminate on
+ * `status` so a domain result is never coerced into a thrown Error.
  */
 
+/**
+ * Terminal result of one {@link ReplayEngine.run}.
+ *
+ * `success` carries typed outputs. `business_outcome` is an expected domain
+ * stop (loan not found). `failure` is a classified hard stop with enough
+ * expected/observed context to debug without a stack dump.
+ */
 export type ExecutionResult =
   | {
       status: "success";
@@ -27,7 +37,10 @@ export type ExecutionResult =
     };
 
 /**
- * Failure codes returned by {@link ReplayEngine}. More codes are added in later passes.
+ * Failure codes returned by {@link ReplayEngine}.
+ *
+ * String constants (not a TS enum) so SurfaceError can share the same
+ * `TARGET_NOT_FOUND` token without a package cycle.
  */
 export const ReplayFailureCode = {
   missingCapability: "MISSING_CAPABILITY",

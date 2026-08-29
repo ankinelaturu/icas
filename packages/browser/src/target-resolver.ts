@@ -1,5 +1,9 @@
 /**
  * @file resolveTarget — try ranked TargetDescriptor strategies against a Playwright page.
+ *
+ * Replay prefers stable semantic locators over coordinates. Strategies run in
+ * array order; the first visible match wins. A miss continues to the next rank
+ * instead of throwing, so a stale CSS selector can fall through to role/text.
  */
 
 import type { TargetDescriptor } from "@icas/capability";
@@ -40,6 +44,12 @@ export async function resolveTarget(
   );
 }
 
+/**
+ * Map a non-coordinate strategy to a Playwright locator.
+ *
+ * Coordinates are handled separately because `elementFromPoint` is not a
+ * locator API. `exact: true` avoids substring matches on similar bank labels.
+ */
 function locatorFor(page: Page, strategy: TargetStrategy): Locator | undefined {
   switch (strategy.type) {
     case "roleText":
@@ -66,6 +76,12 @@ function locatorFor(page: Page, strategy: TargetStrategy): Locator | undefined {
   }
 }
 
+/**
+ * Locate a control relative to visible anchor text.
+ *
+ * Prefer an explicit xpath, then a role under following siblings, then the
+ * first following input — the bank fixture's unlabeled fields sit after a label.
+ */
 function relativeLocator(
   page: Page,
   strategy: Extract<TargetStrategy, { type: "relative" }>,
@@ -82,6 +98,12 @@ function relativeLocator(
   return anchor.locator("xpath=following::input[1]");
 }
 
+/**
+ * Hit-test (x, y) and stamp a temporary attribute Playwright can locate.
+ *
+ * Last-resort strategy: coordinates drift across layout. Clear previous hits
+ * so only one element matches `data-icas-coord-hit`.
+ */
 async function resolveCoordinates(
   page: Page,
   x: number,
@@ -110,6 +132,12 @@ async function resolveCoordinates(
   return page.locator(`[${attr}="1"]`);
 }
 
+/**
+ * Wait until the first match is visible, or give up for this strategy.
+ *
+ * Timeout is per rank so a dead CSS selector does not consume later
+ * role/text strategies — they each get the same bound.
+ */
 async function firstVisible(
   locator: Locator,
   timeoutMs: number,
@@ -123,6 +151,12 @@ async function firstVisible(
   }
 }
 
+/**
+ * Human-readable rank for the TARGET_NOT_FOUND message.
+ *
+ * Operators need the tried list to see whether discovery emitted a stale
+ * selector or the page never showed the control.
+ */
 function describeStrategy(strategy: TargetStrategy): string {
   switch (strategy.type) {
     case "roleText":

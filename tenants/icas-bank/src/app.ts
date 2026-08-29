@@ -1,5 +1,10 @@
 /**
  * @file Express app for the icas-bank synthetic core-banking UI.
+ *
+ * Demo target only: fake accounts, no real credentials or PII. Does not
+ * listen — tests import this handler without binding a port. Overlay
+ * (`?inject=`) sits on loan details here; Loki Bank puts the same overlay
+ * on search so adaptation has a real step mismatch.
  */
 
 import { dirname, join } from "node:path";
@@ -27,12 +32,16 @@ import { renderPage } from "./render.js";
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 export interface IcasBankAppOptions {
+  /** Override so tests can point at a fixture tree without the package `pages/`. */
   readonly pagesDir?: string;
   readonly publicDir?: string;
 }
 
 /**
  * Build the icas-bank request handler. Does not listen.
+ *
+ * @param options - Optional page/static roots for tests
+ * @returns An Express app ready for `listen` or `supertest`
  */
 export function createIcasBankApp(options: IcasBankAppOptions = {}): Express {
   const pagesDir = options.pagesDir ?? join(packageRoot, "pages");
@@ -40,7 +49,9 @@ export function createIcasBankApp(options: IcasBankAppOptions = {}): Express {
   const app = express();
   app.disable("x-powered-by");
   app.use(express.urlencoded({ extended: false }));
+  // Disable caching so discovery/replay always observe the current HTML, not a stale copy.
   app.use(express.static(publicDir, { etag: false, cacheControl: false }));
+  // Cookie/query must apply before any route so overlays survive redirects.
   app.use(attachInjectMode);
 
   const page = (fileName: string, vars?: Record<string, string>): string =>
@@ -60,6 +71,7 @@ export function createIcasBankApp(options: IcasBankAppOptions = {}): Express {
 
   app.get("/lending/search.htm", (req, res) => {
     const acct = queryString(req, "txtAcct");
+    // Bookmarkable inquiry: a populated query skips the form, matching legacy cores.
     if (acct.length > 0) {
       redirectInquiry(res, acct);
       return;
@@ -78,6 +90,7 @@ export function createIcasBankApp(options: IcasBankAppOptions = {}): Express {
       return;
     }
     const mode = injectModeFrom(res);
+    // Recoverable-wait / HITL fixture lives on loan details for this tenant only.
     await maybeDelayInjectWait(mode);
     const ln = encodeURIComponent(loan.loanAccountId);
     sendHtml(
@@ -99,6 +112,7 @@ export function createIcasBankApp(options: IcasBankAppOptions = {}): Express {
   });
 
   app.post("/lending/payoff.htm", (req, res) => {
+    // Prefer the hidden field so a dropped query string does not lose the account.
     const ln = formString(req.body, "hidLn") || queryString(req, "ln");
     const loan = getLoan(ln);
     if (loan === undefined) {
@@ -122,6 +136,7 @@ export function createIcasBankApp(options: IcasBankAppOptions = {}): Express {
         }),
       );
     } catch (error) {
+      // Re-render the form with the operator's input so they can correct it.
       sendHtml(res, payoffPage(pagesDir, loan, dateRaw, payoffErrorMessage(error)));
     }
   });
@@ -136,6 +151,7 @@ export function createIcasBankApp(options: IcasBankAppOptions = {}): Express {
     );
   });
 
+  // Dead-end modules: discovery must observe a real menu, not a single linear path.
   app.get("/cif.htm", (_req, res) => {
     sendHtml(res, page("cif.html"));
   });
@@ -161,6 +177,9 @@ export function createIcasBankApp(options: IcasBankAppOptions = {}): Express {
   return app;
 }
 
+/**
+ * Payoff form with optional inline error. `errorDisplay` hides the banner when empty.
+ */
 function payoffPage(
   pagesDir: string,
   loan: LoanRecord,
@@ -175,6 +194,9 @@ function payoffPage(
   });
 }
 
+/**
+ * Flatten a loan into `{{token}}` strings the hand-authored HTML expects.
+ */
 function loanVars(loan: LoanRecord): Record<string, string> {
   return {
     loanAccountId: loan.loanAccountId,
@@ -191,6 +213,12 @@ function loanVars(loan: LoanRecord): Record<string, string> {
   };
 }
 
+/**
+ * Route a search to inquiry, not-found, or back to the blank form.
+ *
+ * Empty input returns to search rather than 404 — a blank submit is not a
+ * missing account.
+ */
 function redirectInquiry(res: Response, acct: string): void {
   const id = acct.trim();
   if (id.length === 0) {
@@ -217,6 +245,10 @@ function queryString(req: Request, key: string): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+/**
+ * Read a urlencoded field. Non-object bodies look like a blank field so a
+ * malformed POST still renders the UI instead of throwing.
+ */
 function formString(body: unknown, key: string): string {
   if (body === null || typeof body !== "object") {
     return "";
@@ -225,6 +257,10 @@ function formString(body: unknown, key: string): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+/**
+ * Map domain errors to operator-facing copy. Unknown errors stay generic so
+ * internals do not leak into the page.
+ */
 function payoffErrorMessage(error: unknown): string {
   if (error instanceof InvalidPayoffDateError) {
     return "Payoff Dt not recognized. Use YYYY-MM-DD or MM/DD/YYYY.";

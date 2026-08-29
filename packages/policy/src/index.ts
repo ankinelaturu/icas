@@ -1,5 +1,8 @@
 /**
- * @file @icas/policy — prompt-policy loading and runtime PolicyGuard.
+ * @file @icas/policy — injectable prompt text plus runtime PolicyGuard.
+ *
+ * Prompt markdown influences the model. {@link PolicyGuard} allow / deny /
+ * require-human is what actually executes. Redaction lives in `@icas/redactor`.
  */
 
 export type {

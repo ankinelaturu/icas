@@ -1,5 +1,9 @@
 /**
  * @file PlaywrightSurface — Playwright implementation of the Surface seam.
+ *
+ * First browser backend, not the artifact model. Capabilities stay semantic
+ * (click/fill/assert). This class owns Chromium lifecycle, ranked locators,
+ * bounded waits, and same-session HITL ownership.
  */
 
 import { randomUUID } from "node:crypto";
@@ -26,6 +30,10 @@ import { SurfaceError } from "./surface-error.js";
 
 import { resolveTarget } from "./target-resolver.js";
 
+/**
+ * Launch and wait knobs. Production defaults to a headed session so HITL
+ * can take the same window; tests pass `headed: false`.
+ */
 export interface PlaywrightSurfaceOptions {
   /**
    * When true (default), launch a headed window. Tests pass `false`.
@@ -47,6 +55,9 @@ export interface PlaywrightSurfaceOptions {
 
 /**
  * Browser-backed {@link Surface}. Production defaults to a headed session.
+ *
+ * `close` is idempotent. Automation actions throw {@link SurfaceError}
+ * `HUMAN_HAS_CONTROL` while a human owns the same page.
  */
 export class PlaywrightSurface implements Surface {
   private browser: Browser | undefined;
@@ -73,6 +84,8 @@ export class PlaywrightSurface implements Surface {
 
   /**
    * Launch Chromium, open a page, and navigate to `url`.
+   *
+   * Closes any prior session first so a second `open` does not leak processes.
    */
   async open(url: string): Promise<void> {
     await this.close();
@@ -84,6 +97,9 @@ export class PlaywrightSurface implements Surface {
 
   /**
    * Close the browser. No-ops when already closed.
+   *
+   * Clears handles before `browser.close` so a concurrent close sees an
+   * already-torn-down session rather than double-closing Chromium.
    */
   async close(): Promise<void> {
     const browser = this.browser;
@@ -107,6 +123,9 @@ export class PlaywrightSurface implements Surface {
 
   /**
    * Capture a full-page screenshot plus optional accessibility tree.
+   *
+   * Visual-first: legacy bank UIs often lack stable test ids. The a11y
+   * snapshot is a supplement for evidence, not a required locator source.
    */
   async observe(): Promise<Observation> {
     const page = this.requirePage();
@@ -126,6 +145,10 @@ export class PlaywrightSurface implements Surface {
 
   /**
    * Run one semantic action. `ValueRef` inputs must already be resolved to literals.
+   *
+   * Replay hydrates fill/select before this call. `handoff` is allowed even
+   * when a human already owns control so a capability-encoded pause is not
+   * rejected by {@link assertAutomation}.
    */
   async execute(action: CapabilityAction): Promise<SurfaceActionResult> {
     if (action.type !== "handoff") {
@@ -139,6 +162,7 @@ export class PlaywrightSurface implements Surface {
       }
       case "click": {
         const control = await this.locate(action.target);
+        // Record href before click; after navigation `page.url()` is the landing page.
         const destinationUrl = await hrefOf(control, page.url());
         await control.click();
         return {
@@ -175,6 +199,9 @@ export class PlaywrightSurface implements Surface {
 
   /**
    * Check an assertion with bounded waits. Returns false on timeout or mismatch.
+   *
+   * Timeouts become `false` rather than throws so ReplayEngine can classify
+   * (precondition vs postcondition vs business outcome) instead of crashing.
    */
   async assert(assertion: Assertion): Promise<boolean> {
     this.assertAutomation();
@@ -250,6 +277,9 @@ export class PlaywrightSurface implements Surface {
 
   /**
    * Resolve an in-page href to an absolute URL when the target is an anchor.
+   *
+   * Used by policy before click. Non-anchors return `undefined` rather than
+   * inventing a destination.
    */
   async peekDestination(target: TargetDescriptor): Promise<string | undefined> {
     this.assertAutomation();
@@ -259,6 +289,8 @@ export class PlaywrightSurface implements Surface {
 
   /**
    * Pause automation. The headed session stays open for a human operator.
+   *
+   * HITL is control transfer of this page, not a second browser or co-browse.
    */
   async handoffToHuman(): Promise<void> {
     this.requirePage();
@@ -280,6 +312,11 @@ export class PlaywrightSurface implements Surface {
     return this.owner;
   }
 
+  /**
+   * Reject clicks/fills while a human owns the session.
+   *
+   * @throws {SurfaceError} `HUMAN_HAS_CONTROL`
+   */
   private assertAutomation(): void {
     if (this.owner === "human") {
       throw new SurfaceError(
@@ -289,6 +326,9 @@ export class PlaywrightSurface implements Surface {
     }
   }
 
+  /**
+   * @throws {Error} When `open` has not run or `close` already tore down the page
+   */
   private requirePage(): Page {
     if (this.page === undefined) {
       throw new Error("PlaywrightSurface has no open page; call open() first.");
@@ -297,6 +337,9 @@ export class PlaywrightSurface implements Surface {
   }
 }
 
+/**
+ * Accept a raw string or a ValueRef that replay already turned into `{ literal }`.
+ */
 function assertionString(value: string | ValueRef): string {
   if (typeof value === "string") {
     return value;
@@ -304,6 +347,12 @@ function assertionString(value: string | ValueRef): string {
   return literalString(value);
 }
 
+/**
+ * Resolve a ValueRef with an empty input map.
+ *
+ * Replay hydrates `{ fromInput }` first. An unresolved fromInput here means
+ * a caller skipped hydrate — fail loudly rather than filling `undefined`.
+ */
 function literalString(ref: ValueRef): string {
   const value = resolveValueRef(ref, {});
   if (typeof value === "string") {
@@ -315,6 +364,9 @@ function literalString(ref: ValueRef): string {
   throw new Error("action value must resolve to a string, number, or boolean");
 }
 
+/**
+ * Absolute URL for an anchor href, or `undefined` when the control is not a link.
+ */
 async function hrefOf(
   control: Locator,
   baseUrl: string,
@@ -326,6 +378,11 @@ async function hrefOf(
   return new URL(href, baseUrl).href;
 }
 
+/**
+ * Prefer form `inputValue` for inputs; inner text for everything else.
+ *
+ * Buttons and payoff amounts live in non-input nodes on the bank fixture.
+ */
 async function readControlValue(control: Locator): Promise<string> {
   const tag = await control.evaluate((el) => el.tagName.toLowerCase());
   if (tag === "input" || tag === "textarea" || tag === "select") {

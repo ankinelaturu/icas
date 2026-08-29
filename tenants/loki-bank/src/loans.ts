@@ -1,5 +1,9 @@
 /**
  * @file Deterministic synthetic loan records and payoff math for loki-bank.
+ *
+ * Fake book of business only — no real accounts or PII. Account ids match
+ * icas-bank on purpose so a capability's typed inputs still work against
+ * this second install of the same Vendor+Product.
  */
 
 /** Institution processing date. Not wall-clock, so replay stays stable. */
@@ -7,6 +11,7 @@ export const SYSTEM_DATE = "2026-08-28";
 
 export type LoanStatus = "Active" | "Paid Off";
 
+/** One synthetic loan. Amounts are numbers until quote formatting. */
 export interface LoanRecord {
   readonly loanAccountId: string;
   readonly borrowerName: string;
@@ -20,6 +25,7 @@ export interface LoanRecord {
   readonly branch: string;
 }
 
+/** Quote fields as strings so the statement page and replay extracts match exactly. */
 export interface PayoffQuote {
   readonly loanAccountId: string;
   readonly payoffDate: string;
@@ -56,6 +62,7 @@ const LOANS: readonly LoanRecord[] = [
     branch: "001",
   },
   {
+    // Paid-off negative path: inquiry succeeds, payoff quote must not.
     loanAccountId: "555555",
     borrowerName: "OKAFOR, T",
     status: "Paid Off",
@@ -113,6 +120,8 @@ export function parsePayoffDate(raw: string): string | undefined {
   }
   const utc = Date.UTC(year, month - 1, day);
   const check = new Date(utc);
+  // Date.UTC overflows invalid days (31 Feb → 3 Mar). Reject those so the
+  // operator sees a parse error instead of a silently shifted quote.
   if (
     check.getUTCFullYear() !== year ||
     check.getUTCMonth() !== month - 1 ||
@@ -158,6 +167,7 @@ export function calculatePayoff(
   };
 }
 
+/** Thrown when inquiry succeeds but the account cannot be quoted (e.g. Paid Off). */
 export class PayoffNotEligibleError extends Error {
   constructor(
     readonly loanAccountId: string,
@@ -168,6 +178,7 @@ export class PayoffNotEligibleError extends Error {
   }
 }
 
+/** Thrown when the operator date is not a real calendar day. */
 export class InvalidPayoffDateError extends Error {
   constructor(readonly raw: string) {
     super("Payoff date is not a valid calendar date");
@@ -175,6 +186,7 @@ export class InvalidPayoffDateError extends Error {
   }
 }
 
+/** Thrown when the quote date is before the frozen processing date. */
 export class PayoffDateInPastError extends Error {
   constructor(readonly payoffDate: string) {
     super(`Payoff date ${payoffDate} is before processing date ${SYSTEM_DATE}`);
@@ -182,6 +194,7 @@ export class PayoffDateInPastError extends Error {
   }
 }
 
+/** Two-decimal money so float drift does not fail replay equality. */
 function roundMoney(amount: number): number {
   return Math.round(amount * 100) / 100;
 }
@@ -192,6 +205,7 @@ function calendarDays(fromIso: string, toIso: string): number {
   return Math.round((to - from) / 86_400_000);
 }
 
+/** UTC midnight so DST does not change the elapsed-day count. */
 function utcDay(iso: string): number {
   const match = ISO_DATE.exec(iso);
   if (!match) {

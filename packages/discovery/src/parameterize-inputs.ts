@@ -1,5 +1,8 @@
 /**
  * @file Replace concrete discovery values with ValueRef input references.
+ *
+ * Replay must not bake a discovery-time literal (e.g. loan id `987654`) into
+ * the artifact. Only fill/select literals that match `inputValues` are rewritten.
  */
 
 import type { CapabilityAction, PrimitiveType } from "@icas/capability";
@@ -15,6 +18,13 @@ export interface DiscoveredInput {
 
 /**
  * Rewrite fill/select literals that match a discovered input value.
+ *
+ * Already-parameterized `{ input }` refs are left alone. Navigate/click/read
+ * never carry a typed input value, so they pass through.
+ *
+ * @param action - One success-path action before semantic locator cleanup
+ * @param inputValues - Name → observed literal, from the compile request
+ * @returns A new action when a literal matched; otherwise `action`
  */
 export function parameterizeAction(
   action: CapabilityAction,
@@ -23,6 +33,7 @@ export function parameterizeAction(
   if (action.type !== "fill" && action.type !== "select") {
     return action;
   }
+  // Caller already supplied a ValueRef; do not second-guess it.
   if (action.value.input !== undefined) {
     return action;
   }
@@ -36,6 +47,12 @@ export function parameterizeAction(
 
 /**
  * Input params that actually appear on parameterized steps.
+ *
+ * Specs in `inputValues` that never matched a fill/select are omitted so the
+ * artifact does not advertise unused inputs.
+ *
+ * @param actions - Already-parameterized success-path actions
+ * @param inputValues - Same map passed to {@link parameterizeAction}
  */
 export function inputsFromActions(
   actions: readonly CapabilityAction[],
@@ -53,6 +70,7 @@ export function inputsFromActions(
   > = {};
   for (const name of used) {
     const spec = inputValues[name];
+    // A stray `{ input }` with no compile-time spec is skipped, not invented.
     if (spec === undefined) {
       continue;
     }
@@ -65,6 +83,9 @@ export function inputsFromActions(
   return inputs;
 }
 
+/**
+ * First matching name wins. Compare as strings so numeric literals still bind.
+ */
 function inputNameForLiteral(
   literal: unknown,
   inputValues: Record<string, DiscoveredInput>,

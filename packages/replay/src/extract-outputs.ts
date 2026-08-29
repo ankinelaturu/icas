@@ -1,5 +1,8 @@
 /**
  * @file extract-outputs — read declared capability outputs from the surface.
+ *
+ * Extraction is still a Surface action: PolicyGuard sees each `read`. The
+ * engine does not guess missing locators or coerce types past the artifact schema.
  */
 
 import {
@@ -14,6 +17,10 @@ import { ReplayFailureCode, type ExecutionResult } from "./execution-result.js";
 
 /**
  * Extract and type-check declared outputs via `read` actions.
+ *
+ * Missing `extract.target` is a catalog defect, not a locator miss. Policy
+ * denial and schema mismatch both return structured failures so CLI/MCP
+ * stay on the {@link ExecutionResult} contract.
  *
  * @returns Outputs on success, or a structured extraction/policy failure
  */
@@ -59,6 +66,8 @@ export async function extractOutputs(args: {
     }
   }
   try {
+    // Schema check after all reads so a type mismatch is not confused with
+    // a locator miss on a later field.
     validateOutputValues(capability.outputs, outputs);
   } catch (error) {
     return fail(
@@ -71,6 +80,12 @@ export async function extractOutputs(args: {
   return { outputs };
 }
 
+/**
+ * Pull `details.value` from a Surface `read` result.
+ *
+ * PlaywrightSurface stores the control text there. Any other shape is treated
+ * as extraction failure rather than guessing a nested field.
+ */
 function readValue(details: unknown): unknown {
   if (typeof details === "object" && details !== null && "value" in details) {
     return (details as { value: unknown }).value;
@@ -78,6 +93,9 @@ function readValue(details: unknown): unknown {
   return undefined;
 }
 
+/**
+ * Wrap an extraction problem as {@link ReplayFailureCode.outputExtractionFailed}.
+ */
 function fail(
   capabilityId: string,
   runId: string,
@@ -94,6 +112,12 @@ function fail(
   };
 }
 
+/**
+ * Distinguish a structured failure from `{ outputs }` after extraction.
+ *
+ * Success bags have no `status`. Using `"status" in value` keeps the union
+ * honest without a shared discriminant on the happy path.
+ */
 function isExecutionResult(
   value: { outputs: Record<string, unknown> } | ExecutionResult,
 ): value is ExecutionResult {

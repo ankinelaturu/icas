@@ -1,5 +1,9 @@
 /**
  * @file ReplayEngine — deterministic execution of an already-resolved capability.
+ *
+ * Callers resolve tenant overrides first. This class never branches on tenant
+ * identity. Strict replay contains no LLM; `--assist` may invoke one bounded
+ * {@link RepairProposer} repair, then must rejoin the original path.
  */
 
 import { randomUUID } from "node:crypto";
@@ -24,26 +28,42 @@ import { hasSurfaceCode } from "./surface-code.js";
 
 /**
  * Optional collaborators. Policy is required for a safe production run.
+ *
+ * Missing policy fails open (allow) so unit tests can omit a guard. Missing
+ * evidence skips persistence, not execution. Missing handoff turns
+ * `require-human` into {@link ReplayFailureCode.policyBlocked}. Missing repair
+ * disables `--assist` even when the flag is set.
  */
 export interface ReplayEngineDependencies {
+  /** Deny off-origin navigations and risky actions before {@link Surface.execute}. */
   policy?: PolicyGuard;
+  /** Append failure/recovery events; redaction lives in the writer. */
   evidence?: EvidenceWriter;
+  /** Same-session HITL. Not a co-browsing console. */
   handoff?: HandoffController;
+  /** One bounded LLM repair when `options.assist` is true. */
   repair?: RepairProposer;
 }
 
 /**
- * Execute a supplied effective capability. Callers resolve tenant overrides first.
- * This engine never branches on tenant identity.
+ * Execute a supplied effective capability. Callers resolve tenant overrides
+ * first via CapabilityResolver. This engine never branches on tenant identity,
+ * vendor, or product.
+ *
+ * Playwright is only the {@link Surface} implementation. Artifacts stay
+ * semantic (click/fill/assert), not locator scripts.
  */
 export class ReplayEngine {
   private readonly policy: PolicyGuard | undefined;
   private readonly evidence: EvidenceWriter | undefined;
   private readonly handoff: HandoffController | undefined;
   private readonly repair: RepairProposer | undefined;
+  /** Recoverable interstitial retries, not semantic-mismatch retries. */
   private maxAttempts = 2;
+  /** Cap on repair actions in one `--assist` attempt. */
   private assistBudget = 3;
   private assistEnabled = false;
+  /** One assist per run: freeze, repair, rejoin — not rediscovery. */
   private assistUsed = false;
   private currentCapability: CapabilityArtifact | undefined;
   private startedAt = "";
@@ -61,11 +81,13 @@ export class ReplayEngine {
   /**
    * Iterate capability steps and return a structured result.
    *
-   * Step execute is gated by PolicyGuard. Postconditions are wired later.
+   * Preconditions → policy-gated execute → postconditions, then overall
+   * success assertions and output extraction. LLM repair runs only when
+   * `options.assist` is true and a {@link RepairProposer} is injected.
    *
    * @param capability - Effective artifact from {@link CapabilityResolver}, or missing
-   * @param inputs - Typed invocation parameters used to hydrate assertion ValueRefs
-   * @param options - Replay flags such as `assist` (unused until later passes)
+   * @param inputs - Typed invocation parameters used to hydrate ValueRefs
+   * @param options - Replay flags: `assist`, budgets, optional stable `runId`
    */
   async run(
     capability: CapabilityArtifact | undefined,
@@ -80,17 +102,26 @@ export class ReplayEngine {
     this.startedAt = new Date().toISOString();
     const result = await this.runLoop(capability, inputs, runId);
     if (result.status === "failure") {
+      // Capture after the loop so a mid-run stop still gets rich evidence.
       await this.captureFailureEvidence(result);
     }
     return result;
   }
 
+  /**
+   * Walk steps until a structured stop or overall success.
+   *
+   * @returns A failure as soon as a checkpoint cannot continue; otherwise
+   *   {@link finishRun}
+   */
   private async runLoop(
     capability: CapabilityArtifact | undefined,
     inputs: Record<string, unknown>,
     runId: string,
   ): Promise<ExecutionResult> {
     if (capability === undefined) {
+      // Missing artifact is a caller error (resolve failed or id unknown),
+      // not a surface crash. Fail closed with a structured code.
       return {
         status: "failure",
         capabilityId: "unknown",
@@ -102,8 +133,11 @@ export class ReplayEngine {
     for (let index = 0; index < capability.steps.length; index++) {
       const step = capability.steps[index];
       if (step === undefined) {
+        // noUncheckedIndexedAccess: sparse holes are skipped, not treated as failure.
         continue;
       }
+      // Peek the next step so a successful `--assist` can verify its
+      // preconditions before rejoining this loop.
       const nextStep = capability.steps[index + 1];
       const preFailure = await this.evaluatePreconditions(step, inputs, runId, capability.id);
       if (preFailure !== undefined) {
@@ -117,6 +151,12 @@ export class ReplayEngine {
     return await this.finishRun(capability, inputs, runId);
   }
 
+  /**
+   * After every step succeeds, check overall `success` assertions and extract outputs.
+   *
+   * Per-step postconditions are not enough: a click can land on a valid screen
+   * that still is not the declared payoff result.
+   */
   private async finishRun(
     capability: CapabilityArtifact,
     inputs: Record<string, unknown>,
@@ -143,6 +183,7 @@ export class ReplayEngine {
       ...(this.policy === undefined ? {} : { policy: this.policy }),
     });
     if (isExecutionResult(extracted)) {
+      // Extraction/type failures stay structured so CLI/MCP do not throw.
       return extracted;
     }
     return {
@@ -160,6 +201,11 @@ export class ReplayEngine {
     throw new Error("ReplayEngine.verifyStep is a scaffold.");
   }
 
+  /**
+   * Assert every precondition, with a bounded interstitial retry.
+   *
+   * @returns `undefined` when the step may execute; otherwise a structured failure
+   */
   private async evaluatePreconditions(
     step: CapabilityStep,
     inputs: Record<string, unknown>,
@@ -178,6 +224,8 @@ export class ReplayEngine {
       if (failed === undefined) {
         return undefined;
       }
+      // Retry only after a known interstitial dismiss. Semantic mismatches
+      // (wrong screen) must not become indefinite waits.
       if (attempt < this.maxAttempts && (await this.recoverInterstitial(runId, attempt))) {
         continue;
       }
@@ -194,6 +242,11 @@ export class ReplayEngine {
     return undefined;
   }
 
+  /**
+   * Policy-check, execute, then postcondition. Assist is considered on classified fails.
+   *
+   * @returns `undefined` when the step completed; otherwise a stop result
+   */
   private async executeStep(
     step: CapabilityStep,
     nextStep: CapabilityStep | undefined,
@@ -203,10 +256,13 @@ export class ReplayEngine {
   ): Promise<ExecutionResult | undefined> {
     const action = hydrateAction(step.action, inputs);
     const destinationUrl = await this.peekDestination(action);
+    // Policy sees the destination before click so origin allowlists can deny
+    // without navigating. Missing policy = allow (tests without a guard).
     const decision = this.policy?.check(action, destinationUrl === undefined
       ? {}
       : { destinationUrl }) ?? { decision: "allow" as const };
     if (decision.decision === "require-human") {
+      // Same headed session: pause automation, wait, resume. No co-browse.
       const paused = await this.pauseForHuman({
         runId,
         capabilityId,
@@ -226,6 +282,7 @@ export class ReplayEngine {
         };
       }
     } else if (decision.decision !== "allow") {
+      // Hard deny: never execute. Distinct from HITL pause.
       return {
         status: "failure",
         capabilityId,
@@ -239,6 +296,7 @@ export class ReplayEngine {
     try {
       const result = await this.surface.execute(action);
       if (result.status !== "ok") {
+        // Surface returned a structured fail; try one bounded assist, else stop.
         return await this.maybeAssist(step, nextStep, inputs, runId, capabilityId, {
           status: "failure",
           capabilityId,
@@ -251,6 +309,7 @@ export class ReplayEngine {
       }
     } catch (error) {
       if (hasSurfaceCode(error, ReplayFailureCode.targetNotFound)) {
+        // Duck-typed so replay does not import `@icas/browser`.
         return await this.maybeAssist(step, nextStep, inputs, runId, capabilityId, {
           status: "failure",
           capabilityId,
@@ -265,15 +324,28 @@ export class ReplayEngine {
     }
     const post = await this.evaluatePostconditions(step, inputs, runId, capabilityId);
     if (post !== undefined) {
+      // The click happened but the expected screen did not; assist may recover.
       return await this.maybeAssist(step, nextStep, inputs, runId, capabilityId, post);
     }
     return undefined;
   }
 
+  /**
+   * Assist is opt-in, one-shot, and requires an injected proposer.
+   */
   private canAssist(): boolean {
     return this.assistEnabled && this.repair !== undefined && !this.assistUsed;
   }
 
+  /**
+   * One bounded LLM repair, then rejoin the original path or stop.
+   *
+   * Sequence: freeze context → propose → policy-check each action → execute
+   * within budget → original postconditions → next step's preconditions.
+   * A second failure after this is not another assist (`assistUsed`).
+   *
+   * @returns `undefined` when execution rejoined; otherwise the unrepaired or new failure
+   */
   private async maybeAssist(
     step: CapabilityStep,
     nextStep: CapabilityStep | undefined,
@@ -289,6 +361,7 @@ export class ReplayEngine {
       return failure;
     }
     this.assistUsed = true;
+    // Freeze the current observation + failed step. This is not a new goal search.
     const observation = await this.surface.observe();
     const proposal = await this.repair.propose({
       step,
@@ -299,6 +372,7 @@ export class ReplayEngine {
     let executed = 0;
     for (const raw of proposal.actions) {
       if (executed >= this.assistBudget) {
+        // Budget is a hard stop. Remaining proposed actions are discarded.
         return {
           status: "failure",
           capabilityId,
@@ -312,6 +386,7 @@ export class ReplayEngine {
       const repairAction = hydrateAction(raw, inputs);
       const decision = this.policy?.check(repairAction) ?? { decision: "allow" as const };
       if (decision.decision !== "allow") {
+        // Repair actions still go through PolicyGuard. Assist is not a bypass.
         return {
           status: "failure",
           capabilityId,
@@ -338,6 +413,8 @@ export class ReplayEngine {
       return post;
     }
     if (nextStep !== undefined) {
+      // Next original precondition is the rejoin gate. Failure here is not
+      // another assist (`assistUsed` is already true).
       const pre = await this.evaluatePreconditions(nextStep, inputs, runId, capabilityId);
       if (pre !== undefined) {
         return pre;
@@ -346,6 +423,11 @@ export class ReplayEngine {
     return undefined;
   }
 
+  /**
+   * Assert every postcondition; classify a known domain message before a hard fail.
+   *
+   * @returns `undefined` when postconditions hold; otherwise business_outcome or failure
+   */
   private async evaluatePostconditions(
     step: CapabilityStep,
     inputs: Record<string, unknown>,
@@ -366,6 +448,7 @@ export class ReplayEngine {
       }
       const outcome = await this.classifyBusinessOutcome(capabilityId, runId);
       if (outcome !== undefined) {
+        // Domain messages (loan not found) are not Playwright crashes.
         return outcome;
       }
       if (attempt < this.maxAttempts && (await this.recoverInterstitial(runId, attempt))) {
@@ -384,6 +467,12 @@ export class ReplayEngine {
     return undefined;
   }
 
+  /**
+   * Dismiss a known interstitial and log recovery. Returns false when none match.
+   *
+   * Only the known copy is treated as recoverable. Arbitrary sleeps are not
+   * the primary sync mechanism — assertions already bound-wait.
+   */
   private async recoverInterstitial(runId: string, attempt: number): Promise<boolean> {
     for (const text of INTERSTITIAL_TEXTS) {
       const visible = await this.surface.assert({ type: "textVisible", value: text });
@@ -392,6 +481,7 @@ export class ReplayEngine {
       }
       const decision = this.policy?.check(INTERSTITIAL_CONTINUE) ?? { decision: "allow" as const };
       if (decision.decision !== "allow") {
+        // Policy can refuse the Continue click; treat as unrecoverable.
         return false;
       }
       await this.surface.execute(INTERSTITIAL_CONTINUE);
@@ -408,6 +498,9 @@ export class ReplayEngine {
     return false;
   }
 
+  /**
+   * Map a visible fixture message to `business_outcome` instead of a crash code.
+   */
   private async classifyBusinessOutcome(
     capabilityId: string,
     runId: string,
@@ -430,6 +523,11 @@ export class ReplayEngine {
     return undefined;
   }
 
+  /**
+   * Transfer the same headed session to a human, then resume automation.
+   *
+   * @returns `false` when no {@link HandoffController} is injected
+   */
   private async pauseForHuman(args: {
     runId: string;
     capabilityId: string;
@@ -438,6 +536,7 @@ export class ReplayEngine {
     message: string;
   }): Promise<boolean> {
     if (this.handoff === undefined) {
+      // No controller: cannot pause. Caller maps this to policyBlocked.
       return false;
     }
     await this.handoff.request({
@@ -448,15 +547,22 @@ export class ReplayEngine {
       stepId: args.stepId,
     });
     await this.surface.handoffToHuman();
+    // Session stays open. waitForResume blocks until the operator continues.
     await this.handoff.waitForResume();
     await this.surface.resumeFromHuman();
     return true;
   }
 
+  /**
+   * Resolve an in-page href before click so policy can deny off-origin destinations.
+   *
+   * Locator misses must not turn a policy check into a crash; omit the URL.
+   */
   private async peekDestination(
     action: CapabilityAction,
   ): Promise<string | undefined> {
     if (!("target" in action)) {
+      // navigate/handoff have no click target to peek.
       return undefined;
     }
     try {
@@ -466,6 +572,12 @@ export class ReplayEngine {
     }
   }
 
+  /**
+   * Persist a classified failure plus screenshot/DOM when the writer is present.
+   *
+   * Observation capture is best-effort: a closed page still gets a summary
+   * and a trace stub so operators are not left with an empty run folder.
+   */
   private async captureFailureEvidence(
     result: Extract<ExecutionResult, { status: "failure" }>,
   ): Promise<void> {

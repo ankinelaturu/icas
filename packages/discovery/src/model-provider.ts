@@ -3,12 +3,19 @@
  *
  * Default is `openai/gpt-4o` (image-capable for observation screenshots).
  * Override with `ICAS_MODEL`. Keys: `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`.
+ * These helpers never call the network; {@link MastraCandidateProposer} does.
  */
 
 export const DEFAULT_DISCOVERY_MODEL = "openai/gpt-4o";
 
 /**
  * Resolve the Mastra model id. Does not call the network.
+ *
+ * `ICAS_MODEL` always wins. Anthropic is chosen only when its key is set and
+ * OpenAI's is not, so a dual-key environment still defaults to gpt-4o.
+ *
+ * @param env - Process env; inject in tests
+ * @returns A `provider/model` string for Mastra's model router
  */
 export function resolveDiscoveryModel(
   env: NodeJS.ProcessEnv = process.env,
@@ -26,6 +33,8 @@ export function resolveDiscoveryModel(
 
 /**
  * True when a provider key exists so a live generate could run.
+ *
+ * Used to skip optional smoke tests, not to pick a model.
  */
 export function hasDiscoveryApiKey(env: NodeJS.ProcessEnv = process.env): boolean {
   const openai = env.OPENAI_API_KEY;

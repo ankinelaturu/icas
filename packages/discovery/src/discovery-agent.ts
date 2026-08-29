@@ -1,8 +1,9 @@
 /**
  * @file DiscoveryAgent — confidence-ordered DFS over a live surface.
  *
- * Try the lowest-rank untried sibling first (docs/03). Backtrack to the next
- * sibling is a later pass; this pass stops when a node is exhausted.
+ * The model only ranks candidates. This class owns the graph: which sibling
+ * to try next, when to backtrack, and how to restore the browser. Mastra is
+ * injected as {@link CandidateProposer}; tests use a fake.
  */
 
 import { randomUUID } from "node:crypto";
@@ -32,16 +33,21 @@ import {
 export interface DiscoveryAgentDependencies {
   /** Required so tests inject a fake and production injects Mastra. */
   proposer: CandidateProposer;
+  /** Runtime allowlist before execute. Missing means allow (tests without a guard). */
   policy?: PolicyGuard;
+  /** Same headed session HITL. Missing means {@link pauseForHuman} returns false. */
   handoff?: HandoffController;
+  /** Append-only JSONL plus screenshot refs. Missing means in-memory events only. */
   evidence?: EvidenceWriter;
+  /** Clock for the wall-clock budget; inject a fake in tests. */
   now?: () => number;
   /** Pass 3.1 markdown, injected into every proposer call. */
   promptPolicy?: string;
 }
 
 /**
- * Goal-driven search over a live surface. Catalog lookup is out of scope.
+ * Goal-driven search over a live surface. Catalog lookup is out of scope —
+ * this agent always discovers; it never silently replays a stored capability.
  */
 export class DiscoveryAgent {
   private readonly proposer: CandidateProposer;
@@ -51,6 +57,10 @@ export class DiscoveryAgent {
   private readonly now: () => number;
   private readonly promptPolicy: string | undefined;
 
+  /**
+   * @param surface - Live observation/action seam (Playwright in production)
+   * @param deps - Proposer required; policy, handoff, and evidence are optional
+   */
   constructor(
     private readonly surface: Surface,
     deps: DiscoveryAgentDependencies,
@@ -65,6 +75,10 @@ export class DiscoveryAgent {
 
   /**
    * Open the target URL and search until success, budget, or a failed action.
+   *
+   * Loop body is one DFS expansion: propose (once per node) → pick lowest-rank
+   * untried sibling → policy → execute → observe. Dead-ends pop back to the
+   * parent and restore the UI by replaying `pathActions`, not `page.goBack()`.
    */
   async run(request: DiscoveryRequest): Promise<DiscoveryResult> {
     const runId = randomUUID();
@@ -84,6 +98,8 @@ export class DiscoveryAgent {
     const startedAt = this.now();
     let steps = 0;
     const entryUrl = request.target.url;
+    // Actions that led from entryUrl to `current`. Backtrack pops one and
+    // replays the remainder so the headed session matches the in-memory parent.
     const pathActions: CapabilityAction[] = [];
 
     await this.surface.open(request.target.url);
@@ -99,12 +115,16 @@ export class DiscoveryAgent {
         return await finishStuck(trace, runId, "maxSteps");
       }
 
+      // First visit: ask the proposer. Later visits reuse ranked siblings
+      // already stored on the node so we do not spend another LLM call.
       const filled = await this.fillCandidates(current, request, budget, trace);
       if (filled?.status === "success") {
         await trace.finish("success");
         return { status: "success", runId, events: trace.events };
       }
       if (filled?.status === "stuck") {
+        // Model refused to improvise. Treat as a dead-end and try a sibling
+        // on the parent, same as exhausting candidates.
         const retreated = await this.backtrack(
           current,
           trace,
@@ -125,6 +145,7 @@ export class DiscoveryAgent {
 
       const candidate = nextUntried(current);
       if (candidate === undefined || candidate.id === undefined) {
+        // Every ranked sibling on this screen has been tried (or denied).
         const retreated = await this.backtrack(
           current,
           trace,
@@ -153,6 +174,8 @@ export class DiscoveryAgent {
         },
       });
 
+      // Peek before execute so origin allowlists can deny a navigation
+      // without clicking it. Missing policy = allow (tests without a guard).
       const destinationUrl = await this.peekDestination(action);
       const decision = this.policy?.check(
         action,
@@ -160,6 +183,8 @@ export class DiscoveryAgent {
       ) ?? { decision: "allow" as const };
       await trace.record({ type: "policy", payload: decision });
       if (decision.decision === "deny") {
+        // Hard block: never execute. HITL records evidence, then we skip this
+        // sibling and try the next rank on the same node.
         const paused = await this.pauseForHuman({
           runId,
           capabilityId: request.id,
@@ -180,6 +205,8 @@ export class DiscoveryAgent {
         continue;
       }
       if (decision.decision === "require-human") {
+        // Recurring approval: pause, then still execute the same action so
+        // the compiler can emit a handoff step on the success path.
         const paused = await this.pauseForHuman({
           runId,
           capabilityId: request.id,
@@ -217,6 +244,9 @@ export class DiscoveryAgent {
       const nextObservation = await this.surface.observe();
       const nextId = stateIdFromObservation(nextObservation);
       if (seen.has(nextId)) {
+        // Cycle: do not push a new node. Stay on `current` so the next loop
+        // iteration tries the next ranked sibling. The failed action stays on
+        // pathActions until we backtrack or succeed down another branch.
         await trace.record({ type: "dead_end", payload: { stateId: nextId, reason: "repeated_state" } });
         continue;
       }
@@ -244,6 +274,8 @@ export class DiscoveryAgent {
     if (current.parent === undefined) {
       return undefined;
     }
+    // Drop the action that entered this node; replay what remains so the
+    // browser is back on the parent screen before we try the next sibling.
     pathActions.pop();
     await this.restorePrefix(entryUrl, pathActions);
     await trace.record({
@@ -253,6 +285,10 @@ export class DiscoveryAgent {
     return current.parent;
   }
 
+  /**
+   * Transfer the same headed session. Returns false when no handoff controller
+   * is wired (headless tests) so the caller can fail closed.
+   */
   private async pauseForHuman(args: {
     runId: string;
     capabilityId: string;
@@ -279,6 +315,10 @@ export class DiscoveryAgent {
     return true;
   }
 
+  /**
+   * Re-open the tenant URL and re-execute the successful prefix. Cheaper than
+   * trusting history when a dead-end was a POST or a modal.
+   */
   private async restorePrefix(
     entryUrl: string,
     pathActions: readonly CapabilityAction[],
@@ -291,6 +331,7 @@ export class DiscoveryAgent {
 
   /**
    * Ask the proposer once per node. `success` / `stuck` end the run.
+   * Rank 1 is stored first so {@link nextUntried} walks confidence order.
    */
   private async fillCandidates(
     node: SearchNode,
@@ -304,6 +345,8 @@ export class DiscoveryAgent {
     const proposal = await this.proposer.propose({
       goal: request.goal,
       observation: node.observation,
+      // Chosen actions only — not the full JSONL — so the model sees the
+      // path taken, not failed siblings already dropped by DFS.
       history: trace.events
         .filter((event) => event.type === "chosen_action")
         .map((event) => JSON.stringify(event.payload)),
@@ -328,6 +371,10 @@ export class DiscoveryAgent {
     return undefined;
   }
 
+  /**
+   * Best-effort href for policy origin checks. Navigate/fill have no target
+   * peek; failures must not abort discovery.
+   */
   private async peekDestination(
     action: CapabilityAction,
   ): Promise<string | undefined> {
@@ -342,12 +389,14 @@ export class DiscoveryAgent {
   }
 }
 
+/** Lowest rank among candidates that have not been expanded or denied. */
 function nextUntried(node: SearchNode): CandidateAction | undefined {
   return node.candidates.find((candidate) => {
     return candidate.id !== undefined && !node.triedCandidateIds.has(candidate.id);
   });
 }
 
+/** Compact observation for the trace: id, url, imagePath only (no a11y dump). */
 function observationEvent(observation: Observation): DiscoveryTraceEvent {
   return {
     type: "observation",
@@ -359,6 +408,10 @@ function observationEvent(observation: Observation): DiscoveryTraceEvent {
   };
 }
 
+/**
+ * End the run as stuck (budget, exhausted, or proposer refused).
+ * Distinct from `failed`, which is a denied or broken execute.
+ */
 async function finishStuck(
   trace: DiscoveryTrace,
   runId: string,

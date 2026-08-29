@@ -2,7 +2,8 @@
  * @file CapabilityCompiler — trace → base artifact plus optional catalog persist.
  *
  * Failed exploration stays in the JSONL evidence. Checkpoints, outputs, and
- * Vendor+Product identity are derived from the success path.
+ * Vendor+Product identity are derived from the success path. The compiler
+ * reconstructs that path as a stack: ok `chosen_action` pushes, `backtrack` pops.
  */
 
 import { readFile } from "node:fs/promises";
@@ -33,12 +34,17 @@ import {
 
 export type { DiscoveredInput };
 
+/**
+ * Compile inputs. Provide in-memory `events` or a JSONL `tracePath`.
+ * `registry` is optional so tests can compile without writing the catalog.
+ */
 export interface CompileRequest {
   /** Unique catalog id, e.g. `loan-payoff`. */
   id: string;
   target: {
     vendor: string;
     product: string;
+    /** Discovering tenant; written to `discoveredOn` and the header-only override. */
     tenant?: string;
     url?: string;
   };
@@ -47,6 +53,7 @@ export interface CompileRequest {
   /** Append-only JSONL on disk (one event object per line). */
   tracePath?: string;
   name?: string;
+  /** Catalog version pin. Defaults to `1.0.0`; bump to persist over an existing id. */
   capabilityVersion?: string;
   /**
    * Discovery-time values to replace with `{ input: name }` on fill/select.
@@ -54,6 +61,7 @@ export interface CompileRequest {
   inputValues?: Record<string, DiscoveredInput>;
   /** When set, `save` the base artifact and a header-only tenant override. */
   registry?: CapabilityRegistry;
+  /** Provenance pointer stored on the tenant override as `createdFromRun`. */
   runId?: string;
 }
 
@@ -62,16 +70,26 @@ export interface CompileRequest {
  * becomes `steps`; dead-ends remain evidence.
  */
 export class CapabilityCompiler {
+  /**
+   * Build a base artifact from the reconstructed success path.
+   *
+   * @param request - Identity, trace source, optional persist registry
+   * @returns Schema-shaped artifact (not yet replayed)
+   * @throws {Error} When the trace has no executable success path
+   */
   async compile(request: CompileRequest): Promise<CapabilityArtifact> {
     const events = await loadTraceEvents(request);
     const path = extractSuccessfulPath(events);
     if (path.length === 0) {
+      // Empty stack means every branch backtracked or no ok execute occurred.
       throw new Error("CapabilityCompiler: trace has no successful executable path");
     }
     const inputValues = request.inputValues ?? {};
     const usedIds = new Set<string>();
     const steps: CapabilityStep[] = [];
     for (const [index, step] of path.entries()) {
+      // Recurring approval is a separate handoff step before the action.
+      // Skip when the action is already a handoff so we do not duplicate it.
       if (step.insertHandoff !== undefined && step.action.type !== "handoff") {
         const handoff = {
           type: "handoff" as const,
@@ -93,6 +111,7 @@ export class CapabilityCompiler {
       id: request.id,
       name: request.name ?? request.id,
       target: {
+        // Base identity is Vendor+Product. Tenant belongs on the override, not here.
         vendor: request.target.vendor,
         product: request.target.product,
       },
@@ -117,6 +136,19 @@ export class CapabilityCompiler {
   }
 }
 
+/**
+ * Save the base artifact and enroll the discovering tenant with `overrides: {}`.
+ *
+ * Refuse an existing `id@version` so discover cannot clobber a catalog entry.
+ * Header-only enrollment is required: `icas-play` / MCP fail if the tenant
+ * is not enrolled.
+ *
+ * @param registry - Catalog backend (filesystem in this repo)
+ * @param artifact - Newly compiled base capability
+ * @param options.tenant - When set, write a header-only override for that tenant
+ * @param options.runId - Provenance pointer back to the discovery run
+ * @throws {Error} When `id@version` is already stored
+ */
 export async function persistDiscoveredCapability(
   registry: CapabilityRegistry,
   artifact: CapabilityArtifact,
@@ -130,6 +162,7 @@ export async function persistDiscoveredCapability(
   }
   await registry.save(artifact);
   if (options.tenant === undefined) {
+    // Compile without enrollment when the caller omitted tenant (tests, dry compile).
     return;
   }
   await registry.saveOverride({
@@ -146,6 +179,13 @@ export async function persistDiscoveredCapability(
   });
 }
 
+/**
+ * Prefer in-memory events (agent just finished). Else parse JSONL from disk.
+ *
+ * @param request - Exactly one of `events` or `tracePath` must be present
+ * @returns Events in append order
+ * @throws {Error} When neither source is provided
+ */
 export async function loadTraceEvents(
   request: Pick<CompileRequest, "events" | "tracePath">,
 ): Promise<DiscoveryTraceEvent[]> {
@@ -156,6 +196,7 @@ export async function loadTraceEvents(
     throw new Error("CapabilityCompiler: provide events or tracePath");
   }
   const text = await readFile(request.tracePath, "utf8");
+  // One JSON object per line, as {@link DiscoveryTrace} wrote them.
   return text
     .split("\n")
     .map((line) => line.trim())
@@ -163,6 +204,10 @@ export async function loadTraceEvents(
     .map((line) => JSON.parse(line) as DiscoveryTraceEvent);
 }
 
+/**
+ * Parameterize literals, drop coordinate locators when a semantic strategy
+ * exists, then derive checkpoints from this step and the previous one.
+ */
 function toStep(
   step: SuccessfulPathStep,
   previous: SuccessfulPathStep | undefined,

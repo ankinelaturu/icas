@@ -1,10 +1,12 @@
 /**
- * Local driver: replay tests/fixtures/loan-payoff.capability.json against icas-bank.
+ * @file Throwaway local driver: replay a fixture JSON against icas-bank.
  *
  *   pnpm icas-bank
  *   pnpm exec tsx replay-loan-payoff.ts
  *
- * Not a catalog artifact and not icas-play. ReplayEngine receives the JSON directly.
+ * Not a catalog artifact and not `icas-play`. It feeds `ReplayEngine` a
+ * validated fixture so replay can be watched without enrollment, argv, or
+ * registry lookup. Do not treat this as the production CLI path.
  */
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -20,6 +22,10 @@ const repo = dirname(fileURLToPath(import.meta.url));
 /** Pause after open, after each surface action, and before close. */
 const STEP_DELAY_MS = 1; //1_500;
 
+/**
+ * Yield so a headed browser is watchable. `1` keeps this driver snappy;
+ * restore `1500` when demonstrating the UI by eye.
+ */
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
@@ -35,6 +41,7 @@ async function main(): Promise<void> {
   let executeCount = 0;
   const surface = new PlaywrightSurface({ headed: true });
   const execute = surface.execute.bind(surface);
+  // Wrap execute for console tracing only — do not grow ReplayEngine's public API for a driver.
   surface.execute = async (action) => {
     const step = capability.steps[executeCount];
     if (step !== undefined) {
@@ -45,6 +52,7 @@ async function main(): Promise<void> {
         `[step ${String(executeCount + 1)}/${String(capability.steps.length)}] ${step.id} (${action.type})${intent}`,
       );
     } else {
+      // After declared steps, remaining actions are output extracts.
       const extractName = outputNames[executeCount - capability.steps.length];
       console.log(
         extractName === undefined
@@ -59,6 +67,7 @@ async function main(): Promise<void> {
   };
   const engine = new ReplayEngine(surface, {
     policy: new PolicyGuard({
+      // icas-bank only. Fail closed if this driver is pointed at Loki (4102).
       allowedOrigins: ["http://localhost:4101"],
       allowedActionTypes: ["click", "fill", "select", "navigate", "read"],
     }),
@@ -74,6 +83,7 @@ async function main(): Promise<void> {
     );
     console.log(JSON.stringify(result, null, 2));
     if (result.status !== "success") {
+      // Set exitCode instead of process.exit so `finally` still closes the browser.
       process.exitCode = 1;
     }
     await delay(STEP_DELAY_MS);

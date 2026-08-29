@@ -1,5 +1,9 @@
 /**
  * @file Listen for the icas-bank tenant UI on PORT (default 4101).
+ *
+ * Process entry only. The request graph lives in {@link createIcasBankApp} so
+ * tests can import the handler without binding a port. Default 4101 (Loki
+ * Bank uses 4102) so both synthetic tenants can run at once.
  */
 
 import { createIcasBankApp } from "./app.js";
@@ -15,6 +19,10 @@ app.listen(port, () => {
   );
 });
 
+/**
+ * Parse `PORT`. Invalid values throw rather than silently falling back —
+ * a mistyped env must not bind a surprise port next to Loki Bank.
+ */
 function parsePort(raw: string | undefined): number {
   if (raw === undefined || raw.length === 0) {
     return DEFAULT_PORT;

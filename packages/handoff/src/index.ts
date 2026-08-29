@@ -1,5 +1,9 @@
 /**
- * @file @icas/handoff — HITL intervention requests and session ownership.
+ * @file @icas/handoff — HITL on the same headed session, not co-browsing.
+ *
+ * CLI approval/value prompts and browser takeover both record `actor: "human"`.
+ * {@link SessionHandoffController} is the ownership seam callers must honor
+ * before Surface.execute.
  */
 
 export type {

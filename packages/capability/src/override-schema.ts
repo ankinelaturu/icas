@@ -1,5 +1,11 @@
 /**
  * @file Tenant override Zod schema — declarative patches only, never executable code.
+ *
+ * An override is enrollment plus an optional patch against a pinned
+ * `id@version`. `strictObject` rejects unknown keys so a hand-edit cannot
+ * smuggle a `handler` or extra locator field. Discriminated action/assertion
+ * schemas are reused from the base artifact so a patch step is the same
+ * vocabulary replay already executes.
  */
 
 import * as z from "zod";
@@ -11,8 +17,10 @@ import {
   TargetDescriptorSchema,
 } from "./artifact-schema.js";
 
+/** Same format id as the base artifact. Independent of the pinned capabilityVersion. */
 const SCHEMA_VERSION = "1.0";
 
+/** Key names that look like injectable code. Matched case-insensitively on every nested object. */
 const EXECUTABLE_KEY = /javascript|customjs|^eval$|^handler$|^fn$/i;
 
 /**
@@ -20,6 +28,11 @@ const EXECUTABLE_KEY = /javascript|customjs|^eval$|^handler$|^fn$/i;
  *
  * Supply `step` to replace the whole step, or only the fields that are present.
  * Combining `step` with field-level patches is invalid.
+ *
+ * XOR exists because a whole-step replace already carries target/action; merging
+ * both would leave apply order undefined (which wins?). Empty patches are also
+ * invalid — enrollment with no step change uses `overrides: {}`, not a no-op
+ * StepOverride.
  */
 export const StepOverrideSchema = z
   .strictObject({
@@ -54,6 +67,10 @@ export const StepOverrideSchema = z
 
 /**
  * Declarative operations applied to a base capability. `{}` is header-only enrollment.
+ *
+ * Header-only is the edit surface for later tweaks so operators never patch
+ * `1.0.0.json` when they mean one institution. Insert keys are existing step
+ * ids; new steps live in the arrays, not as new record keys.
  */
 export const CapabilityOverridePatchSchema = z.strictObject({
   steps: z.record(z.string().min(1), StepOverrideSchema).optional(),
@@ -66,6 +83,13 @@ export const CapabilityOverridePatchSchema = z.strictObject({
   disabledSteps: z.array(z.string().min(1)).optional(),
 });
 
+/**
+ * Who wrote the override and why.
+ *
+ * `createdBy` distinguishes first discover, compatible adapt, drifted adapt,
+ * and a human edit. An empty patch is not proof the UI still works —
+ * `createdFromRun` should point at the verifying replay.
+ */
 export const OverrideProvenanceSchema = z.strictObject({
   createdBy: z.enum(["discovery", "verified", "icas-adapt", "human"]),
   createdFromRun: z.string().min(1).optional(),
@@ -74,6 +98,10 @@ export const OverrideProvenanceSchema = z.strictObject({
 
 /**
  * Tenant specialization of a pinned base capability version (`id@version`).
+ *
+ * Pin the version in `baseCapability` so a later `2.0.0` base cannot silently
+ * inherit a `1.0.0` patch. `target.tenant` is enrollment identity; it is not
+ * part of the reusable Vendor+Product id.
  */
 export const CapabilityOverrideSchema = z
   .strictObject({
@@ -92,6 +120,7 @@ export const CapabilityOverrideSchema = z
     provenance: OverrideProvenanceSchema,
   })
   .superRefine((override, ctx) => {
+    // Walk the whole value so a nested `handler` key cannot hide under a step.
     rejectExecutableKeys(override, [], ctx);
   });
 
@@ -103,6 +132,12 @@ export type OverrideProvenance = z.infer<typeof OverrideProvenanceSchema>;
 export type OverrideProvenanceCreatedBy = OverrideProvenance["createdBy"];
 export type CapabilityOverride = z.infer<typeof CapabilityOverrideSchema>;
 
+/**
+ * Recursively refuse function values and keys that look like injectable code.
+ *
+ * Overrides must stay reviewable JSON. A `customJs` field would break the
+ * "replay has no LLM and no eval" invariant even if Zod's object shape allowed it.
+ */
 function rejectExecutableKeys(
   value: unknown,
   path: Array<string | number>,

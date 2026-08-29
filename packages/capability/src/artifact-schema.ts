@@ -1,15 +1,23 @@
 /**
  * @file Capability artifact Zod schema — runtime contract for base capability JSON.
+ *
+ * This is the Vendor+Product base, not a tenant copy. Tenant differences live
+ * on a separate override file. `strictObject` rejects unknown keys so LLM dumps
+ * and hand-edits cannot smuggle extra fields into the catalog. Discriminated
+ * unions on `type` keep action, assertion, and locator fields mutually
+ * exclusive; an unknown `type` fails validation instead of reaching replay.
  */
 
 import * as z from "zod";
 
+/** JSON format id. Distinct from `capabilityVersion` (the learned flow). */
 const SCHEMA_VERSION = "1.0";
 
 /**
  * Reference a typed invocation input or a literal value.
  *
- * Exactly one of `input` or `literal` is required.
+ * Exactly one of `input` or `literal` is required. Discovery must replace
+ * recorded concrete values with `{ input: "…" }` so replay stays parameterized.
  */
 export const ValueRefSchema = z
   .strictObject({
@@ -22,6 +30,14 @@ export const ValueRefSchema = z
     { error: "ValueRef must have exactly one of input or literal" },
   );
 
+/**
+ * Ranked locator strategies for one control.
+ *
+ * Discriminated on `type` so each strategy carries only its own fields
+ * (`roleText` has `role`+`text`, `css` has `selector`). A flat optional-field
+ * object would accept invalid combinations. Replay tries strategies in array
+ * order; `coordinates` is last-resort only.
+ */
 const TargetStrategySchema = z.discriminatedUnion("type", [
   z.strictObject({
     type: z.literal("roleText"),
@@ -66,15 +82,24 @@ const TargetStrategySchema = z.discriminatedUnion("type", [
 
 /**
  * Ranked locator strategies for one control.
+ *
+ * Replay tries `strategies` in order. Keep more than one so a CSS fallback
+ * exists when the accessible name drifts.
  */
 export const TargetDescriptorSchema = z.strictObject({
   strategies: z.array(TargetStrategySchema).min(1),
 });
 
+/** Allow a bare string or a parameterized {@link ValueRefSchema}. */
 const textOrValueRef = z.union([z.string().min(1), ValueRefSchema]);
 
 /**
  * Expected UI or domain state used as a checkpoint.
+ *
+ * Discriminated on `type` so a `textVisible` cannot also carry a `target`.
+ * Preconditions ask "is this step safe to run"; postconditions ask "did the
+ * action produce the expected result." Encode meaningful state, not screenshot
+ * equality.
  */
 export const AssertionSchema = z.discriminatedUnion("type", [
   z.strictObject({
@@ -101,10 +126,15 @@ export const AssertionSchema = z.discriminatedUnion("type", [
   }),
 ]);
 
+/** Mutating actions may mark risk; policy reads this, the schema does not enforce it. */
 const riskSchema = z.enum(["safe", "risky"]);
 
 /**
  * Semantic action vocabulary. Unknown `type` values fail validation.
+ *
+ * Discriminated on `type` so `click` requires a target and `navigate` a path.
+ * The vocabulary is surface-agnostic: Playwright is the first mapping, not the
+ * artifact model. `handoff` transfers the same headed session, not a new flow.
  */
 export const CapabilityActionSchema = z.discriminatedUnion("type", [
   z.strictObject({
@@ -144,12 +174,14 @@ export const CapabilityActionSchema = z.discriminatedUnion("type", [
   }),
 ]);
 
+/** Typed invocation parameter. Discovery must not bake recorded literals here. */
 const inputParamSchema = z.strictObject({
   type: z.enum(["string", "number", "boolean", "date", "money"]),
   required: z.boolean().optional(),
   description: z.string().min(1).optional(),
 });
 
+/** Declared output plus optional extract target. Replay type-checks extracted values. */
 const outputParamSchema = z.strictObject({
   type: z.enum(["string", "number", "boolean", "date", "money"]),
   description: z.string().min(1).optional(),
@@ -158,6 +190,9 @@ const outputParamSchema = z.strictObject({
 
 /**
  * One ordered step with preconditions, action, and postconditions.
+ *
+ * `id` is the stable patch key for tenant overrides. Keep it unique across the
+ * artifact so `applyCapabilityOverride` can address a step without indexes.
  */
 export const CapabilityStepSchema = z.strictObject({
   id: z.string().min(1),
@@ -171,6 +206,10 @@ export const CapabilityStepSchema = z.strictObject({
 /**
  * Base capability artifact. `schemaVersion` is the JSON format; `capabilityVersion`
  * is the learned flow (semver).
+ *
+ * `target` is Vendor+Product identity. `discoveredOn` is provenance only — do
+ * not treat tenant URL as reusable identity. `success` is the overall checkpoint,
+ * distinct from the last step's postconditions.
  */
 export const CapabilityArtifactSchema = z
   .strictObject({
@@ -203,6 +242,7 @@ export const CapabilityArtifactSchema = z
     const seen = new Set<string>();
     for (const [index, step] of artifact.steps.entries()) {
       if (seen.has(step.id)) {
+        // Duplicate ids make tenant patches ambiguous (which step gets the patch?).
         ctx.addIssue({
           code: "custom",
           path: ["steps", index, "id"],

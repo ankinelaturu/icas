@@ -1,5 +1,9 @@
 /**
  * @file @icas/capability — artifact schema, catalog, tenant overrides, and resolve.
+ *
+ * This package owns capabilities as data. Discovery compiles into it; replay
+ * executes the effective artifact. Callers must not glob `capabilities/`.
+ * {@link FileSystemCapabilityRegistry} is the only catalog backend.
  */
 
 export type {

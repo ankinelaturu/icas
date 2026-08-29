@@ -1,5 +1,12 @@
 /**
- * @file FileSystemEvidenceWriter — append-only JSONL plus summary.json under a temp or evidence root.
+ * @file FileSystemEvidenceWriter — append-only JSONL plus summary.json under a run root.
+ *
+ * Evidence is run-scoped; a capability is persistent knowledge. Every persistable
+ * payload goes through the evidence-profile Redactor before disk. Do not
+ * duplicate redaction rules here.
+ *
+ * @see EvidenceWriter
+ * @see docs/09-evidence-observability.md
  */
 
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
@@ -31,7 +38,8 @@ export interface FileSystemEvidenceWriterOptions {
 /**
  * Layout: `<root>/<capabilityId>/<runId>/{trace|log}.jsonl`, `summary.json`, `observations/`.
  *
- * Discovery writes `trace.jsonl`. Replay and adaptation write `log.jsonl`.
+ * Discovery writes `trace.jsonl`. Replay and adaptation write `log.jsonl` so a
+ * model-free run is not mistaken for an LLM search transcript.
  */
 export class FileSystemEvidenceWriter implements EvidenceWriter {
   private readonly root: string;
@@ -45,6 +53,7 @@ export class FileSystemEvidenceWriter implements EvidenceWriter {
 
   constructor(options: FileSystemEvidenceWriterOptions) {
     this.root = options.root;
+    // Sanitize before any write so `../` cannot escape the evidence root.
     this.capabilityId = assertEvidenceSegment(options.capabilityId, "capabilityId");
     this.runId = assertEvidenceSegment(options.runId, "runId");
     this.runType = options.runType;
@@ -53,6 +62,8 @@ export class FileSystemEvidenceWriter implements EvidenceWriter {
 
   /**
    * Directory that holds this run's JSONL, summary, and observations.
+   *
+   * @returns `<root>/<capabilityId>/<runId>`
    */
   runDirectory(): string {
     return join(this.root, this.capabilityId, this.runId);
@@ -60,6 +71,11 @@ export class FileSystemEvidenceWriter implements EvidenceWriter {
 
   /**
    * Directory for screenshots and DOM captures.
+   *
+   * Rich signals stay next to the JSONL so a failure review does not hunt
+   * another tree.
+   *
+   * @returns `<runDirectory>/observations`
    */
   observationsDirectory(): string {
     return join(this.runDirectory(), "observations");
@@ -67,6 +83,10 @@ export class FileSystemEvidenceWriter implements EvidenceWriter {
 
   /**
    * Append-only events file for this run type.
+   *
+   * JSONL avoids holding the whole trace in memory until the run ends.
+   *
+   * @returns Path to `trace.jsonl` (discovery) or `log.jsonl` (replay/adaptation)
    */
   eventsPath(): string {
     const name = this.runType === "discovery" ? "trace.jsonl" : "log.jsonl";
@@ -75,11 +95,21 @@ export class FileSystemEvidenceWriter implements EvidenceWriter {
 
   /**
    * Path to `summary.json`.
+   *
+   * @returns Compact whole-run record beside the JSONL
    */
   summaryPath(): string {
     return join(this.runDirectory(), "summary.json");
   }
 
+  /**
+   * Append one event. Stamp run identity, then redact the payload, then write.
+   *
+   * Stamp first so catalog ids are not treated as PII. Redact before persist
+   * so a crash after stringify cannot leave raw strings on disk.
+   *
+   * @param event - Caller-supplied event; `runId` / `runType` are overwritten
+   */
   async append(event: EvidenceEvent): Promise<void> {
     await mkdir(this.runDirectory(), { recursive: true });
     await appendFile(
@@ -89,6 +119,14 @@ export class FileSystemEvidenceWriter implements EvidenceWriter {
     );
   }
 
+  /**
+   * Write the compact whole-run object, redacted, as pretty JSON.
+   *
+   * Overwrites the previous summary so the file always reflects the latest
+   * finish status rather than appending a second document.
+   *
+   * @param summary - Run totals and terminal status
+   */
   async writeSummary(summary: RunSummary): Promise<void> {
     await mkdir(this.runDirectory(), { recursive: true });
     const redacted = this.redactor.redactValue(summary);
@@ -102,8 +140,12 @@ export class FileSystemEvidenceWriter implements EvidenceWriter {
   /**
    * Persist a screenshot, DOM snapshot, or extra trace blob under `observations/`.
    *
-   * Screenshots are binary and are not string-redacted. DOM and trace JSON go
-   * through the evidence redactor before write.
+   * Screenshots are binary and are not string-redacted — UTF-8 masking would
+   * corrupt the PNG. DOM and trace JSON go through the evidence redactor
+   * before write. The JSONL records the relative path, not the pixels.
+   *
+   * @param kind - Screenshot bytes/path, or structured DOM/trace
+   * @param value - PNG bytes or file path, or JSON-like DOM/trace
    */
   async captureRichSignal(
     kind: "screenshot" | "dom" | "trace",
@@ -142,10 +184,16 @@ export class FileSystemEvidenceWriter implements EvidenceWriter {
     });
   }
 
+  /**
+   * Force this writer's run identity onto the event so a caller cannot mix runs.
+   */
   private stamp(event: EvidenceEvent): EvidenceEvent {
     return { ...event, runId: this.runId, runType: this.runType };
   }
 
+  /**
+   * Mask `payload` only. Envelope fields stay so reviewers can join events.
+   */
   private redactEvent(event: EvidenceEvent): EvidenceEvent {
     if (!("payload" in event) || event.payload === undefined) {
       return event;
@@ -153,6 +201,11 @@ export class FileSystemEvidenceWriter implements EvidenceWriter {
     return { ...event, payload: this.redactor.redactValue(event.payload) };
   }
 
+  /**
+   * Accept in-memory bytes or a path Playwright already wrote.
+   *
+   * @throws {EvidenceError} When `value` is neither bytes nor a file path
+   */
   private async screenshotBytes(value: unknown): Promise<Uint8Array> {
     if (value instanceof Uint8Array) {
       return value;

@@ -1,5 +1,9 @@
 /**
  * @file validateCapabilityOverride — schema-validate a tenant override JSON value.
+ *
+ * Gate for every override write and disk read. Invalid patches must not enroll
+ * a tenant. `safeParse` plus a typed error keeps Zod's issue list (version pin,
+ * executable keys, empty StepOverride) for callers.
  */
 
 import { z } from "zod";
@@ -11,6 +15,9 @@ import {
 
 /**
  * Thrown when override JSON is not a declarative, version-pinned patch.
+ *
+ * Distinct from {@link CapabilityValidationError}: this is the tenant file,
+ * not the Vendor+Product base.
  */
 export class CapabilityOverrideValidationError extends Error {
   readonly issues: z.core.$ZodIssue[];
@@ -24,6 +31,9 @@ export class CapabilityOverrideValidationError extends Error {
 
 /**
  * Schema-validate unknown JSON as a tenant capability override.
+ *
+ * Header-only `overrides: {}` parses successfully — that is enrollment, not a
+ * schema error. Executable keys and a missing version pin still fail.
  *
  * @param value - Parsed JSON (not a file path)
  * @returns The typed override

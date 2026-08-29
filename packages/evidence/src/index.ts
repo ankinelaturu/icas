@@ -1,5 +1,8 @@
 /**
  * @file @icas/evidence — run-scoped traces, replay logs, and summaries.
+ *
+ * Redact before persist: {@link FileSystemEvidenceWriter} takes a Redactor
+ * and must not invent its own patterns. HITL events use `actor: "human"`.
  */
 
 export type {
