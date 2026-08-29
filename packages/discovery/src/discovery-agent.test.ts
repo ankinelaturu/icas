@@ -85,4 +85,21 @@ describe("DiscoveryAgent.run", () => {
     expect(result.reason).toBe("timeout");
     expect(surface.executed).toHaveLength(0);
   });
+
+  it("injects prompt policy into the proposer context", async () => {
+    const surface = new FakeSurface();
+    surface.observation = { id: "home" };
+    let seenPolicy: string | undefined;
+    const agent = new DiscoveryAgent(surface, {
+      promptPolicy: "Do not transfer funds.",
+      proposer: {
+        async propose(context) {
+          seenPolicy = context.promptPolicy;
+          return { status: "success", candidates: [] };
+        },
+      },
+    });
+    await agent.run(request);
+    expect(seenPolicy).toBe("Do not transfer funds.");
+  });
 });

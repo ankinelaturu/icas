@@ -23,6 +23,7 @@ export { CapabilityCompiler } from "./capability-compiler.js";
 export type { DiscoveryAgentDependencies } from "./discovery-agent.js";
 export { DiscoveryAgent } from "./discovery-agent.js";
 export {
+  createConfiguredDiscoveryProposer,
   createDiscoveryMastra,
   createDiscoveryProposerAgent,
   DISCOVERY_PROPOSER_AGENT_ID,
@@ -31,6 +32,12 @@ export {
   MastraCandidateProposer,
 } from "./mastra-proposer.js";
 export type { StructuredGenerateAgent } from "./mastra-proposer.js";
+export {
+  DEFAULT_DISCOVERY_MODEL,
+  discoverySmokeEnabled,
+  hasDiscoveryApiKey,
+  resolveDiscoveryModel,
+} from "./model-provider.js";
 export type {
   DiscoveryRequest,
   DiscoveryResult,

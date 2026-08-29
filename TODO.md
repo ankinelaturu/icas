@@ -348,10 +348,10 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 
 ### Pass 5.5 — Model / vision provider
 
-- [ ] Choose and document default provider/model (image-capable if observations are screenshots)
-- [ ] Env: `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `ICAS_MODEL`
-- [ ] Inject prompt policy from Pass 3.1
-- [ ] Smoke test behind a flag or recorded fixture if CI has no keys
+- [x] Choose and document default provider/model (image-capable if observations are screenshots)
+- [x] Env: `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `ICAS_MODEL`
+- [x] Inject prompt policy from Pass 3.1
+- [x] Smoke test behind a flag or recorded fixture if CI has no keys
 
 ### Pass 5.6 — Ranked bounded search
 

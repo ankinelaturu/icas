@@ -8,6 +8,7 @@
 
 import { Agent } from "@mastra/core/agent";
 import { Mastra } from "@mastra/core";
+import { loadPromptPolicy } from "@icas/policy";
 
 import {
   CandidateProposalSchema,
@@ -15,6 +16,7 @@ import {
   type CandidateProposal,
 } from "./candidate-action.js";
 import type { CandidateProposer, ProposeContext } from "./candidate-proposer.js";
+import { resolveDiscoveryModel } from "./model-provider.js";
 
 export const DISCOVERY_PROPOSER_AGENT_ID = "icas-discovery-proposer";
 
@@ -115,4 +117,29 @@ Search history (ICAS, not Mastra Memory):
 ${history}
 
 Respond with a CandidateProposal object.`;
+}
+
+/**
+ * Production proposer: packaged prompt policy + Mastra model router.
+ *
+ * Does not call the network until {@link MastraCandidateProposer.propose}.
+ */
+export async function createConfiguredDiscoveryProposer(args: {
+  promptPolicy?: string;
+  promptPolicyPath?: string;
+  model?: string;
+} = {}): Promise<{
+  proposer: MastraCandidateProposer;
+  model: string;
+  instructions: string;
+}> {
+  const policyText = args.promptPolicy ?? (await loadPromptPolicy(args.promptPolicyPath));
+  const model = args.model ?? resolveDiscoveryModel();
+  const instructions = `${policyText}\n\n${DISCOVERY_PROPOSER_INSTRUCTIONS}`;
+  const agent = createDiscoveryProposerAgent({ instructions, model });
+  return {
+    proposer: new MastraCandidateProposer(agent),
+    model,
+    instructions,
+  };
 }

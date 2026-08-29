@@ -20,6 +20,8 @@ export interface DiscoveryAgentDependencies {
   proposer: CandidateProposer;
   policy?: PolicyGuard;
   now?: () => number;
+  /** Pass 3.1 markdown, injected into every proposer call. */
+  promptPolicy?: string;
 }
 
 /**
@@ -29,6 +31,7 @@ export class DiscoveryAgent {
   private readonly proposer: CandidateProposer;
   private readonly policy: PolicyGuard | undefined;
   private readonly now: () => number;
+  private readonly promptPolicy: string | undefined;
 
   constructor(
     private readonly surface: Surface,
@@ -37,6 +40,7 @@ export class DiscoveryAgent {
     this.proposer = deps.proposer;
     this.policy = deps.policy;
     this.now = deps.now ?? Date.now;
+    this.promptPolicy = deps.promptPolicy;
   }
 
   /**
@@ -75,6 +79,7 @@ export class DiscoveryAgent {
         history: events
           .filter((event) => event.type === "chosen_action")
           .map((event) => JSON.stringify(event.payload)),
+        ...(this.promptPolicy === undefined ? {} : { promptPolicy: this.promptPolicy }),
       });
       events.push({
         type: "candidates",

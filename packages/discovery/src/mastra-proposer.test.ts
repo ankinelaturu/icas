@@ -73,3 +73,16 @@ describe("formatProposePrompt", () => {
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("status: \"continue\"");
   });
 });
+
+describe("createConfiguredDiscoveryProposer", () => {
+  it("folds prompt policy into Mastra agent instructions", async () => {
+    const { createConfiguredDiscoveryProposer } = await import("./mastra-proposer.js");
+    const configured = await createConfiguredDiscoveryProposer({
+      promptPolicy: "Do not transfer funds.",
+      model: "openai/gpt-4o",
+    });
+    expect(configured.model).toBe("openai/gpt-4o");
+    expect(configured.instructions).toContain("Do not transfer funds.");
+    expect(configured.instructions).toContain("JSON object matching this contract");
+  });
+});

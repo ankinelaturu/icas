@@ -183,4 +183,6 @@ Mastra is the LLM/tool layer, not the owner of ICAS search or artifacts.
 - Do not give the agent click/fill tools. ICAS policy-checks and executes.
 - Do not store the search graph in Mastra Memory. `SearchNode` parent/tried sets live in `DiscoveryAgent`.
 
+Default discovery model is `openai/gpt-4o` (vision-capable for `observation.imagePath`). Override with `ICAS_MODEL`. Provider keys: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`. Live smoke is `ICAS_DISCOVERY_SMOKE=1` and is off in CI.
+
 ICAS still owns: search state, visited-state handling, branch ranking, backtracking, budget, trace, compiler, surface, policy, and evidence.
