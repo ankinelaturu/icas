@@ -126,9 +126,9 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 ### Pass 2.5 — Execute actions
 
-- [ ] `click`, `fill`, `select`, `navigate` (relative path), `read`
-- [ ] Map semantic `CapabilityAction` → Playwright; no capability schema change
-- [ ] Tests: fill a labeled field, click, read back the value
+- [x] `click`, `fill`, `select`, `navigate` (relative path), `read`
+- [x] Map semantic `CapabilityAction` → Playwright; no capability schema change
+- [x] Tests: fill a labeled field, click, read back the value
 
 ### Pass 2.6 — Assertions with bounded waits
 

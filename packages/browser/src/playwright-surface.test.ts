@@ -155,3 +155,50 @@ describe("PlaywrightSurface locate (fallbacks)", () => {
     ).rejects.toMatchObject({ code: "TARGET_NOT_FOUND" });
   });
 });
+
+describe("PlaywrightSurface execute", () => {
+  const surface = new PlaywrightSurface({ headed: false, timeoutMs: 2_000 });
+
+  afterEach(async () => {
+    await surface.close();
+  });
+
+  it("fills a labeled field, clicks, and reads the value back", async () => {
+    await surface.open(pageUrl("loan-search.html"));
+    await surface.execute({
+      type: "fill",
+      target: { strategies: [{ type: "label", label: "Loan Account" }] },
+      value: { literal: "987654" },
+    });
+    const read = await surface.execute({
+      type: "read",
+      target: { strategies: [{ type: "label", label: "Loan Account" }] },
+    });
+    expect(read).toEqual({ status: "ok", details: { value: "987654" } });
+    await surface.execute({
+      type: "click",
+      target: { strategies: [{ type: "roleText", role: "button", text: "Search" }] },
+    });
+    expect(surface.url()).toMatch(/labeled-fields\.html/);
+  });
+
+  it("selects an option by label", async () => {
+    await surface.open(pageUrl("loan-search.html"));
+    await surface.execute({
+      type: "select",
+      target: { strategies: [{ type: "label", label: "Account Status" }] },
+      value: { literal: "Active" },
+    });
+    const read = await surface.execute({
+      type: "read",
+      target: { strategies: [{ type: "label", label: "Account Status" }] },
+    });
+    expect(read.details).toEqual({ value: "Active" });
+  });
+
+  it("navigates a relative path", async () => {
+    await surface.open(pageUrl("home.html"));
+    await surface.execute({ type: "navigate", path: "lending.html" });
+    expect(surface.url()).toMatch(/lending\.html$/);
+  });
+});

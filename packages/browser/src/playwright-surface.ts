@@ -2,7 +2,8 @@
  * @file PlaywrightSurface — Playwright implementation of the Surface seam.
  */
 
-import type { Assertion, CapabilityAction, TargetDescriptor } from "@icas/capability";
+import type { Assertion, CapabilityAction, TargetDescriptor, ValueRef } from "@icas/capability";
+import { resolveValueRef } from "@icas/capability";
 import type {
   Observation,
   Surface,
@@ -79,8 +80,44 @@ export class PlaywrightSurface implements Surface {
     throw new Error("PlaywrightSurface.observe is a scaffold.");
   }
 
-  async execute(_action: CapabilityAction): Promise<SurfaceActionResult> {
-    throw new Error("PlaywrightSurface.execute is a scaffold.");
+  /**
+   * Run one semantic action. `ValueRef` inputs must already be resolved to literals.
+   */
+  async execute(action: CapabilityAction): Promise<SurfaceActionResult> {
+    const page = this.requirePage();
+    switch (action.type) {
+      case "click": {
+        const control = await this.locate(action.target);
+        await control.click();
+        return { status: "ok", details: { url: page.url() } };
+      }
+      case "fill": {
+        const control = await this.locate(action.target);
+        await control.fill(literalString(action.value));
+        return { status: "ok" };
+      }
+      case "select": {
+        const control = await this.locate(action.target);
+        await control.selectOption(literalString(action.value));
+        return { status: "ok" };
+      }
+      case "navigate": {
+        const destination = new URL(action.path, page.url()).href;
+        await page.goto(destination);
+        return { status: "ok", details: { url: page.url() } };
+      }
+      case "read": {
+        const control = await this.locate(action.target);
+        const value = await readControlValue(control);
+        return { status: "ok", details: { value } };
+      }
+      case "handoff":
+        throw new Error("PlaywrightSurface.execute handoff is implemented in pass 2.9.");
+      default: {
+        const exhaustive: never = action;
+        return exhaustive;
+      }
+    }
   }
 
   async assert(_assertion: Assertion): Promise<boolean> {
@@ -106,4 +143,23 @@ export class PlaywrightSurface implements Surface {
     }
     return this.page;
   }
+}
+
+function literalString(ref: ValueRef): string {
+  const value = resolveValueRef(ref, {});
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  throw new Error("action value must resolve to a string, number, or boolean");
+}
+
+async function readControlValue(control: Locator): Promise<string> {
+  const tag = await control.evaluate((el) => el.tagName.toLowerCase());
+  if (tag === "input" || tag === "textarea" || tag === "select") {
+    return await control.inputValue();
+  }
+  return (await control.innerText()).trim();
 }
