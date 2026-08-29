@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>ICAS Bank Core — Loan Details</title>
+<link rel="stylesheet" href="/styles.css" type="text/css">
+</head>
+<body>
+<table class="shell" cellspacing="0" cellpadding="0">
+<tr>
+<td class="banner" colspan="2">
+<table width="100%" cellspacing="0" cellpadding="0"><tr>
+<td class="prod">ICAS BANK CORE</td>
+<td class="meta">LS 4.12.08 &nbsp; Build 2008.03.14 &nbsp;|&nbsp; Oper 4481 &nbsp; Br 001 &nbsp; 08/28/2026 &nbsp; SERVICING</td>
+</tr></table>
+</td>
+</tr>
+<tr class="subbar"><td colspan="2">Institution 8821 &nbsp; ICAS BANK &nbsp;|&nbsp; Session 44A91C &nbsp;|&nbsp; LNINQ {{loanAccountId}} &nbsp;|&nbsp; Unsaved changes: N</td></tr>
+<tr>
+<td class="nav">
+<table class="menu" cellspacing="0" cellpadding="0">
+<tr><td class="menu-hd">FUNCTIONS</td></tr>
+<tr><td class="menu-item"><a href="/">Home</a></td></tr>
+<tr><td class="menu-item"><a href="/cif.htm">CIF / Members</a></td></tr>
+<tr><td class="menu-item"><a href="/lending.htm">Lending</a></td></tr>
+<tr><td class="menu-item"><a href="/dp.htm">Deposits</a></td></tr>
+<tr><td class="menu-item"><a href="/docs.htm">Documents</a></td></tr>
+<tr><td class="menu-item"><a href="/rpts.htm">Reports</a></td></tr>
+<tr><td class="menu-item"><a href="/util.htm">Utilities</a></td></tr>
+<tr><td class="menu-item"><a href="/help.htm">Help</a></td></tr>
+</table>
+<p class="note">F1 Help &nbsp; F3 Exit &nbsp; F12 Cancel</p>
+</td>
+<td class="work">
+<div class="section-hd">Loan Details</div>
+<table class="grid" width="100%">
+<tr><th colspan="4">Account {{loanAccountId}}</th></tr>
+<tr>
+<td class="lbl">Loan Account</td>
+<td class="val">{{loanAccountId}}</td>
+<td class="lbl">Account Status</td>
+<td class="val">{{status}}</td>
+</tr>
+<tr>
+<td class="lbl">Short Name</td>
+<td class="val">{{borrowerName}}</td>
+<td class="lbl">Branch</td>
+<td class="val">{{branch}}</td>
+</tr>
+<tr>
+<td class="lbl">Product</td>
+<td class="val" colspan="3">{{productDesc}}</td>
+</tr>
+<tr>
+<td class="lbl">Note Date</td>
+<td class="val">{{originationDate}}</td>
+<td class="lbl">Maturity</td>
+<td class="val">{{maturityDate}}</td>
+</tr>
+<tr>
+<td class="lbl">Note Rate</td>
+<td class="val">{{interestRatePct}} %</td>
+<td class="lbl">Per Diem Interest</td>
+<td class="amt">{{perDiemInterest}}</td>
+</tr>
+<tr>
+<td class="lbl">Principal Balance</td>
+<td class="amt">{{principalBalance}}</td>
+<td class="lbl">Proc Date</td>
+<td class="val">{{processingDate}}</td>
+</tr>
+</table>
+<p>
+<a href="/lending/payoff.htm?ln={{loanAccountId}}">Payoff</a>
+&nbsp;|&nbsp;
+<a href="/lending/search.htm">New Inquire</a>
+&nbsp;|&nbsp;
+<a href="/lending.htm">Lending Services</a>
+</p>
+<p class="note">Payoff opens the quote screen. Do not use Documents to generate a payoff statement.</p>
+</td>
+</tr>
+<tr><td class="status" colspan="2">Ready. Caps: Off &nbsp; NUM &nbsp;|&nbsp; Synthetic demonstration data. Not a real financial institution.</td></tr>
+</table>
+</body>
+</html>

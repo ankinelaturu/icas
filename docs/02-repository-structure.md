@@ -10,7 +10,7 @@ icas/
 │   ├── icas-adapt/
 │   └── icas-mcp/
 ├── tenants/
-│   ├── tenant-a/
+│   ├── icas-bank/
 │   └── tenant-b/
 ├── packages/
 │   ├── capability/
@@ -45,7 +45,7 @@ Reusable runtime/library code. An app should remain thin and delegate behavior t
 
 ### `tenants/`
 
-Synthetic target banking applications. The term intentionally matches the Interface.AI brief: a tenant is one customer institution. The two initial tenant applications should eventually represent **the same fictional Vendor+Product with different tenant customization**, not two unrelated banking products.
+Synthetic target banking applications. The term intentionally matches the Interface.AI brief: a tenant is one customer institution. `tenants/icas-bank` is the first institution (catalog vendor/product/tenant `icas-bank`). A later tenant app should be a **separate install** of the same fictional Vendor+Product with small UI drift, not a second product.
 
 ### `capabilities/`
 

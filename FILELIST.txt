@@ -73,7 +73,7 @@ packages/surface/package.json
 packages/surface/src/index.ts
 packages/surface/tsconfig.json
 pnpm-workspace.yaml
-tenants/tenant-a/README.md
+tenants/icas-bank/README.md
 tenants/tenant-b/README.md
 tests/README.md
 tests/e2e/.gitkeep

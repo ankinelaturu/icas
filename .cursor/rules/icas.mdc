@@ -30,7 +30,7 @@ The model discovers. The artifact is the reusable capability. Replay executes it
 
 ## CLI and catalog
 
-- Discover requires `--id` (unique), `--url`, `--goal`. `--vendor` / `--product` / `--tenant` default to `icas`. Do not infer them from the URL.
+- Discover requires `--id` (unique), `--url`, `--goal`. `--vendor` / `--product` / `--tenant` default to `icas-bank`. Do not infer them from the URL.
 - Replay: `icas-play run <id> --url …` plus typed params. Id selects the capability; URL only opens the surface.
 - First discover writes base **and** a header-only tenant override (`overrides: {}`). Compatible adapt still enrolls. `icas-play` / MCP fail if the tenant is not enrolled.
 - Do not hand-author `capabilities/` to fake a demo. Submission artifacts come from a real LLM discovery run.

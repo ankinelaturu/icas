@@ -10,7 +10,7 @@ switch (command) {
     console.log("icas-play describe scaffold");
     break;
   case "run":
-    console.log("icas-play run scaffold: run <id> --url <u> ...typed inputs... [--tenant default icas] [--assist]");
+    console.log("icas-play run scaffold: run <id> --url <u> ...typed inputs... [--tenant default icas-bank] [--assist]");
     break;
   default:
     console.log("Usage: icas-play <list|describe|run>");

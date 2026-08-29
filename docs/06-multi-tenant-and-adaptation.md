@@ -48,12 +48,12 @@ same Vendor+Product ≠ identical UI
 
 ## Reuse model
 
-For Tenant A (CLI defaults, tenant id `icas`):
+For `icas-bank` (CLI defaults, tenant id `icas-bank`):
 
 ```text
 icas-agent discover --id loan-payoff --url … --goal …
 → base capability C
-→ header-only override for tenant icas
+→ header-only override for tenant icas-bank
 → discovery evidence
 ```
 
@@ -75,9 +75,9 @@ A tenant with no override file is not enrolled. `icas-play run` / MCP must not s
 Input:
 
 - existing capability ID;
-- new tenant identity (`--tenant` required here; do not default this to `icas` when specializing a second institution);
+- new tenant identity (`--tenant` required here; do not default this to `icas-bank` when specializing a second institution);
 - URL/entry point;
-- Vendor+Product compatibility context (CLI `--vendor` / `--product` default to `icas`).
+- Vendor+Product compatibility context (CLI `--vendor` / `--product` default to `icas-bank`).
 
 Behavior:
 
@@ -133,9 +133,9 @@ Header-only override (compatible or first discovery):
 ```json
 {
   "schemaVersion": "1.0",
-  "id": "loan-payoff-icas",
+  "id": "loan-payoff-icas-bank",
   "baseCapability": "loan-payoff@1.0.0",
-  "target": { "tenant": "icas" },
+  "target": { "tenant": "icas-bank" },
   "overrides": {},
   "provenance": {
     "createdBy": "discovery",
@@ -224,7 +224,7 @@ Tenant overrides are subject to the same pre/post checkpoint validation as the b
 
 ## Repository tenant fixtures
 
-`tenants/tenant-a` and `tenants/tenant-b` should eventually model two institutions running the **same fictional Vendor+Product** with small but meaningful UI differences. This gives the project a concrete environment for:
+`tenants/icas-bank` is the first institution. `tenants/tenant-b` remains a later, separate install of the **same fictional Vendor+Product** (`icas-bank` / `icas-bank`) with small UI drift. This gives the project a concrete environment for:
 
 - capability reuse;
 - guarded replay;

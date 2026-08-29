@@ -10,16 +10,16 @@
 interface DiscoveryRequest {
   id: string; // unique catalog id, e.g. "loan-payoff"
   target: {
-    vendor: string; // CLI default "icas"
-    product: string; // CLI default "icas"
-    tenant: string; // CLI default "icas"
+    vendor: string; // CLI default "icas-bank"
+    product: string; // CLI default "icas-bank"
+    tenant: string; // CLI default "icas-bank"
     url: string;
   };
   goal: string;
 }
 ```
 
-`--id`, `--url`, and `--goal` are required. Vendor, product, and tenant may be omitted on the CLI; each defaults to `icas`. ICAS is not responsible for inferring vendor, product, tenant, or capability id from the URL.
+`--id`, `--url`, and `--goal` are required. Vendor, product, and tenant may be omitted on the CLI; each defaults to `icas-bank`. ICAS is not responsible for inferring vendor, product, tenant, or capability id from the URL.
 
 `--id` is unique in the catalog. It names the Vendor+Product capability, not a tenant copy. A later institution uses `icas-adapt --id loan-payoff --tenant tenant-b`, not a second discover with a new id.
 

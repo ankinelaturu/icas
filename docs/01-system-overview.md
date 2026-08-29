@@ -34,7 +34,7 @@ A representative UI path might be:
 ```text
 Home
   → Lending
-  → Loan Search
+  → Loan Account Inquiry
   → Loan Details
   → Payoff
   → enter payoff date
@@ -42,7 +42,7 @@ Home
   → Payoff Statement
 ```
 
-The agent is never allowed to hard-code this path. Discovery begins with a caller-supplied capability id, a natural-language goal, and a target URL, observes the actual UI, and determines the path at runtime. Vendor, product, and tenant default to `icas` when omitted.
+The agent is never allowed to hard-code this path. Discovery begins with a caller-supplied capability id, a natural-language goal, and a target URL, observes the actual UI, and determines the path at runtime. Vendor, product, and tenant default to `icas-bank` when omitted.
 
 ## Runnable entry points
 
@@ -56,7 +56,7 @@ Required:
 - `--url` — entry point of the live surface
 - `--goal` — natural-language goal
 
-Optional (default `icas` for each):
+Optional (default `icas-bank` for each):
 
 - `--vendor`
 - `--product`
@@ -76,7 +76,7 @@ icas-play describe <capability>
 icas-play run <capability> --url <url> ...typed inputs...
 ```
 
-`--tenant` / `--vendor` / `--product` default to `icas`. Replay is selected by **capability id**, not by URL. `--url` is only where to open the browser. Typed params (e.g. `--loanAccountId`) are required per the artifact contract.
+`--tenant` / `--vendor` / `--product` default to `icas-bank`. Replay is selected by **capability id**, not by URL. `--url` is only where to open the browser. Typed params (e.g. `--loanAccountId`) are required per the artifact contract.
 
 Strict replay is model-free. An explicit assisted mode may perform one bounded, policy-checked LLM repair at a failed step, then must verify that execution has rejoined the original deterministic path.
 

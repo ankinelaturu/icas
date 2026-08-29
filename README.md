@@ -22,15 +22,15 @@ docs/          Detailed architecture and design decisions
 tests/         Cross-package integration and end-to-end tests
 ```
 
-## Planned demo path
+## Demo path
 
-> The tenant applications are intentionally left as placeholders in this scaffold and will be implemented separately.
+Start the synthetic bank, then discover against it.
 
 ```bash
 pnpm install
-pnpm build
+pnpm icas-bank
 
-# Discover a new capability (--vendor/--product/--tenant default to icas)
+# Discover a new capability (--vendor/--product/--tenant default to icas-bank)
 pnpm icas-agent -- \
   discover \
   --id loan-payoff \

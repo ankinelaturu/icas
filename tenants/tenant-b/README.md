@@ -5,7 +5,7 @@ This directory is intentionally left as a placeholder. The tenant application wi
 Planned role:
 
 - synthetic bank/credit-union back-office application;
-- same fictional **Vendor + Product** as Tenant A (`icas` / `icas`);
+- same fictional **Vendor + Product** as `tenants/icas-bank` (`icas-bank` / `icas-bank`);
 - catalog tenant id `tenant-b` (`icas-adapt --tenant tenant-b`);
 - small but meaningful tenant-specific customization;
 - enough variation to test guarded replay, assisted fallback, and `icas-adapt`;

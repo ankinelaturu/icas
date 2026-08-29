@@ -5,11 +5,11 @@
   "name": "Generate Loan Payoff Statement",
   "description": "TEST FIXTURE ONLY: synthetic example of the intended artifact shape.",
   "target": {
-    "vendor": "icas",
-    "product": "icas"
+    "vendor": "icas-bank",
+    "product": "icas-bank"
   },
   "discoveredOn": {
-    "tenant": "icas"
+    "tenant": "icas-bank"
   },
   "inputs": {
     "loanAccountId": {

@@ -11,7 +11,7 @@ capabilities/
   loan-payoff/
     1.0.0.json           # base CapabilityArtifact (Vendor+Product)
     overrides/
-      icas.json          # header-only enrollment after first discover
+      icas-bank.json      # header-only enrollment after first discover
       tenant-b.json      # header-only if compatible, or a declarative patch
 ```
 

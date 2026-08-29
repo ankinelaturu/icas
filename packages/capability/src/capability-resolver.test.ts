@@ -31,7 +31,7 @@ function loadLoanPayoff(): CapabilityArtifact {
 
 function headerOverride(): CapabilityOverride {
   const raw = readFileSync(
-    join(repoRoot, "tests/fixtures/loan-payoff.override.icas.json"),
+    join(repoRoot, "tests/fixtures/loan-payoff.override.icas-bank.json"),
     "utf8",
   );
   return validateCapabilityOverride(JSON.parse(raw) as unknown);
@@ -95,7 +95,7 @@ describe("CapabilityResolver", () => {
     });
     const effective = await resolver.resolve({
       id: "loan-payoff",
-      tenant: "icas",
+      tenant: "icas-bank",
     });
     const first = effective.steps[0];
     expect(first?.action).toMatchObject({
@@ -113,7 +113,7 @@ describe("CapabilityResolver", () => {
     await registry.save({ ...base, capabilityVersion: "1.1.0" });
     await registry.saveOverride(headerOverride());
     await expect(
-      resolver.resolve({ id: "loan-payoff", version: "1.1.0", tenant: "icas" }),
+      resolver.resolve({ id: "loan-payoff", version: "1.1.0", tenant: "icas-bank" }),
     ).rejects.toThrow(/incompatible/i);
   });
 
@@ -131,14 +131,14 @@ describe("CapabilityResolver", () => {
       },
     });
     await expect(
-      resolver.resolve({ id: "loan-payoff", tenant: "icas" }),
+      resolver.resolve({ id: "loan-payoff", tenant: "icas-bank" }),
     ).rejects.toBeInstanceOf(CapabilityValidationError);
   });
 
   it("fails when the tenant is not enrolled", async () => {
     await registry.save(loadLoanPayoff());
     await expect(
-      resolver.resolve({ id: "loan-payoff", tenant: "icas" }),
+      resolver.resolve({ id: "loan-payoff", tenant: "icas-bank" }),
     ).rejects.toBeInstanceOf(CapabilityResolveError);
   });
 
@@ -148,7 +148,7 @@ describe("CapabilityResolver", () => {
     await registry.saveOverride(headerOverride());
     const effective = await resolver.resolve({
       id: "loan-payoff",
-      tenant: "icas",
+      tenant: "icas-bank",
     });
     expect(effective.steps.map((step) => step.id)).toEqual(
       base.steps.map((step) => step.id),
@@ -173,7 +173,7 @@ describe("CapabilityResolver", () => {
     });
     const effective = await resolver.resolve({
       id: "loan-payoff",
-      tenant: "icas",
+      tenant: "icas-bank",
     });
     const step = effective.steps[0];
     expect(step?.preconditions).toEqual(original?.preconditions);
@@ -200,7 +200,7 @@ describe("CapabilityResolver", () => {
     });
     const effective = await resolver.resolve({
       id: "loan-payoff",
-      tenant: "icas",
+      tenant: "icas-bank",
     });
     const step = effective.steps[0];
     expect(step?.preconditions).toEqual(preconditions);
@@ -223,7 +223,7 @@ describe("CapabilityResolver", () => {
     });
     const effective = await resolver.resolve({
       id: "loan-payoff",
-      tenant: "icas",
+      tenant: "icas-bank",
     });
     const step = effective.steps[0];
     expect(step?.postconditions).toEqual(postconditions);
@@ -247,7 +247,7 @@ describe("CapabilityResolver", () => {
     });
     const effective = await resolver.resolve({
       id: "loan-payoff",
-      tenant: "icas",
+      tenant: "icas-bank",
     });
     expect(effective.steps.map((step) => step.id)).toEqual([
       "open-lending",
@@ -267,7 +267,7 @@ describe("CapabilityResolver", () => {
     });
     const effective = await resolver.resolve({
       id: "loan-payoff",
-      tenant: "icas",
+      tenant: "icas-bank",
     });
     expect(effective.steps.map((step) => step.id)).toEqual([
       "open-lending",
@@ -285,7 +285,7 @@ describe("CapabilityResolver", () => {
       },
     });
     await expect(
-      resolver.resolve({ id: "loan-payoff", tenant: "icas" }),
+      resolver.resolve({ id: "loan-payoff", tenant: "icas-bank" }),
     ).rejects.toThrow(/unknown step id "missing-step"/);
   });
 });

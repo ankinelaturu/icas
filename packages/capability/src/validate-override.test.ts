@@ -19,9 +19,9 @@ function loadFixture(name: string): unknown {
 describe("validateCapabilityOverride", () => {
   it("accepts a header-only enrollment override", () => {
     const override = validateCapabilityOverride(
-      loadFixture("loan-payoff.override.icas.json"),
+      loadFixture("loan-payoff.override.icas-bank.json"),
     );
-    expect(override.target.tenant).toBe("icas");
+    expect(override.target.tenant).toBe("icas-bank");
     expect(override.overrides).toEqual({});
     expect(override.baseCapability).toBe("loan-payoff@1.0.0");
   });
@@ -41,7 +41,7 @@ describe("validateCapabilityOverride", () => {
   });
 
   it("rejects a baseCapability that does not pin a version", () => {
-    const valid = loadFixture("loan-payoff.override.icas.json") as {
+    const valid = loadFixture("loan-payoff.override.icas-bank.json") as {
       baseCapability: string;
     };
     try {

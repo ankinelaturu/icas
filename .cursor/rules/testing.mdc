@@ -28,7 +28,7 @@ Before finishing a pass, check:
 
 ```ts
 it("refuses an override pinned to a different base version", async () => {
-  await expect(resolver.resolve({ id: "loan-payoff", tenant: "icas" }))
+  await expect(resolver.resolve({ id: "loan-payoff", tenant: "icas-bank" }))
     .rejects.toThrow(/incompatible/i);
 });
 ```

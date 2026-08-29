@@ -25,7 +25,7 @@ function loadLoanPayoff(): ReturnType<typeof validateCapabilityArtifact> {
 
 function loadHeaderOnlyOverride(): ReturnType<typeof validateCapabilityOverride> {
   const raw = readFileSync(
-    join(repoRoot, "tests/fixtures/loan-payoff.override.icas.json"),
+    join(repoRoot, "tests/fixtures/loan-payoff.override.icas-bank.json"),
     "utf8",
   );
   return validateCapabilityOverride(JSON.parse(raw) as unknown);
@@ -62,7 +62,7 @@ describe("FileSystemCapabilityRegistry", () => {
         name: "Newer",
         capabilityVersion: "1.1.0",
         schemaVersion: "1.0",
-        target: { vendor: "icas", product: "icas" },
+        target: { vendor: "icas-bank", product: "icas-bank" },
       },
     ]);
   });
@@ -71,7 +71,9 @@ describe("FileSystemCapabilityRegistry", () => {
     const artifact = loadLoanPayoff();
     await registry.save(artifact);
     expect(await registry.list({ vendor: "other" })).toEqual([]);
-    expect(await registry.list({ vendor: "icas", product: "icas" })).toHaveLength(
+    expect(
+      await registry.list({ vendor: "icas-bank", product: "icas-bank" }),
+    ).toHaveLength(
       1,
     );
   });
@@ -111,10 +113,10 @@ describe("FileSystemCapabilityRegistry", () => {
     await registry.save(loadLoanPayoff());
     const override = loadHeaderOnlyOverride();
     await registry.saveOverride(override);
-    const loaded = await registry.getOverride("icas", "loan-payoff@1.0.0");
+    const loaded = await registry.getOverride("icas-bank", "loan-payoff@1.0.0");
     expect(loaded).toEqual(override);
     expect(loaded?.overrides).toEqual({});
-    expect(await registry.listOverrides({ tenant: "icas" })).toEqual([override]);
+    expect(await registry.listOverrides({ tenant: "icas-bank" })).toEqual([override]);
   });
 
   it("rejects saveOverride when the pinned base version is missing", async () => {
@@ -128,13 +130,13 @@ describe("FileSystemCapabilityRegistry", () => {
     await registry.save(loadLoanPayoff());
     await registry.saveOverride(loadHeaderOnlyOverride());
     expect(
-      await registry.removeOverride("icas", "loan-payoff@1.0.0"),
+      await registry.removeOverride("icas-bank", "loan-payoff@1.0.0"),
     ).toBe(true);
     expect(
-      await registry.getOverride("icas", "loan-payoff@1.0.0"),
+      await registry.getOverride("icas-bank", "loan-payoff@1.0.0"),
     ).toBeUndefined();
     expect(
-      await registry.removeOverride("icas", "loan-payoff@1.0.0"),
+      await registry.removeOverride("icas-bank", "loan-payoff@1.0.0"),
     ).toBe(false);
   });
 });

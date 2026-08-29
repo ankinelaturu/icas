@@ -4,8 +4,8 @@
   "id": "loan-payoff",
   "name": "Generate Loan Payoff Statement",
   "target": {
-    "vendor": "icas",
-    "product": "icas"
+    "vendor": "icas-bank",
+    "product": "icas-bank"
   },
   "inputs": {
     "loanAccountId": { "type": "string", "required": true }

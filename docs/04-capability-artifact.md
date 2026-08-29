@@ -77,7 +77,7 @@ Every tenant that has been discovered or verified gets an override file for that
 
 ```text
 capabilities/loan-payoff/1.0.0.json
-capabilities/loan-payoff/overrides/icas.json      # header only after first discover
+capabilities/loan-payoff/overrides/icas-bank.json  # header only after first discover
 capabilities/loan-payoff/overrides/tenant-b.json  # header only if compatible, or a real patch
 ```
 
@@ -88,7 +88,7 @@ Rules:
 - First `icas-agent discover` writes the base **and** the discovering tenant's header-only override (`createdBy: "discovery"`).
 - `icas-adapt` that finds the base compatible still writes a header-only override (`createdBy: "verified"`). Drift writes a small declarative patch (`createdBy: "icas-adapt"`).
 - An empty override is **not** proof the UI still works. `ReplayEngine` remains the authority. Provenance should keep `createdFromRun`.
-- `icas-play run` and `icas-mcp` require the tenant override to exist (CLI `--tenant` defaults to `icas`). Missing file means not enrolled — do not silently use the bare base.
+- `icas-play run` and `icas-mcp` require the tenant override to exist (CLI `--tenant` defaults to `icas-bank`). Missing file means not enrolled — do not silently use the bare base.
 - `icas-agent` and `icas-adapt` may load the base with no tenant file in order to **create** that file.
 
 ### Resolution invariant
@@ -404,7 +404,7 @@ Who calls what:
 |---|---|
 | `icas-play list` | `list()` |
 | `icas-play describe` | `get(id)` |
-| `icas-play run` / `icas-mcp` | `resolver.resolve({ id, tenant })` with tenant default `icas`; override must exist |
+| `icas-play run` / `icas-mcp` | `resolver.resolve({ id, tenant })` with tenant default `icas-bank`; override must exist |
 | `CapabilityCompiler` | `save(base)` + `saveOverride` (header-only for discovering tenant) |
 | `icas-adapt` | guarded replay on base; then `saveOverride` (empty or patch) and `resolve` + re-replay |
 
@@ -417,11 +417,11 @@ capabilities/
   loan-payoff/
     1.0.0.json              # base CapabilityArtifact
     overrides/
-      icas.json             # header-only after discover --id loan-payoff
+      icas-bank.json         # header-only after discover --id loan-payoff
       tenant-b.json         # header-only or a real patch
                             # baseCapability: "loan-payoff@1.0.0"
 ```
 
-- Base file = Vendor+Product knowledge (`target.vendor` / `target.product`, CLI default `icas`).
+- Base file = Vendor+Product knowledge (`target.vendor` / `target.product`, CLI default `icas-bank`).
 - Override file = one enrolled tenant, possibly with an empty patch.
 - Root is injectable so tests do not touch the submission catalog.

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>ICAS Bank Core — Loan Account Inquiry</title>
+<link rel="stylesheet" href="/styles.css" type="text/css">
+</head>
+<body>
+<table class="shell" cellspacing="0" cellpadding="0">
+<tr>
+<td class="banner" colspan="2">
+<table width="100%" cellspacing="0" cellpadding="0"><tr>
+<td class="prod">ICAS BANK CORE</td>
+<td class="meta">LS 4.12.08 &nbsp; Build 2008.03.14 &nbsp;|&nbsp; Oper 4481 &nbsp; Br 001 &nbsp; 08/28/2026 &nbsp; SERVICING</td>
+</tr></table>
+</td>
+</tr>
+<tr class="subbar"><td colspan="2">Institution 8821 &nbsp; ICAS BANK &nbsp;|&nbsp; Session 44A91C &nbsp;|&nbsp; LNINQ &nbsp;|&nbsp; Unsaved changes: N</td></tr>
+<tr>
+<td class="nav">
+<table class="menu" cellspacing="0" cellpadding="0">
+<tr><td class="menu-hd">FUNCTIONS</td></tr>
+<tr><td class="menu-item"><a href="/">Home</a></td></tr>
+<tr><td class="menu-item"><a href="/cif.htm">CIF / Members</a></td></tr>
+<tr><td class="menu-item"><a href="/lending.htm">Lending</a></td></tr>
+<tr><td class="menu-item"><a href="/dp.htm">Deposits</a></td></tr>
+<tr><td class="menu-item"><a href="/docs.htm">Documents</a></td></tr>
+<tr><td class="menu-item"><a href="/rpts.htm">Reports</a></td></tr>
+<tr><td class="menu-item"><a href="/util.htm">Utilities</a></td></tr>
+<tr><td class="menu-item"><a href="/help.htm">Help</a></td></tr>
+</table>
+<p class="note">F1 Help &nbsp; F3 Exit &nbsp; F12 Cancel</p>
+</td>
+<td class="work">
+<div class="section-hd">Search Loan Account</div>
+<form method="post" action="/lending/search.htm">
+<table class="grid">
+<tr><th colspan="2">Inquiry keys</th></tr>
+<tr>
+<td class="lbl">LN Acct #</td>
+<td class="val"><input type="text" name="txtAcct" size="12" maxlength="12"></td>
+</tr>
+<tr>
+<td class="lbl">Short Name</td>
+<td class="val"><input type="text" name="txtName" size="20" maxlength="20"> &nbsp; <i>(optional)</i></td>
+</tr>
+<tr>
+<td class="lbl">Acct Type</td>
+<td class="val">
+<select name="cboType">
+<option value="">(all)</option>
+<option value="INSTL">Installment</option>
+<option value="MTG">Mortgage</option>
+<option value="LOC">Line of credit</option>
+</select>
+</td>
+</tr>
+<tr>
+<td class="lbl">&nbsp;</td>
+<td class="val">
+<input type="submit" value="Inquire">
+<input type="reset" value="Clear">
+</td>
+</tr>
+</table>
+</form>
+<p class="note">Use the loan account, not the CIF number. Last inquire: (none)</p>
+<p><a href="/lending.htm">Return to Lending Services</a></p>
+</td>
+</tr>
+<tr><td class="status" colspan="2">Ready. Caps: Off &nbsp; NUM &nbsp;|&nbsp; Synthetic demonstration data. Not a real financial institution.</td></tr>
+</table>
+</body>
+</html>

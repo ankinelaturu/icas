@@ -8,12 +8,12 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 - Implementation order: capability → surface/browser → replay → discovery/compiler, then apps.
 - Add fixtures and tests in the same pass that introduces the behavior.
-- Full tenant apps come later (Phase 7).
+- Full tenant apps: icas-bank is in; a second institution comes later (Phase 7).
 - Model/provider (including vision) is deferred until discovery needs it (Phase 5).
 - Assisted fallback, `icas-adapt`, HITL browser takeover, and MCP are in scope.
 - Tenant specialization is a declarative `CapabilityOverride` resolved by `CapabilityResolver`. `ReplayEngine` stays tenant-agnostic.
 - Every discovered or verified tenant gets an override file (empty patch allowed). `icas-play` / MCP require enrollment.
-- CLI: `--id` is the unique catalog name. `--vendor` / `--product` / `--tenant` default to `icas`. Do not infer them from `--url`.
+- CLI: `--id` is the unique catalog name. `--vendor` / `--product` / `--tenant` default to `icas-bank`. Do not infer them from `--url`.
 - Do not commit `docs/brief.pdf` (gitignored).
 
 **Out of scope**
@@ -431,7 +431,7 @@ Thin entry points. Packages own behavior.
 ### Pass 6.3 — `icas-play run` (strict)
 
 - [ ] Parse typed inputs from CLI
-- [ ] `--url` required; `--tenant` / `--vendor` / `--product` default to `icas`
+- [ ] `--url` required; `--tenant` / `--vendor` / `--product` default to `icas-bank`
 - [ ] Do not infer tenant from the URL
 - [ ] `resolve({ id, tenant })` requires an existing override (not enrolled → fail)
 - [ ] Then `ReplayEngine` (no LLM)
@@ -444,7 +444,7 @@ Thin entry points. Packages own behavior.
 ### Pass 6.5 — `icas-agent discover`
 
 - [ ] Required: `--id` (unique), `--url`, `--goal`
-- [ ] Optional: `--vendor` `--product` `--tenant` (default `icas`)
+- [ ] Optional: `--vendor` `--product` `--tenant` (default `icas-bank`)
 - [ ] Refuse if `--id` already exists unless version bump is explicit
 - [ ] Wire surface, policy, evidence, handoff, compiler
 - [ ] On success: `save` base + `saveOverride` header-only for the discovering tenant; write discovery evidence
@@ -483,48 +483,48 @@ Thin entry points. Packages own behavior.
 
 ### Pass 6.12 — MCP invoke → ReplayEngine
 
-- [ ] Tool call delegates to `ReplayEngine` with resolved effective capability for an enrolled tenant (default `icas`)
+- [ ] Tool call delegates to `ReplayEngine` with resolved effective capability for an enrolled tenant (default `icas-bank`)
 - [ ] No duplicated browser or replay logic
 
 ---
 
 ## Phase 7 — Synthetic tenant apps
 
-`tenants/tenant-a`, `tenants/tenant-b` — after core runtime exists.
+`tenants/icas-bank` (done for the happy path + not-found), `tenants/tenant-b` later.
 
-Same fictional Vendor+Product: `icas` / `icas`. Tenant catalog ids are `icas` (default demo) and `tenant-b` (second institution). App folders remain `tenants/tenant-a` and `tenants/tenant-b`. No login flow. No real PII.
+Same fictional Vendor+Product: `icas-bank` / `icas-bank`. Tenant catalog id for the default demo is `icas-bank`. The second institution stays a separate app folder. No login flow. No real PII.
 
-### Pass 7.1 — Tenant A app shell
+### Pass 7.1 — icas-bank app shell
 
-- [ ] Runnable app on `http://localhost:4101`
-- [ ] Workspace package + start script
-- [ ] Home page only
+- [x] Runnable app on `http://localhost:4101`
+- [x] Workspace package + start script
+- [x] Home page
 
-### Pass 7.2 — Shared deterministic loan fixtures
+### Pass 7.2 — Deterministic loan records
 
-- [ ] In-memory/static loan records including a known good loan and a missing id
-- [ ] Fields needed for payoff: principal, per-diem, status
+- [x] In-memory/static loan records including a known good loan and a missing id
+- [x] Fields needed for payoff: principal, per-diem, status
 
-### Pass 7.3 — Tenant A search path
+### Pass 7.3 — icas-bank search path
 
-- [ ] Home → Lending → Loan Search
-- [ ] Search by `loanAccountId`
-- [ ] Legacy-ish layout (nested/table, imperfect semantics, inconsistent labels)
+- [x] Home → Lending → Loan Account Inquiry
+- [x] Search by `loanAccountId` (`LN Acct #`)
+- [x] Legacy-ish layout (nested/table, imperfect semantics, inconsistent labels)
 
-### Pass 7.4 — Tenant A payoff path
+### Pass 7.4 — icas-bank payoff path
 
-- [ ] Loan details → Payoff → date → Calculate/Generate → statement
-- [ ] Outputs: `totalPayoffAmount`, `principalBalance`, `perDiemInterest`
+- [x] Loan details → Payoff → date → Calculate/Generate → statement
+- [x] Outputs: `totalPayoffAmount`, `principalBalance`, `perDiemInterest`
 
 ### Pass 7.5 — Tenant B shell + drift
 
 - [ ] Runnable on `http://localhost:4102`
-- [ ] Same product/workflow as A
-- [ ] Small UI drift (labels/nav/module names) that fails Tenant A locators/checkpoints at a known step
+- [ ] Same product/workflow as icas-bank
+- [ ] Small UI drift (labels/nav/module names) that fails icas-bank locators/checkpoints at a known step
 
-### Pass 7.6 — Injectable `LOAN_NOT_FOUND`
+### Pass 7.6 — `LOAN_NOT_FOUND`
 
-- [ ] Unknown loan id shows a domain empty/not-found state (not a crash page)
+- [x] Unknown loan id shows a domain empty/not-found state (not a crash page)
 
 ### Pass 7.7 — Injectable interstitial / slow load
 
@@ -540,7 +540,7 @@ Same fictional Vendor+Product: `icas` / `icas`. Tenant catalog ids are `icas` (d
 
 Do not hand-author `capabilities/` merely to look complete. Commit artifacts produced by real runs.
 
-### Pass 8.1 — Real discovery against Tenant A
+### Pass 8.1 — Real discovery against icas-bank
 
 - [ ] `icas-agent discover` loan-payoff
 - [ ] Commit generated capability + discovery trace/observations
