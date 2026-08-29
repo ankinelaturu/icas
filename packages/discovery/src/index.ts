@@ -20,7 +20,7 @@ export {
 } from "./candidate-action.js";
 export type { CandidateProposer, ProposeContext } from "./candidate-proposer.js";
 export type { CompileRequest, DiscoveredInput } from "./capability-compiler.js";
-export { CapabilityCompiler, loadTraceEvents } from "./capability-compiler.js";
+export { CapabilityCompiler, loadTraceEvents, persistDiscoveredCapability } from "./capability-compiler.js";
 export type { SuccessfulPathStep } from "./extract-successful-path.js";
 export { extractSuccessfulPath } from "./extract-successful-path.js";
 export type { DiscoveryAgentDependencies } from "./discovery-agent.js";

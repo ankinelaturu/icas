@@ -396,10 +396,10 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 
 ### Pass 5.13 — Compiler: targets, checkpoints, outputs, versions
 
-- [ ] Derive semantic targets, pre/post, output extraction, overall success
-- [ ] Attach `schemaVersion` / `capabilityVersion` / Vendor+Product identity
-- [ ] Write via `CapabilityRegistry`
-- [ ] Test: compiled artifact passes Pass 1.2 validation
+- [x] Derive semantic targets, pre/post, output extraction, overall success
+- [x] Attach `schemaVersion` / `capabilityVersion` / Vendor+Product identity
+- [x] Write via `CapabilityRegistry`
+- [x] Test: compiled artifact passes Pass 1.2 validation
 
 ### Pass 5.14 — Compiler: human actions
 

@@ -172,7 +172,7 @@ A capability must be decoupled from the raw model transcript. `CapabilityCompile
 7. derive output extraction rules;
 8. derive final success conditions;
 9. attach schema/capability version metadata;
-10. write the base artifact through `CapabilityRegistry.save` and a header-only tenant override through `saveOverride`.
+10. write the base artifact through `CapabilityRegistry.save` (refuse if `id@version` already exists unless `capabilityVersion` is bumped) and a header-only tenant override through `saveOverride` (`createdBy: "discovery"`). Tests use a temp registry root, never repo `capabilities/`.
 
 Human actions require classification. A normal reusable approval boundary may become a handoff step. An exceptional manual recovery should usually remain evidence rather than being blindly compiled into the happy-path capability.
 
