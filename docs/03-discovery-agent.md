@@ -134,7 +134,7 @@ Browser backtracking is not equivalent to popping an in-memory stack. `page.goBa
 - return to the entry point and replay the known search prefix;
 - surface-specific restore behavior.
 
-The implementation may begin with a constrained reversible target app, but the design should acknowledge the distinction.
+The runtime therefore restores by returning to the entry URL and replaying the known successful prefix. It does not call `page.goBack()`.
 
 ## Human handoff during discovery
 

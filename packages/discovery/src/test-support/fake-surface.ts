@@ -20,6 +20,7 @@ export class FakeSurface implements Surface {
   readonly executed: CapabilityAction[] = [];
   observation: Observation = { id: "obs-1" };
   openedUrl: string | undefined;
+  readonly opens: string[] = [];
 
   executeHandler: (
     action: CapabilityAction,
@@ -27,6 +28,7 @@ export class FakeSurface implements Surface {
 
   async open(url: string): Promise<void> {
     this.openedUrl = url;
+    this.opens.push(url);
   }
 
   async close(): Promise<void> {}

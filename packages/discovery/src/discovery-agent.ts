@@ -70,6 +70,8 @@ export class DiscoveryAgent {
     const events: DiscoveryTraceEvent[] = [];
     const startedAt = this.now();
     let steps = 0;
+    const entryUrl = request.target.url;
+    const pathActions: CapabilityAction[] = [];
 
     await this.surface.open(request.target.url);
     let current = createSearchNode({ observation: await this.surface.observe() });
@@ -89,7 +91,13 @@ export class DiscoveryAgent {
         return { status: "success", runId, events };
       }
       if (filled?.status === "stuck") {
-        const retreated = this.backtrackInMemory(current, events, filled.reason ?? "proposer stuck");
+        const retreated = await this.backtrack(
+          current,
+          events,
+          filled.reason ?? "proposer stuck",
+          entryUrl,
+          pathActions,
+        );
         if (retreated === undefined) {
           return stuck(runId, events, filled.reason ?? "proposer stuck");
         }
@@ -103,7 +111,13 @@ export class DiscoveryAgent {
 
       const candidate = nextUntried(current);
       if (candidate === undefined || candidate.id === undefined) {
-        const retreated = this.backtrackInMemory(current, events, "exhausted");
+        const retreated = await this.backtrack(
+          current,
+          events,
+          "exhausted",
+          entryUrl,
+          pathActions,
+        );
         if (retreated === undefined) {
           return stuck(runId, events, "exhausted");
         }
@@ -135,6 +149,7 @@ export class DiscoveryAgent {
 
       const result = await this.surface.execute(action);
       steps += 1;
+      pathActions.push(action);
       events.push({ type: "action_result", payload: result });
       if (result.status !== "ok") {
         return {
@@ -161,22 +176,37 @@ export class DiscoveryAgent {
   }
 
   /**
-   * Pop to the parent node. Surface restore is Pass 5.8.
+   * Pop the DFS node and restore the surface by replaying the known prefix
+   * from the entry URL. Do not call browser history-back (SPA/modal/POST).
    */
-  private backtrackInMemory(
+  private async backtrack(
     current: SearchNode,
     events: DiscoveryTraceEvent[],
     reason: string,
-  ): SearchNode | undefined {
+    entryUrl: string,
+    pathActions: CapabilityAction[],
+  ): Promise<SearchNode | undefined> {
     events.push({ type: "dead_end", payload: { reason, stateId: current.stateId } });
     if (current.parent === undefined) {
       return undefined;
     }
+    pathActions.pop();
+    await this.restorePrefix(entryUrl, pathActions);
     events.push({
       type: "backtrack",
-      payload: { from: current.stateId, to: current.parent.stateId },
+      payload: { from: current.stateId, to: current.parent.stateId, restore: "prefix-replay" },
     });
     return current.parent;
+  }
+
+  private async restorePrefix(
+    entryUrl: string,
+    pathActions: readonly CapabilityAction[],
+  ): Promise<void> {
+    await this.surface.open(entryUrl);
+    for (const action of pathActions) {
+      await this.surface.execute(action);
+    }
   }
 
   /**

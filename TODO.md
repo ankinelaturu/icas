@@ -367,9 +367,9 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 
 ### Pass 5.8 — Backtrack restore
 
-- [ ] Do not assume `page.goBack()` restores SPA/modal/POST state
-- [ ] Restore via history when reliable, else replay known prefix from entry URL
-- [ ] Test on a fixture where history-back is insufficient
+- [x] Do not assume `page.goBack()` restores SPA/modal/POST state
+- [x] Restore via history when reliable, else replay known prefix from entry URL
+- [x] Test on a fixture where history-back is insufficient
 
 ### Pass 5.9 — Discovery HITL
 

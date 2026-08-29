@@ -204,6 +204,47 @@ describe("DiscoveryAgent.run", () => {
     expect(clicks).toBe(2);
     expect(result.events.some((event) => event.type === "dead_end")).toBe(true);
   });
+
+  it("restores a parent by replaying the prefix from the entry URL, not history-back", async () => {
+    const surface = new FakeSurface();
+    surface.observation = { id: "home", url: "http://localhost/home" };
+    surface.executeHandler = (action) => {
+      const text =
+        action.type === "click" ? action.target.strategies[0]?.text : undefined;
+      if (text === "Lending") {
+        surface.observation = { id: "lending", url: "http://localhost/lending" };
+      } else if (text === "Search") {
+        surface.observation = { id: "search", url: "http://localhost/search" };
+      } else {
+        surface.observation = { id: "payoff", url: "http://localhost/payoff" };
+      }
+      return { status: "ok" };
+    };
+    const agent = new DiscoveryAgent(surface, {
+      proposer: new FakeProposer([
+        { status: "continue", candidates: [clickOn("Lending", 1)] },
+        {
+          status: "continue",
+          candidates: [clickOn("Search", 1), clickOn("Payoff", 2)],
+        },
+        { status: "stuck", candidates: [], rationale: "empty results" },
+        { status: "success", candidates: [] },
+      ]),
+    });
+    const result = await agent.run(request);
+    expect(result.status).toBe("success");
+    expect(surface.opens.length).toBeGreaterThanOrEqual(2);
+    expect(surface.opens[0]).toBe(request.target.url);
+    expect(surface.opens[1]).toBe(request.target.url);
+    const labels = surface.executed.map((action) =>
+      action.type === "click" ? action.target.strategies[0]?.text : "",
+    );
+    expect(labels).toEqual(["Lending", "Search", "Lending", "Payoff"]);
+    expect(result.events.some((event) => {
+      return event.type === "backtrack"
+        && (event.payload as { restore?: string }).restore === "prefix-replay";
+    })).toBe(true);
+  });
 });
 
 function clickOn(text: string, rank: number) {
