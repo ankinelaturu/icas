@@ -11,6 +11,7 @@ import {
   ReplayFailureCode,
   type ExecutionResult,
 } from "./execution-result.js";
+import { hydrateAssertion } from "./hydrate.js";
 import type { ReplayOptions } from "./replay-options.js";
 
 /**
@@ -27,12 +28,12 @@ export class ReplayEngine {
    * are wired in later passes.
    *
    * @param capability - Effective artifact from {@link CapabilityResolver}, or missing
-   * @param inputs - Typed invocation parameters (unused until execute is wired)
+   * @param inputs - Typed invocation parameters used to hydrate assertion ValueRefs
    * @param options - Replay flags such as `assist` (unused until later passes)
    */
   async run(
     capability: CapabilityArtifact | undefined,
-    _inputs: Record<string, unknown>,
+    inputs: Record<string, unknown>,
     options: ReplayOptions = {},
   ): Promise<ExecutionResult> {
     const runId = options.runId ?? randomUUID();
@@ -45,6 +46,10 @@ export class ReplayEngine {
       };
     }
     for (const step of capability.steps) {
+      const preFailure = await this.evaluatePreconditions(step, inputs, runId, capability.id);
+      if (preFailure !== undefined) {
+        return preFailure;
+      }
       await this.stubStep(step);
     }
     return {
@@ -60,6 +65,30 @@ export class ReplayEngine {
    */
   async verifyStep(_step: CapabilityStep): Promise<void> {
     throw new Error("ReplayEngine.verifyStep is a scaffold.");
+  }
+
+  private async evaluatePreconditions(
+    step: CapabilityStep,
+    inputs: Record<string, unknown>,
+    runId: string,
+    capabilityId: string,
+  ): Promise<ExecutionResult | undefined> {
+    for (const assertion of step.preconditions) {
+      const expected = hydrateAssertion(assertion, inputs);
+      const ok = await this.surface.assert(expected);
+      if (!ok) {
+        return {
+          status: "failure",
+          capabilityId,
+          code: ReplayFailureCode.preconditionFailed,
+          stepId: step.id,
+          expected,
+          observed: false,
+          runId,
+        };
+      }
+    }
+    return undefined;
   }
 
   private async stubStep(_step: CapabilityStep): Promise<void> {

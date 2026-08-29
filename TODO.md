@@ -244,9 +244,9 @@ Callers resolve with `CapabilityResolver` first. `ReplayEngine` never branches o
 
 ### Pass 4.2 — Preconditions
 
-- [ ] Evaluate each step’s preconditions via `Surface.assert`
-- [ ] Fail with `PRECONDITION_FAILED`, `stepId`, expected vs observed
-- [ ] Tests: pass-through vs first-step mismatch
+- [x] Evaluate each step’s preconditions via `Surface.assert`
+- [x] Fail with `PRECONDITION_FAILED`, `stepId`, expected vs observed
+- [x] Tests: pass-through vs first-step mismatch
 
 ### Pass 4.3 — Policy gate before execute
 
