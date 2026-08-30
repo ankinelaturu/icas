@@ -198,3 +198,7 @@ Replay can emit an intervention request when:
 - assisted fallback is disabled/exhausted.
 
 The same browser session remains alive during handoff.
+
+## Evidence
+
+`ReplayEngine` owns the run log when an `EvidenceWriter` is injected. Every terminal status appends checkpoints to `log.jsonl` and writes `summary.json`. Successful replay is log-only. Failures, HITL, and business-outcome stops also capture a screenshot and DOM snapshot. Assisted repair uses event type `assisted_fallback`, never `action`. See [`09-evidence-observability.md`](09-evidence-observability.md).

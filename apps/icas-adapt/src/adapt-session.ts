@@ -161,7 +161,6 @@ async function executePlaywrightReplay(
 ): Promise<ExecutionResult> {
   const { capability, request } = invocation;
   const runId = request.runId ?? randomUUID();
-  const startedAt = new Date().toISOString();
   const evidence = new FileSystemEvidenceWriter({
     root: deps.evidenceRoot ?? evidenceRoot(),
     capabilityId: capability.id,
@@ -182,16 +181,6 @@ async function executePlaywrightReplay(
     await surface.open(request.url);
     const engine = new ReplayEngine(surface, { policy, evidence, handoff });
     const result = await engine.run(capability, request.inputs, { runId });
-    if (result.status !== "failure") {
-      await evidence.writeSummary({
-        runId: result.runId,
-        runType: "adaptation",
-        capabilityId: result.capabilityId,
-        status: result.status,
-        startedAt,
-        finishedAt: new Date().toISOString(),
-      });
-    }
     return result;
   } finally {
     await surface.close();

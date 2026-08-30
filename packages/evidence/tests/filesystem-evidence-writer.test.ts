@@ -79,6 +79,21 @@ describe("FileSystemEvidenceWriter", () => {
     );
   });
 
+  it("stamps summary runId and runType from the writer, not the caller", async () => {
+    const writer = createWriter(root, "adaptation", "run-adapt");
+    await writer.writeSummary({
+      runId: "wrong-id",
+      runType: "replay",
+      status: "success",
+      startedAt: "2026-08-28T00:00:00.000Z",
+    });
+    expect(JSON.parse(await readFile(writer.summaryPath(), "utf8"))).toMatchObject({
+      runId: "run-adapt",
+      runType: "adaptation",
+      status: "success",
+    });
+  });
+
   it("writes replay events to log.jsonl, not trace.jsonl", async () => {
     const writer = createWriter(root, "replay", "run-002");
     await writer.append({

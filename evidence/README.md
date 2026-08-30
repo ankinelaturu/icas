@@ -7,19 +7,19 @@ Recommended shape:
 ```text
 evidence/
 └── loan-payoff/
-    ├── discovery-<run-id>/
+    ├── <discovery-run-id>/
     │   ├── trace.jsonl
     │   ├── summary.json
     │   └── observations/
-    ├── replay-<run-id>/
+    ├── <replay-run-id>/
     │   ├── log.jsonl
     │   └── summary.json
-    └── replay-<exception-run-id>/
+    └── <replay-exception-run-id>/
         ├── log.jsonl
         ├── summary.json
-        └── failure.png
+        └── observations/
 ```
 
-Discovery evidence should be rich enough to prove a genuine LLM-driven observe → decide → act run. Successful replay can be lighter; failures and HITL should capture richer context.
+Discovery evidence should be rich enough to prove a genuine LLM-driven observe → decide → act run. Every replay writes `log.jsonl` plus `summary.json` (success, business outcome, failure, HITL). Failures, HITL, and business-outcome stops also capture observations.
 
 All persisted evidence must pass through the configured Redactor.

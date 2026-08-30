@@ -4,4 +4,4 @@ Run-scoped discovery traces, replay logs, summaries, screenshots, and handoff ev
 
 `FileSystemEvidenceWriter` writes `evidence/<capability>/<run-id>/` with append-only JSONL (`trace.jsonl` for discovery, `log.jsonl` otherwise), `summary.json`, and `observations/`. Payloads pass through the evidence-profile `Redactor` before disk. Tests use a temp directory, never the repo `evidence/` tree.
 
-Each JSONL event is stamped with `runType` (`discovery` | `replay` | `adaptation`) and may tag `actor` (`agent` | `replay` | `human`). Assisted LLM repair uses `assisted_fallback`, not `action`.
+Each JSONL event is stamped with `runType` (`discovery` | `replay` | `adaptation`) and may tag `actor` (`agent` | `replay` | `human`). Assisted LLM repair uses `assisted_fallback`, not `action`. Replay checkpoints use `precondition` / `action` / `postcondition` / `result`; HITL uses `handoff_start` / `handoff_end` with `actor: human`.

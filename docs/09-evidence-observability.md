@@ -44,18 +44,31 @@ Trace events may include:
 
 ## Replay evidence
 
-Successful deterministic replay generally needs only a structured execution log + summary:
+Every replay (and adaptation verification that uses `ReplayEngine`) writes a structured execution log plus a summary, regardless of terminal status.
 
 ```text
-step 1 precondition ✓
-step 1 action ✓
-step 1 postcondition ✓
-...
-outputs extracted ✓
-result SUCCESS
+evidence/<capability>/<run-id>/
+├── log.jsonl
+├── summary.json
+└── observations/          # failure, HITL, and business-outcome stops
 ```
 
-Failures and HITL runs should add a richer signal such as a screenshot or surface snapshot at the failure boundary.
+`log.jsonl` records checkpoints as they happen:
+
+```text
+run_start
+step N precondition ✓|✗
+policy decision
+step N action ✓|✗          # type "action" (deterministic)
+step N postcondition ✓|✗
+recovery                   # known interstitial, if any
+assisted_fallback          # `--assist` only; not a deterministic action
+success_check / outputs
+result SUCCESS | business_outcome | failure
+handoff_start … handoff_end  # HITL, actor: human
+```
+
+Successful replay does not attach screenshots. Failures, HITL pauses, and business-outcome stops add a screenshot and DOM snapshot under `observations/`.
 
 ## JSONL
 

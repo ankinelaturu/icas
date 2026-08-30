@@ -160,7 +160,6 @@ async function executePlaywrightReplay(
 ): Promise<ExecutionResult> {
   const { capability, request } = invocation;
   const runId = request.runId ?? randomUUID();
-  const startedAt = new Date().toISOString();
   const evidence = new FileSystemEvidenceWriter({
     root: deps.evidenceRoot ?? evidenceRoot(),
     capabilityId: capability.id,
@@ -187,17 +186,7 @@ async function executePlaywrightReplay(
       assist: request.assist,
       runId,
     });
-    // Failure evidence already wrote a summary. Success / business_outcome still need one.
-    if (result.status !== "failure") {
-      await evidence.writeSummary({
-        runId: result.runId,
-        runType: "replay",
-        capabilityId: result.capabilityId,
-        status: result.status,
-        startedAt,
-        finishedAt: new Date().toISOString(),
-      });
-    }
+    // ReplayEngine writes log.jsonl + summary.json for every terminal status.
     return result;
   } finally {
     await surface.close();

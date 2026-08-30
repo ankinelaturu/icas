@@ -123,13 +123,16 @@ export class FileSystemEvidenceWriter implements EvidenceWriter {
    * Write the compact whole-run object, redacted, as pretty JSON.
    *
    * Overwrites the previous summary so the file always reflects the latest
-   * finish status rather than appending a second document.
+   * finish status rather than appending a second document. `runId` / `runType`
+   * are taken from this writer so callers cannot mix runs.
    *
    * @param summary - Run totals and terminal status
    */
   async writeSummary(summary: RunSummary): Promise<void> {
     await mkdir(this.runDirectory(), { recursive: true });
-    const redacted = this.redactor.redactValue(summary);
+    // Stamp like append so an adaptation writer cannot keep a "replay" summary.
+    const stamped = { ...summary, runId: this.runId, runType: this.runType };
+    const redacted = this.redactor.redactValue(stamped);
     await writeFile(
       this.summaryPath(),
       `${JSON.stringify(redacted, null, 2)}\n`,

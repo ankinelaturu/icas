@@ -9,10 +9,15 @@
 import { randomUUID } from "node:crypto";
 
 import type { CapabilityAction, CapabilityArtifact, CapabilityStep } from "@icas/capability";
-import { ASSISTED_FALLBACK_EVENT, type EvidenceWriter } from "@icas/evidence";
+import {
+  ASSISTED_FALLBACK_EVENT,
+  DETERMINISTIC_ACTION_EVENT,
+  type EvidenceActor,
+  type EvidenceWriter,
+} from "@icas/evidence";
 import type { HandoffController } from "@icas/handoff";
 import type { PolicyGuard } from "@icas/policy";
-import type { Surface } from "@icas/surface";
+import type { Observation, Surface } from "@icas/surface";
 
 import { KNOWN_BUSINESS_OUTCOMES } from "./business-outcomes.js";
 import {
@@ -37,7 +42,10 @@ import { hasSurfaceCode } from "./surface-code.js";
 export interface ReplayEngineDependencies {
   /** Deny off-origin navigations and risky actions before {@link Surface.execute}. */
   policy?: PolicyGuard;
-  /** Append failure/recovery events; redaction lives in the writer. */
+  /**
+   * Full run log (checkpoints, recoveries, HITL, assist, terminal result).
+   * Redaction lives in the writer.
+   */
   evidence?: EvidenceWriter;
   /** Same-session HITL. Not a co-browsing console. */
   handoff?: HandoffController;
@@ -67,6 +75,8 @@ export class ReplayEngine {
   private assistUsed = false;
   private currentCapability: CapabilityArtifact | undefined;
   private startedAt = "";
+  /** Capability steps that fully passed postconditions. */
+  private completedSteps = 0;
 
   constructor(
     private readonly surface: Surface,
@@ -99,12 +109,11 @@ export class ReplayEngine {
     this.assistEnabled = options.assist === true;
     this.assistBudget = options.assistBudget ?? 3;
     this.assistUsed = false;
+    this.completedSteps = 0;
     this.startedAt = new Date().toISOString();
     const result = await this.runLoop(capability, inputs, runId);
-    if (result.status === "failure") {
-      // Capture after the loop so a mid-run stop still gets rich evidence.
-      await this.captureFailureEvidence(result);
-    }
+    // Every terminal status gets JSONL + summary. Rich signals only on stops.
+    await this.finalizeEvidence(result);
     return result;
   }
 
@@ -130,6 +139,7 @@ export class ReplayEngine {
       };
     }
     this.currentCapability = capability;
+    await this.record(runId, "run_start", { capabilityId: capability.id });
     for (let index = 0; index < capability.steps.length; index++) {
       const step = capability.steps[index];
       if (step === undefined) {
@@ -147,6 +157,7 @@ export class ReplayEngine {
       if (blocked !== undefined) {
         return blocked;
       }
+      this.completedSteps += 1;
     }
     return await this.finishRun(capability, inputs, runId);
   }
@@ -166,6 +177,10 @@ export class ReplayEngine {
       const expected = hydrateAssertion(assertion, inputs);
       const ok = await this.surface.assert(expected);
       if (!ok) {
+        await this.record(runId, "success_check", {
+          status: "failed",
+          expected,
+        });
         return {
           status: "failure",
           capabilityId: capability.id,
@@ -175,6 +190,7 @@ export class ReplayEngine {
           runId,
         };
       }
+      await this.record(runId, "success_check", { status: "ok", expected });
     }
     const extracted = await extractOutputs({
       surface: this.surface,
@@ -184,8 +200,17 @@ export class ReplayEngine {
     });
     if (isExecutionResult(extracted)) {
       // Extraction/type failures stay structured so CLI/MCP do not throw.
+      // extractOutputs only returns `failure` on this branch; success has no `code`.
+      await this.record(runId, "outputs", {
+        status: "failed",
+        ...(extracted.status === "failure" ? { code: extracted.code } : {}),
+      });
       return extracted;
     }
+    await this.record(runId, "outputs", {
+      status: "ok",
+      outputs: extracted.outputs,
+    });
     return {
       status: "success",
       capabilityId: capability.id,
@@ -222,6 +247,10 @@ export class ReplayEngine {
         }
       }
       if (failed === undefined) {
+        await this.record(runId, "precondition", {
+          stepId: step.id,
+          status: "ok",
+        });
         return undefined;
       }
       // Retry only after a known interstitial dismiss. Semantic mismatches
@@ -229,6 +258,11 @@ export class ReplayEngine {
       if (attempt < this.maxAttempts && (await this.recoverInterstitial(runId, attempt))) {
         continue;
       }
+      await this.record(runId, "precondition", {
+        stepId: step.id,
+        status: "failed",
+        expected: failed,
+      });
       return {
         status: "failure",
         capabilityId,
@@ -261,6 +295,7 @@ export class ReplayEngine {
     const decision = this.policy?.check(action, destinationUrl === undefined
       ? {}
       : { destinationUrl }) ?? { decision: "allow" as const };
+    await this.record(runId, "policy", { stepId: step.id, decision });
     if (decision.decision === "require-human") {
       // Same headed session: pause automation, wait, resume. No co-browse.
       const paused = await this.pauseForHuman({
@@ -296,6 +331,12 @@ export class ReplayEngine {
     try {
       const result = await this.surface.execute(action);
       if (result.status !== "ok") {
+        await this.record(runId, DETERMINISTIC_ACTION_EVENT, {
+          stepId: step.id,
+          status: "failed",
+          action,
+          result,
+        });
         // Surface returned a structured fail; try one bounded assist, else stop.
         return await this.maybeAssist(step, nextStep, inputs, runId, capabilityId, {
           status: "failure",
@@ -307,8 +348,19 @@ export class ReplayEngine {
           runId,
         });
       }
+      await this.record(runId, DETERMINISTIC_ACTION_EVENT, {
+        stepId: step.id,
+        status: "ok",
+        action,
+      });
     } catch (error) {
       if (hasSurfaceCode(error, ReplayFailureCode.targetNotFound)) {
+        await this.record(runId, DETERMINISTIC_ACTION_EVENT, {
+          stepId: step.id,
+          status: "failed",
+          action,
+          code: ReplayFailureCode.targetNotFound,
+        });
         // Duck-typed so replay does not import `@icas/browser`.
         return await this.maybeAssist(step, nextStep, inputs, runId, capabilityId, {
           status: "failure",
@@ -399,14 +451,12 @@ export class ReplayEngine {
       }
       await this.surface.execute(repairAction);
       executed += 1;
-      await this.evidence?.append({
-        timestamp: new Date().toISOString(),
+      await this.record(
         runId,
-        runType: "replay",
-        type: ASSISTED_FALLBACK_EVENT,
-        actor: "agent",
-        payload: { action: repairAction, rationale: proposal.rationale },
-      });
+        ASSISTED_FALLBACK_EVENT,
+        { action: repairAction, rationale: proposal.rationale },
+        "agent",
+      );
     }
     const post = await this.evaluatePostconditions(step, inputs, runId, capabilityId);
     if (post !== undefined) {
@@ -444,16 +494,30 @@ export class ReplayEngine {
         }
       }
       if (failed === undefined) {
+        await this.record(runId, "postcondition", {
+          stepId: step.id,
+          status: "ok",
+        });
         return undefined;
       }
       const outcome = await this.classifyBusinessOutcome(capabilityId, runId);
       if (outcome !== undefined) {
+        await this.record(runId, "postcondition", {
+          stepId: step.id,
+          status: "failed",
+          expected: failed,
+        });
         // Domain messages (loan not found) are not Playwright crashes.
         return outcome;
       }
       if (attempt < this.maxAttempts && (await this.recoverInterstitial(runId, attempt))) {
         continue;
       }
+      await this.record(runId, "postcondition", {
+        stepId: step.id,
+        status: "failed",
+        expected: failed,
+      });
       return {
         status: "failure",
         capabilityId,
@@ -485,13 +549,10 @@ export class ReplayEngine {
         return false;
       }
       await this.surface.execute(INTERSTITIAL_CONTINUE);
-      await this.evidence?.append({
-        timestamp: new Date().toISOString(),
-        runId,
-        runType: "replay",
-        type: "recovery",
-        actor: "replay",
-        payload: { reason: "known_interstitial", text, attempt },
+      await this.record(runId, "recovery", {
+        reason: "known_interstitial",
+        text,
+        attempt,
       });
       return true;
     }
@@ -539,17 +600,28 @@ export class ReplayEngine {
       // No controller: cannot pause. Caller maps this to policyBlocked.
       return false;
     }
-    await this.handoff.request({
+    const intervention = {
       runId: args.runId,
       reason: args.reason,
       message: args.message,
       capabilityId: args.capabilityId,
       stepId: args.stepId,
-    });
+    };
+    await this.record(
+      args.runId,
+      "handoff_start",
+      { reason: args.reason, message: args.message, stepId: args.stepId },
+      "human",
+    );
+    await this.recordHandoffObservation(args.runId, "before");
+    await this.handoff.request(intervention);
     await this.surface.handoffToHuman();
     // Session stays open. waitForResume blocks until the operator continues.
     await this.handoff.waitForResume();
+    await this.record(args.runId, "resume_signal", { stepId: args.stepId }, "human");
     await this.surface.resumeFromHuman();
+    await this.recordHandoffObservation(args.runId, "after");
+    await this.record(args.runId, "handoff_end", { stepId: args.stepId }, "human");
     return true;
   }
 
@@ -592,33 +664,135 @@ export class ReplayEngine {
     if (result.stepId !== undefined) {
       payload.stepId = result.stepId;
     }
-    await this.evidence.append({
-      timestamp: new Date().toISOString(),
-      runId: result.runId,
-      runType: "replay",
-      type: "failure",
-      actor: "replay",
-      payload,
-    });
-    try {
-      const observation = await this.surface.observe();
-      await this.evidence.captureRichSignal(
-        "dom",
-        observation.accessibilitySnapshot ?? observation,
-      );
-      if (observation.imagePath !== undefined) {
-        await this.evidence.captureRichSignal("screenshot", observation.imagePath);
-      }
-    } catch {
-      await this.evidence.captureRichSignal("trace", { code: result.code });
+    await this.record(result.runId, "failure", payload);
+    await this.captureBoundarySignal();
+  }
+
+  /**
+   * Append JSONL for the terminal status, then write `summary.json`.
+   *
+   * Success stays a structured log. Stops (failure, business outcome) also
+   * capture a surface snapshot. HITL snapshots are recorded at pause/resume.
+   */
+  private async finalizeEvidence(result: ExecutionResult): Promise<void> {
+    if (this.evidence === undefined) {
+      return;
+    }
+    if (result.status === "failure") {
+      await this.captureFailureEvidence(result);
+    } else if (result.status === "business_outcome") {
+      await this.record(result.runId, "business_outcome", {
+        outcome: result.outcome,
+        details: result.details,
+      });
+      await this.captureBoundarySignal();
+    } else {
+      await this.record(result.runId, "result", {
+        status: "success",
+        outputs: result.outputs,
+      });
     }
     await this.evidence.writeSummary({
       runId: result.runId,
       runType: "replay",
       capabilityId: result.capabilityId,
-      status: "failure",
+      status: result.status,
       startedAt: this.startedAt,
       finishedAt: new Date().toISOString(),
+      steps: this.completedSteps,
+    });
+  }
+
+  /**
+   * Observation + screenshot/DOM at a HITL boundary. Best-effort like failure.
+   *
+   * @param runId - Current run
+   * @param phase - Pause (`before`) or resume (`after`)
+   */
+  private async recordHandoffObservation(
+    runId: string,
+    phase: "before" | "after",
+  ): Promise<void> {
+    if (this.evidence === undefined) {
+      return;
+    }
+    try {
+      const observation = await this.surface.observe();
+      await this.record(runId, "observation", { phase, observation }, "human");
+      await this.persistBoundaryObservation(observation);
+    } catch {
+      await this.record(
+        runId,
+        "observation",
+        { phase, error: "observe_failed" },
+        "human",
+      );
+    }
+  }
+
+  /**
+   * Screenshot and DOM at the current surface. Used for failure, HITL, and
+   * business-outcome stops — not for successful checkpoints.
+   */
+  private async captureBoundarySignal(): Promise<void> {
+    if (this.evidence === undefined) {
+      return;
+    }
+    try {
+      await this.persistBoundaryObservation(await this.surface.observe());
+    } catch {
+      await this.evidence.captureRichSignal("trace", { reason: "observe_failed" });
+    }
+  }
+
+  /**
+   * Write DOM + screenshot for an already-captured observation.
+   *
+   * HITL calls this with the same observation it logged so pause does not
+   * observe twice.
+   *
+   * @param observation - Current surface snapshot
+   */
+  private async persistBoundaryObservation(observation: Observation): Promise<void> {
+    if (this.evidence === undefined) {
+      return;
+    }
+    await this.evidence.captureRichSignal(
+      "dom",
+      observation.accessibilitySnapshot ?? observation,
+    );
+    if (observation.imagePath !== undefined) {
+      await this.evidence.captureRichSignal("screenshot", observation.imagePath);
+    }
+  }
+
+  /**
+   * Append one JSONL event. No-op when evidence is unwired so unit tests stay disk-free.
+   *
+   * The filesystem writer restamps `runType` from its constructor, so adaptation
+   * runs stay tagged even though this engine always writes `replay` here.
+   *
+   * @param runId - Current run
+   * @param type - Event type (checkpoint, recovery, HITL, or terminal)
+   * @param payload - Optional structured body; redacted by the writer
+   * @param actor - Who produced the event; HITL uses `"human"`
+   */
+  private async record(
+    runId: string,
+    type: string,
+    payload?: unknown,
+    actor: EvidenceActor = "replay",
+  ): Promise<void> {
+    if (this.evidence === undefined) {
+      return;
+    }
+    await this.evidence.append({
+      timestamp: new Date().toISOString(),
+      runId,
+      runType: "replay",
+      type,
+      actor,
+      ...(payload === undefined ? {} : { payload }),
     });
   }
 }

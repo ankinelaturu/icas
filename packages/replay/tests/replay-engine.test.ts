@@ -1,4 +1,9 @@
-import type { EvidenceEvent, EvidenceWriter } from "@icas/evidence";
+import {
+  DETERMINISTIC_ACTION_EVENT,
+  type EvidenceEvent,
+  type EvidenceWriter,
+  type RunSummary,
+} from "@icas/evidence";
 import { SessionHandoffController } from "@icas/handoff";
 import { PolicyGuard } from "@icas/policy";
 import { describe, expect, it, vi } from "vitest";
@@ -280,7 +285,8 @@ describe("ReplayEngine business outcomes", () => {
     const surface = new FakeSurface();
     surface.assertHandler = (assertion) =>
       assertion.type === "textVisible" && assertion.value === "Loan not found";
-    const engine = new ReplayEngine(surface);
+    const { events, summaries, signals, evidence } = memoryEvidence();
+    const engine = new ReplayEngine(surface, { evidence });
     const result = await engine.run(
       testCapability({
         steps: [
@@ -299,19 +305,44 @@ describe("ReplayEngine business outcomes", () => {
       details: { text: "Loan not found" },
       runId: "run-loan-missing",
     });
+    expect(events.map((event) => event.type)).toEqual(
+      expect.arrayContaining(["postcondition", "business_outcome"]),
+    );
+    expect(events.find((event) => event.type === "postcondition")?.payload).toMatchObject({
+      stepId: "search",
+      status: "failed",
+    });
+    expect(summaries[0]).toMatchObject({
+      status: "business_outcome",
+      runId: "run-loan-missing",
+    });
+    expect(signals.some((signal) => signal.kind === "screenshot")).toBe(true);
   });
 });
 
-function memoryEvidence(): { events: EvidenceEvent[]; evidence: EvidenceWriter } {
+function memoryEvidence(): {
+  events: EvidenceEvent[];
+  summaries: RunSummary[];
+  signals: Array<{ kind: string; value: unknown }>;
+  evidence: EvidenceWriter;
+} {
   const events: EvidenceEvent[] = [];
+  const summaries: RunSummary[] = [];
+  const signals: Array<{ kind: string; value: unknown }> = [];
   return {
     events,
+    summaries,
+    signals,
     evidence: {
       append: async (event) => {
         events.push(event);
       },
-      writeSummary: async () => {},
-      captureRichSignal: async () => {},
+      writeSummary: async (summary) => {
+        summaries.push(summary);
+      },
+      captureRichSignal: async (kind, value) => {
+        signals.push({ kind, value });
+      },
     },
   };
 }
@@ -802,6 +833,133 @@ describe("ReplayEngine HITL", () => {
     expect(handoff.owner()).toBe("automation");
     expect(surface.automationResumes).toBe(1);
     expect(surface.executed).toHaveLength(1);
+  });
+
+  it("records handoff start, observations, resume, and end as human evidence", async () => {
+    const surface = new FakeSurface();
+    const handoff = new SessionHandoffController();
+    const policy = new PolicyGuard({
+      allowedOrigins: ["https://bank.example"],
+      allowedActionTypes: ["click", "fill", "read"],
+    });
+    const { events, summaries, signals, evidence } = memoryEvidence();
+    const engine = new ReplayEngine(surface, { policy, handoff, evidence });
+    const pending = engine.run(
+      testCapability({
+        steps: [
+          clickStep("confirm", {
+            action: {
+              type: "click",
+              target: { strategies: [{ type: "visibleText", text: "Continue" }] },
+              risk: "risky",
+            },
+          }),
+        ],
+      }),
+      {},
+      { runId: "run-hitl-log" },
+    );
+    await vi.waitFor(() => {
+      expect(handoff.owner()).toBe("human");
+    });
+    handoff.signalResume();
+    const result = await pending;
+    expect(result.status).toBe("success");
+    expect(events.map((event) => event.type)).toEqual(
+      expect.arrayContaining([
+        "handoff_start",
+        "observation",
+        "resume_signal",
+        "handoff_end",
+        DETERMINISTIC_ACTION_EVENT,
+        "result",
+      ]),
+    );
+    expect(
+      events.filter((event) => event.type === "observation" && event.actor === "human"),
+    ).toHaveLength(2);
+    expect(events.find((event) => event.type === "handoff_start")?.actor).toBe("human");
+    expect(summaries[0]).toMatchObject({ status: "success", runId: "run-hitl-log" });
+    expect(signals.some((signal) => signal.kind === "screenshot")).toBe(true);
+  });
+});
+
+describe("ReplayEngine full-run evidence", () => {
+  it("logs checkpoints, outputs, result, and summary on success without screenshots", async () => {
+    const surface = new FakeSurface();
+    const { events, summaries, signals, evidence } = memoryEvidence();
+    const engine = new ReplayEngine(surface, { evidence });
+    const result = await engine.run(
+      testCapability({
+        steps: [
+          clickStep("open-lending", {
+            preconditions: [{ type: "textVisible", value: "Home" }],
+            postconditions: [{ type: "textVisible", value: "Lending Services" }],
+          }),
+        ],
+      }),
+      {},
+      { runId: "run-success-log" },
+    );
+    expect(result.status).toBe("success");
+    expect(events.map((event) => event.type)).toEqual([
+      "run_start",
+      "precondition",
+      "policy",
+      DETERMINISTIC_ACTION_EVENT,
+      "postcondition",
+      "success_check",
+      "outputs",
+      "result",
+    ]);
+    expect(events.find((event) => event.type === "precondition")?.payload).toMatchObject({
+      stepId: "open-lending",
+      status: "ok",
+    });
+    expect(events.find((event) => event.type === DETERMINISTIC_ACTION_EVENT)?.payload).toMatchObject({
+      stepId: "open-lending",
+      status: "ok",
+    });
+    expect(events.find((event) => event.type === "result")?.payload).toMatchObject({
+      status: "success",
+    });
+    expect(summaries).toEqual([
+      expect.objectContaining({
+        runId: "run-success-log",
+        runType: "replay",
+        capabilityId: "loan-payoff",
+        status: "success",
+        steps: 1,
+      }),
+    ]);
+    expect(signals).toEqual([]);
+  });
+
+  it("writes a failure summary after checkpoint and rich-signal events", async () => {
+    const surface = new FakeSurface();
+    surface.assertHandler = () => false;
+    const { events, summaries, evidence } = memoryEvidence();
+    const engine = new ReplayEngine(surface, { evidence });
+    const result = await engine.run(
+      testCapability({
+        steps: [
+          clickStep("open-lending", {
+            preconditions: [{ type: "textVisible", value: "Home" }],
+          }),
+        ],
+      }),
+      {},
+      { runId: "run-fail-log" },
+    );
+    expect(result.status).toBe("failure");
+    expect(events.map((event) => event.type)).toEqual(
+      expect.arrayContaining(["precondition", "failure"]),
+    );
+    expect(summaries[0]).toMatchObject({
+      status: "failure",
+      runId: "run-fail-log",
+      steps: 0,
+    });
   });
 });
 

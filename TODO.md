@@ -313,6 +313,16 @@ Callers resolve with `CapabilityResolver` first. `ReplayEngine` never branches o
 - [x] `tests/integration/assisted-fallback.test.ts`
 - [x] Against HTML fixtures, not full tenants
 
+### Pass 4.13 — Full-run replay evidence
+
+Replay previously wrote JSONL only on recovery, `--assist`, and hard failure. A successful `icas-play run` left `summary.json` alone.
+
+- [x] Append checkpoint JSONL for every step on all terminal statuses (`success`, `business_outcome`, `failure`)
+- [x] Engine writes `summary.json` for every run (play / adapt / MCP no longer duplicate it)
+- [x] HITL records start, before/after observation, resume, and end (`actor: human`)
+- [x] Rich signal (screenshot/DOM) on failure, HITL, and business-outcome stops — not on success
+- [x] Tests: success log without screenshots; business_outcome log; HITL human events; failure still captures screenshot
+
 ---
 
 ## Phase 5 — Discovery and compiler
