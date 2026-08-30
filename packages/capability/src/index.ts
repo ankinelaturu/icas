@@ -25,6 +25,14 @@ export {
   ValueRefSchema,
 } from "./artifact-schema.js";
 
+export {
+  llmActionToCapabilityAction,
+  LlmCapabilityActionSchema,
+  LlmTargetDescriptorSchema,
+  LlmTargetStrategySchema,
+} from "./llm-action-schema.js";
+export type { LlmCapabilityAction, LlmTargetStrategy } from "./llm-action-schema.js";
+
 export type {
   CapabilityOverride,
   CapabilityOverridePatch,

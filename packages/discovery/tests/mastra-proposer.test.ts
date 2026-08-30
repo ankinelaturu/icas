@@ -14,17 +14,37 @@ import {
 
 const validContinue = {
   status: "continue" as const,
+  rationale: null,
   candidates: [
     {
+      id: null,
       action: {
         type: "click" as const,
-        target: {
-          strategies: [{ type: "visibleText" as const, text: "Lending" }],
-        },
+        intent: null,
         risk: "safe" as const,
+        path: null,
+        reason: null,
+        value: null,
+        target: {
+          strategies: [
+            {
+              type: "visibleText" as const,
+              role: null,
+              text: "Lending",
+              label: null,
+              selector: null,
+              xpath: null,
+              x: null,
+              y: null,
+              confidence: null,
+            },
+          ],
+        },
       },
       rationale: "Lending is the loan workspace",
       rank: 1,
+      expectation: null,
+      risk: null,
     },
   ],
 };
@@ -57,6 +77,24 @@ describe("MastraCandidateProposer", () => {
       }),
     ).rejects.toBeInstanceOf(CandidateValidationError);
   });
+
+  it("logs the raw generate object before mapping", async () => {
+    const lines: string[] = [];
+    const proposer = new MastraCandidateProposer(mockAgent(validContinue), {
+      log: (line) => {
+        lines.push(line);
+      },
+    });
+    await proposer.propose({
+      goal: "Generate a payoff statement",
+      observation: { id: "home", url: "http://localhost:4101/" },
+      history: [],
+    });
+    const joined = lines.join("\n");
+    expect(joined).toContain("LLM generate observation=home");
+    expect(joined).toContain("LLM raw response:");
+    expect(joined).toContain('"text": "Lending"');
+  });
 });
 
 describe("formatProposePrompt", () => {
@@ -70,7 +108,9 @@ describe("formatProposePrompt", () => {
     expect(prompt).toContain("quote loan 987654");
     expect(prompt).toContain("Do not transfer funds.");
     expect(prompt).toContain("/tmp/a.png");
+    expect(prompt).toContain("accessibilitySnapshot:");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("status: \"continue\"");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain('type "relative"');
   });
 });
 

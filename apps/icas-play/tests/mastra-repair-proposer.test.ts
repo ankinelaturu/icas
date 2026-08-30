@@ -59,7 +59,34 @@ describe("MastraRepairProposer", () => {
   it("validates structured output before returning", async () => {
     const proposer = new MastraRepairProposer({
       generate: async () => ({
-        object: { actions: [click], rationale: "retry the visible control" },
+        object: {
+          actions: [
+            {
+              type: "click",
+              intent: null,
+              risk: null,
+              path: null,
+              reason: null,
+              value: null,
+              target: {
+                strategies: [
+                  {
+                    type: "visibleText",
+                    role: null,
+                    text: "Retry",
+                    label: null,
+                    selector: null,
+                    xpath: null,
+                    x: null,
+                    y: null,
+                    confidence: null,
+                  },
+                ],
+              },
+            },
+          ],
+          rationale: "retry the visible control",
+        },
       }),
     });
     const proposal = await proposer.propose(fakeContext());

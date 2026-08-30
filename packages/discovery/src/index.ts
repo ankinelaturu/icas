@@ -39,6 +39,10 @@ export {
 } from "./mastra-proposer.js";
 export type { StructuredGenerateAgent } from "./mastra-proposer.js";
 export {
+  llmProposalToCandidateProposal,
+  LlmCandidateProposalSchema,
+} from "./llm-proposal-schema.js";
+export {
   DEFAULT_DISCOVERY_MODEL,
   discoverySmokeEnabled,
   hasDiscoveryApiKey,

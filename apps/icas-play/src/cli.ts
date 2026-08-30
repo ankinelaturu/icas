@@ -26,6 +26,7 @@ import { coerceInputValues } from "./coerce-inputs.js";
 import { DEFAULT_ICAS_IDENTITY } from "./defaults.js";
 import { formatCapabilityDescription } from "./format-describe.js";
 import { exitCodeForResult, formatRunResult } from "./format-run-result.js";
+import { loadRepoEnv } from "./load-repo-env.js";
 import { parseCapabilityInputFlags } from "./parse-cli-inputs.js";
 import {
   runEnrolledReplay,
@@ -291,6 +292,8 @@ const isMain =
   (process.argv[1].endsWith("cli.ts") || process.argv[1].endsWith("cli.js"));
 
 if (isMain) {
+  // pnpm --filter exec strips OPENAI_API_KEY; `--assist` still needs a key.
+  loadRepoEnv();
   void runPlay().catch((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
     console.error(message);

@@ -7,7 +7,11 @@
  */
 
 import { Agent } from "@mastra/core/agent";
-import { CapabilityActionSchema } from "@icas/capability";
+import {
+  CapabilityActionSchema,
+  llmActionToCapabilityAction,
+  LlmCapabilityActionSchema,
+} from "@icas/capability";
 import { loadPromptPolicy } from "@icas/policy";
 import type { RepairContext, RepairProposal, RepairProposer } from "@icas/replay";
 import { z } from "zod";
@@ -19,12 +23,18 @@ export const DEFAULT_REPAIR_MODEL = "openai/gpt-4o";
 export const REPAIR_PROPOSER_AGENT_ID = "icas-repair-proposer";
 
 /**
- * Structured LLM output for one assist attempt.
- *
- * `actions` are replacements for the failed step only, not a new goal search.
+ * Catalog-shaped repair. Used after mapping; not sent to OpenAI (has `oneOf`).
  */
 export const RepairProposalSchema = z.strictObject({
   actions: z.array(CapabilityActionSchema).min(1),
+  rationale: z.string().min(1),
+});
+
+/**
+ * Structured output for Mastra `generate`. Flat actions: OpenAI rejects `oneOf`.
+ */
+export const LlmRepairProposalSchema = z.strictObject({
+  actions: z.array(LlmCapabilityActionSchema).min(1),
   rationale: z.string().min(1),
 });
 
@@ -45,7 +55,7 @@ export interface StructuredRepairAgent {
   generate(
     messages: string,
     options: {
-      structuredOutput: { schema: typeof RepairProposalSchema };
+      structuredOutput: { schema: typeof LlmRepairProposalSchema };
     },
   ): Promise<{ object: unknown }>;
 }
@@ -119,13 +129,16 @@ export class MastraRepairProposer implements RepairProposer {
    */
   async propose(context: RepairContext): Promise<RepairProposal> {
     const result = await this.agent.generate(formatRepairPrompt(context), {
-      structuredOutput: { schema: RepairProposalSchema },
+      structuredOutput: { schema: LlmRepairProposalSchema },
     });
-    const parsed = RepairProposalSchema.safeParse(result.object);
+    const parsed = LlmRepairProposalSchema.safeParse(result.object);
     if (!parsed.success) {
       throw new Error(`repair proposer returned an invalid RepairProposal: ${parsed.error.message}`);
     }
-    return parsed.data;
+    return {
+      actions: parsed.data.actions.map(llmActionToCapabilityAction),
+      rationale: parsed.data.rationale,
+    };
   }
 }
 

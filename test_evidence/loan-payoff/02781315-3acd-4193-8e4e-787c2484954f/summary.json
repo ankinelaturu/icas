@@ -1,9 +1,0 @@
-{
-  "runId": "02781315-3acd-4193-8e4e-787c2484954f",
-  "runType": "replay",
-  "capabilityId": "loan-payoff",
-  "status": "success",
-  "startedAt": "2026-08-30T04:30:40.705Z",
-  "finishedAt": "2026-08-30T04:30:41.263Z",
-  "steps": 7
-}

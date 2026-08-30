@@ -31,8 +31,7 @@ evidence/<capability>/<run-id>/
 Trace events may include:
 
 - observation captured;
-- model decision/rationale;
-- candidate ranking;
+- model decision/rationale and ranked candidates (full actions);
 - chosen action;
 - policy decision;
 - action result;
@@ -41,6 +40,8 @@ Trace events may include:
 - intervention request;
 - human action;
 - success.
+
+`icas-agent discover` prints the same loop to stderr (snapshot preview + LLM JSON) so a live run is inspectable without opening `trace.jsonl` first.
 
 ## Replay evidence
 

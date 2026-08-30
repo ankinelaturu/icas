@@ -282,6 +282,59 @@ describe("DiscoveryAgent.run", () => {
     );
     expect(labels).toEqual(["Lending"]);
   });
+
+  it("prints observations, LLM proposals, and chosen actions when log is wired", async () => {
+    const lines: string[] = [];
+    const surface = new FakeSurface();
+    surface.observation = {
+      id: "home",
+      url: "http://localhost:4101/",
+      accessibilitySnapshot: "- heading: Lending",
+    };
+    surface.executeHandler = () => {
+      surface.observation = { id: "lending", url: "http://localhost:4101/lending.htm" };
+      return { status: "ok" };
+    };
+    const agent = new DiscoveryAgent(surface, {
+      proposer: new FakeProposer([clickLending, { status: "success", candidates: [] }]),
+      log: (line) => {
+        lines.push(line);
+      },
+    });
+    await agent.run(request);
+    const joined = lines.join("\n");
+    expect(joined).toContain("observed id=home");
+    expect(joined).toContain("- heading: Lending");
+    expect(joined).toContain("LLM proposal:");
+    expect(joined).toContain("chosen rank=1 click visibleText text=Lending");
+    expect(joined).toContain("execute ok");
+  });
+
+  it("keeps the surface error message when execute throws TARGET_NOT_FOUND", async () => {
+    const lines: string[] = [];
+    const surface = new FakeSurface();
+    surface.observation = { id: "home", url: "http://localhost:4101/" };
+    surface.executeHandler = () => {
+      throw new Error("TARGET_NOT_FOUND: no control matched [label=LN Acct #]");
+    };
+    const agent = new DiscoveryAgent(surface, {
+      proposer: new FakeProposer([clickLending]),
+      log: (line) => {
+        lines.push(line);
+      },
+    });
+    const result = await agent.run(request);
+    expect(result.status).toBe("failed");
+    expect(result.reason).toBe("TARGET_NOT_FOUND: no control matched [label=LN Acct #]");
+    expect(result.events.some((event) => event.type === "action_result")).toBe(true);
+    expect(lines.join("\n")).toContain("TARGET_NOT_FOUND");
+    const candidates = result.events.find((event) => event.type === "candidates");
+    expect(candidates?.payload).toMatchObject({
+      status: "continue",
+      count: 1,
+      candidates: [{ rank: 1, rationale: "Open lending" }],
+    });
+  });
 });
 
 function clickOn(text: string, rank: number) {

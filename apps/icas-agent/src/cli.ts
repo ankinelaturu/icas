@@ -5,6 +5,7 @@
  * Always discovers. Does not silently replay a stored capability, infer
  * identity from `--url`, or author catalog JSON by hand. `--id` names the
  * Vendor+Product capability; a later institution uses `icas-adapt`.
+ * On process start, empty model keys are filled from repo-root `.env`.
  *
  * @see docs/01-system-overview.md
  * @see docs/03-discovery-agent.md
@@ -24,6 +25,7 @@ import {
   runDiscover,
   type DiscoverRequest,
 } from "./discover-session.js";
+import { loadRepoEnv } from "./load-repo-env.js";
 import { parseCapabilityInputFlags } from "./parse-cli-inputs.js";
 
 /**
@@ -157,6 +159,7 @@ async function executeDiscoverCommand(
     const { artifact, result } = await runDiscover(request, {
       registry: io.registry,
       env: io.env,
+      log: io.writeErr,
       ...(io.runDiscovery === undefined ? {} : { runDiscovery: io.runDiscovery }),
       ...(io.proposer === undefined ? {} : { proposer: io.proposer }),
     });
@@ -212,6 +215,8 @@ const isMain =
   (process.argv[1].endsWith("cli.ts") || process.argv[1].endsWith("cli.js"));
 
 if (isMain) {
+  // pnpm --filter exec strips OPENAI_API_KEY; fill empty keys from repo `.env`.
+  loadRepoEnv();
   void runAgent().catch((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
     console.error(message);

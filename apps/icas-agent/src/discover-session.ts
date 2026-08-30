@@ -58,6 +58,8 @@ export interface DiscoverSessionDeps {
   stdin?: NodeJS.ReadableStream;
   stdout?: NodeJS.WritableStream;
   env?: NodeJS.ProcessEnv;
+  /** Live progress (stderr). Wired by the CLI; tests usually omit it. */
+  log?: (line: string) => void;
 }
 
 /**
@@ -101,7 +103,7 @@ export async function runDiscover(
       : await deps.runDiscovery(discoveryRequest);
   if (result.status !== "success") {
     throw new Error(
-      `discovery ${result.status}${result.reason === undefined ? "" : `: ${result.reason}`}`,
+      `discovery ${result.status}${result.reason === undefined ? "" : `: ${result.reason}`} (runId=${result.runId})`,
     );
   }
   const artifact = await new CapabilityCompiler().compile({
@@ -135,9 +137,10 @@ async function executeLiveDiscovery(
   deps: DiscoverSessionDeps,
 ): Promise<DiscoveryResult> {
   const env = deps.env ?? process.env;
+  const log = deps.log;
   const proposer =
     deps.proposer ??
-    (await createLiveProposer(env));
+    (await createLiveProposer(env, log));
   const runId = randomUUID();
   const evidence = new FileSystemEvidenceWriter({
     root: deps.evidenceRoot ?? evidenceRoot(env),
@@ -146,6 +149,7 @@ async function executeLiveDiscovery(
     runType: "discovery",
     redactor: createRedactor("evidence"),
   });
+  log?.(`evidence ${evidence.runDirectory()}`);
   const policy = policyGuardForUrl(request.url);
   const handoff = new CliHandoffController({
     stdin: deps.stdin ?? process.stdin,
@@ -158,6 +162,7 @@ async function executeLiveDiscovery(
       policy,
       evidence,
       handoff,
+      ...(log === undefined ? {} : { log }),
     });
     return await agent.run({ ...discoveryRequest, runId });
   } finally {
@@ -169,11 +174,17 @@ async function executeLiveDiscovery(
  * Production Mastra proposer. Missing API keys fail closed.
  *
  * @param env - Process env
+ * @param log - Optional stderr sink for raw LLM JSON
  */
-async function createLiveProposer(env: NodeJS.ProcessEnv): Promise<CandidateProposer> {
+async function createLiveProposer(
+  env: NodeJS.ProcessEnv,
+  log?: (line: string) => void,
+): Promise<CandidateProposer> {
   if (!hasDiscoveryApiKey(env)) {
     throw new Error("icas-agent discover requires OPENAI_API_KEY or ANTHROPIC_API_KEY");
   }
-  const configured = await createConfiguredDiscoveryProposer();
+  const configured = await createConfiguredDiscoveryProposer(
+    log === undefined ? {} : { log },
+  );
   return configured.proposer;
 }

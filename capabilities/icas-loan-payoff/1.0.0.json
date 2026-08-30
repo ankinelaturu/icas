@@ -1,0 +1,252 @@
+{
+  "schemaVersion": "1.0",
+  "capabilityVersion": "1.0.0",
+  "id": "icas-loan-payoff",
+  "name": "icas-loan-payoff",
+  "target": {
+    "vendor": "icas-bank",
+    "product": "icas-bank"
+  },
+  "discoveredOn": {
+    "tenant": "icas-bank"
+  },
+  "inputs": {
+    "loanAccountId": {
+      "type": "string",
+      "required": true
+    },
+    "payoffDate": {
+      "type": "string",
+      "required": true
+    }
+  },
+  "outputs": {},
+  "steps": [
+    {
+      "id": "navigate-lending-htm",
+      "preconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/"
+        }
+      ],
+      "action": {
+        "type": "navigate",
+        "path": "/lending.htm",
+        "risk": "safe"
+      },
+      "postconditions": [
+        {
+          "type": "textVisible",
+          "value": "Lending-related options such as inquiry, payoff quote, and statement are displayed."
+        },
+        {
+          "type": "urlMatches",
+          "pattern": "/lending.htm"
+        }
+      ]
+    },
+    {
+      "id": "click-loan-account-inquiry",
+      "preconditions": [
+        {
+          "type": "textVisible",
+          "value": "Lending-related options such as inquiry, payoff quote, and statement are displayed."
+        }
+      ],
+      "action": {
+        "type": "click",
+        "target": {
+          "strategies": [
+            {
+              "type": "roleText",
+              "role": "link",
+              "text": "Loan Account Inquiry"
+            }
+          ]
+        }
+      },
+      "postconditions": [
+        {
+          "type": "textVisible",
+          "value": "A screen for entering loan account details for inquiry."
+        },
+        {
+          "type": "urlMatches",
+          "pattern": "/lending/search.htm"
+        }
+      ]
+    },
+    {
+      "id": "fill-ln-acct",
+      "preconditions": [
+        {
+          "type": "textVisible",
+          "value": "A screen for entering loan account details for inquiry."
+        }
+      ],
+      "action": {
+        "type": "fill",
+        "target": {
+          "strategies": [
+            {
+              "type": "relative",
+              "text": "LN Acct #"
+            }
+          ]
+        },
+        "value": {
+          "input": "loanAccountId"
+        },
+        "risk": "safe"
+      },
+      "postconditions": [
+        {
+          "type": "textVisible",
+          "value": "The loan information for account number 987654 is loaded upon clicking 'Inquire'."
+        },
+        {
+          "type": "urlMatches",
+          "pattern": "/lending/search.htm"
+        }
+      ]
+    },
+    {
+      "id": "click-inquire",
+      "preconditions": [
+        {
+          "type": "textVisible",
+          "value": "The loan information for account number 987654 is loaded upon clicking 'Inquire'."
+        }
+      ],
+      "action": {
+        "type": "click",
+        "target": {
+          "strategies": [
+            {
+              "type": "roleText",
+              "role": "button",
+              "text": "Inquire"
+            }
+          ]
+        },
+        "risk": "safe"
+      },
+      "postconditions": [
+        {
+          "type": "textVisible",
+          "value": "Loan account details, including options to generate payoff statement, are displayed."
+        },
+        {
+          "type": "urlMatches",
+          "pattern": "/lending/account.htm"
+        }
+      ]
+    },
+    {
+      "id": "click-payoff",
+      "preconditions": [
+        {
+          "type": "textVisible",
+          "value": "Loan account details, including options to generate payoff statement, are displayed."
+        }
+      ],
+      "action": {
+        "type": "click",
+        "target": {
+          "strategies": [
+            {
+              "type": "roleText",
+              "role": "link",
+              "text": "Payoff"
+            }
+          ]
+        },
+        "risk": "safe"
+      },
+      "postconditions": [
+        {
+          "type": "textVisible",
+          "value": "The payoff quote screen is opened."
+        },
+        {
+          "type": "urlMatches",
+          "pattern": "/lending/payoff.htm"
+        }
+      ]
+    },
+    {
+      "id": "fill-payoff-dt",
+      "preconditions": [
+        {
+          "type": "textVisible",
+          "value": "The payoff quote screen is opened."
+        }
+      ],
+      "action": {
+        "type": "fill",
+        "target": {
+          "strategies": [
+            {
+              "type": "relative",
+              "text": "Payoff Dt"
+            }
+          ]
+        },
+        "value": {
+          "input": "payoffDate"
+        },
+        "risk": "safe"
+      },
+      "postconditions": [
+        {
+          "type": "textVisible",
+          "value": "The payoff date field is updated with 2026-09-30."
+        },
+        {
+          "type": "urlMatches",
+          "pattern": "/lending/payoff.htm"
+        }
+      ]
+    },
+    {
+      "id": "click-calculate-generate",
+      "preconditions": [
+        {
+          "type": "textVisible",
+          "value": "The payoff date field is updated with 2026-09-30."
+        }
+      ],
+      "action": {
+        "type": "click",
+        "target": {
+          "strategies": [
+            {
+              "type": "roleText",
+              "role": "button",
+              "text": "Calculate / Generate"
+            }
+          ]
+        },
+        "intent": "generatePayoffStatement",
+        "risk": "safe"
+      },
+      "postconditions": [
+        {
+          "type": "textVisible",
+          "value": "The payoff statement for loan 987654 dated 2026-09-30 is generated or begins processing."
+        },
+        {
+          "type": "urlMatches",
+          "pattern": "/lending/payoff.htm"
+        }
+      ]
+    }
+  ],
+  "success": [
+    {
+      "type": "textVisible",
+      "value": "The payoff statement for loan 987654 dated 2026-09-30 is generated or begins processing."
+    }
+  ]
+}

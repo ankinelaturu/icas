@@ -3,21 +3,23 @@
  *
  * The model only ranks candidates. This class owns the graph: which sibling
  * to try next, when to backtrack, and how to restore the browser. Mastra is
- * injected as {@link CandidateProposer}; tests use a fake.
+ * injected as {@link CandidateProposer}; tests use a fake. Optional `log`
+ * prints live progress; it does not replace the JSONL trace.
  */
 
 import { randomUUID } from "node:crypto";
 
-import type { CapabilityAction } from "@icas/capability";
+import type { CapabilityAction, TargetDescriptor } from "@icas/capability";
 import type { EvidenceWriter } from "@icas/evidence";
 import type { HandoffController } from "@icas/handoff";
 import type { PolicyGuard } from "@icas/policy";
-import type { Observation, Surface } from "@icas/surface";
+import type { Observation, Surface, SurfaceActionResult } from "@icas/surface";
 
 import {
   assignCandidateIds,
   sortCandidatesByRank,
   type CandidateAction,
+  type CandidateProposal,
 } from "./candidate-action.js";
 import type { CandidateProposer } from "./candidate-proposer.js";
 import type { DiscoveryRequest, DiscoveryResult, DiscoveryTraceEvent } from "./discovery-types.js";
@@ -43,6 +45,11 @@ export interface DiscoveryAgentDependencies {
   now?: () => number;
   /** Pass 3.1 markdown, injected into every proposer call. */
   promptPolicy?: string;
+  /**
+   * Live progress sink (CLI stderr). Missing means silent — tests omit this.
+   * Does not replace the JSONL trace.
+   */
+  log?: (line: string) => void;
 }
 
 /**
@@ -56,6 +63,7 @@ export class DiscoveryAgent {
   private readonly evidence: EvidenceWriter | undefined;
   private readonly now: () => number;
   private readonly promptPolicy: string | undefined;
+  private readonly onLog: ((line: string) => void) | undefined;
 
   /**
    * @param surface - Live observation/action seam (Playwright in production)
@@ -71,6 +79,16 @@ export class DiscoveryAgent {
     this.evidence = deps.evidence;
     this.now = deps.now ?? Date.now;
     this.promptPolicy = deps.promptPolicy;
+    this.onLog = deps.log;
+  }
+
+  /**
+   * Print one progress line when a sink is wired. No-op in unit tests.
+   *
+   * @param line - Single stderr line, already formatted
+   */
+  private log(line: string): void {
+    this.onLog?.(line);
   }
 
   /**
@@ -106,16 +124,22 @@ export class DiscoveryAgent {
     // replays the remainder so the headed session matches the in-memory parent.
     const pathActions: CapabilityAction[] = [];
 
+    this.log(`runId=${runId}`);
+    this.log(`goal=${request.goal}`);
+    this.log(`open ${entryUrl}`);
     await this.surface.open(request.target.url);
     let current = createSearchNode({ observation: await this.surface.observe() });
     const seen = new Set<string>([current.stateId]);
+    this.logObservation(current.observation);
     await trace.record(observationEvent(current.observation));
 
     while (true) {
       if (this.now() - startedAt >= budget.timeoutMs) {
+        this.log("stop: timeout");
         return await finishStuck(trace, runId, "timeout");
       }
       if (steps >= budget.maxSteps) {
+        this.log("stop: maxSteps");
         return await finishStuck(trace, runId, "maxSteps");
       }
 
@@ -123,12 +147,14 @@ export class DiscoveryAgent {
       // already stored on the node so we do not spend another LLM call.
       const filled = await this.fillCandidates(current, request, budget, trace);
       if (filled?.status === "success") {
+        this.log("proposer declared success");
         await trace.finish("success");
         return { status: "success", runId, events: trace.events };
       }
       if (filled?.status === "stuck") {
         // Model refused to improvise. Treat as a dead-end and try a sibling
         // on the parent, same as exhausting candidates.
+        this.log(`proposer stuck${filled.reason === undefined ? "" : `: ${filled.reason}`}`);
         const retreated = await this.backtrack(
           current,
           trace,
@@ -144,6 +170,7 @@ export class DiscoveryAgent {
       }
 
       if (current.depth >= budget.maxDepth) {
+        this.log("stop: maxDepth");
         return await finishStuck(trace, runId, "maxDepth");
       }
 
@@ -165,6 +192,9 @@ export class DiscoveryAgent {
       }
 
       const action = candidate.action;
+      this.log(
+        `chosen rank=${String(candidate.rank)} ${summarizeAction(action)} — ${candidate.rationale}`,
+      );
       await trace.record({
         type: "chosen_action",
         payload: {
@@ -185,6 +215,11 @@ export class DiscoveryAgent {
         action,
         destinationUrl === undefined ? {} : { destinationUrl },
       ) ?? { decision: "allow" as const };
+      this.log(
+        `policy ${decision.decision}${
+          decision.decision === "allow" ? "" : `: ${decision.reason}`
+        }`,
+      );
       await trace.record({ type: "policy", payload: decision });
       if (decision.decision === "deny") {
         // Hard block: never execute. HITL records evidence, then we skip this
@@ -231,19 +266,22 @@ export class DiscoveryAgent {
       }
       current.triedCandidateIds.add(candidate.id);
 
-      const result = await this.surface.execute(action);
+      const result = await this.executeAction(action);
       steps += 1;
       pathActions.push(action);
       await trace.record({ type: "action_result", payload: result });
       if (result.status !== "ok") {
+        const reason = failedActionReason(result);
+        this.log(`execute ${result.status}: ${reason}`);
         await trace.finish("failure");
         return {
           status: "failed",
           runId,
-          reason: "action failed",
+          reason,
           events: trace.events,
         };
       }
+      this.log(`execute ok (${summarizeAction(action)})`);
 
       const nextObservation = await this.surface.observe();
       const nextId = stateIdFromObservation(nextObservation);
@@ -259,7 +297,49 @@ export class DiscoveryAgent {
         observation: nextObservation,
         parent: current,
       });
+      this.logObservation(current.observation);
       await trace.record(observationEvent(current.observation));
+    }
+  }
+
+  /**
+   * Run one action. Playwright `locate` throws; turn that into a failed
+   * result so the trace still gets `action_result` and `finish`.
+   *
+   * @param action - Policy-checked catalog action
+   */
+  private async executeAction(action: CapabilityAction): Promise<SurfaceActionResult> {
+    try {
+      return await this.surface.execute(action);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { status: "failed", details: { error: message } };
+    }
+  }
+
+  /**
+   * Stderr snapshot of the current page so a live run shows what the model sees.
+   *
+   * @param observation - Latest surface observe
+   */
+  private logObservation(observation: Observation): void {
+    const url = observation.url ?? "(unknown url)";
+    const preview = snapshotPreview(observation.accessibilitySnapshot);
+    this.log(`observed id=${observation.id} url=${url} snapshotChars=${String(preview.chars)}`);
+    this.log(`snapshot:\n${preview.text}`);
+  }
+
+  /**
+   * Dump the validated proposal: status plus each ranked action.
+   *
+   * @param proposal - Catalog-shaped output after schema map
+   */
+  private logProposal(proposal: CandidateProposal): void {
+    this.log(`LLM proposal:\n${JSON.stringify(proposal, null, 2)}`);
+    for (const candidate of sortCandidatesByRank(proposal.candidates)) {
+      this.log(
+        `  rank ${String(candidate.rank)}: ${summarizeAction(candidate.action)} — ${candidate.rationale}`,
+      );
     }
   }
 
@@ -275,6 +355,7 @@ export class DiscoveryAgent {
     pathActions: CapabilityAction[],
   ): Promise<SearchNode | undefined> {
     await trace.record({ type: "dead_end", payload: { reason, stateId: current.stateId } });
+    this.log(`dead-end ${reason} state=${current.stateId}`);
     if (current.parent === undefined) {
       return undefined;
     }
@@ -346,6 +427,7 @@ export class DiscoveryAgent {
     if (node.candidates.length > 0) {
       return undefined;
     }
+    this.log(`proposing for observation ${node.observation.id}`);
     const proposal = await this.proposer.propose({
       goal: request.goal,
       observation: node.observation,
@@ -356,9 +438,15 @@ export class DiscoveryAgent {
         .map((event) => JSON.stringify(event.payload)),
       ...(this.promptPolicy === undefined ? {} : { promptPolicy: this.promptPolicy }),
     });
+    this.logProposal(proposal);
     await trace.record({
       type: "candidates",
-      payload: { status: proposal.status, count: proposal.candidates.length },
+      payload: {
+        status: proposal.status,
+        count: proposal.candidates.length,
+        ...(proposal.rationale === undefined ? {} : { rationale: proposal.rationale }),
+        candidates: proposal.candidates,
+      },
     });
     if (proposal.status === "success") {
       await trace.record({ type: "success" });
@@ -423,4 +511,96 @@ async function finishStuck(
 ): Promise<DiscoveryResult> {
   await trace.finish("stuck");
   return { status: "stuck", runId, reason, events: trace.events };
+}
+
+/**
+ * Prefer the thrown surface message over a generic "action failed".
+ *
+ * @param result - Non-ok execute result
+ */
+function failedActionReason(result: SurfaceActionResult): string {
+  if (result.details !== null && typeof result.details === "object" && "error" in result.details) {
+    const error = (result.details as { error?: unknown }).error;
+    if (typeof error === "string" && error.length > 0) {
+      return error;
+    }
+  }
+  return "action failed";
+}
+
+/** Cap ARIA dump on stderr so one huge page does not flood the terminal. */
+const MAX_LOG_SNAPSHOT_CHARS = 1_500;
+
+/**
+ * Compact snapshot for live logs. Full text still goes to the proposer prompt.
+ *
+ * @param snapshot - Playwright aria snapshot, if captured
+ */
+function snapshotPreview(snapshot: unknown): { chars: number; text: string } {
+  const text =
+    typeof snapshot === "string"
+      ? snapshot
+      : snapshot === undefined || snapshot === null
+        ? ""
+        : JSON.stringify(snapshot);
+  if (text.length === 0) {
+    return { chars: 0, text: "(none)" };
+  }
+  if (text.length <= MAX_LOG_SNAPSHOT_CHARS) {
+    return { chars: text.length, text };
+  }
+  return {
+    chars: text.length,
+    text: `${text.slice(0, MAX_LOG_SNAPSHOT_CHARS)}\n…(truncated ${String(text.length - MAX_LOG_SNAPSHOT_CHARS)} chars)`,
+  };
+}
+
+/**
+ * One-line action so operators see the locator without opening JSONL.
+ *
+ * @param action - Catalog action about to execute
+ */
+function summarizeAction(action: CapabilityAction): string {
+  if (action.type === "navigate") {
+    return `navigate ${action.path}`;
+  }
+  if (action.type === "handoff") {
+    return `handoff ${action.reason}`;
+  }
+  if (action.type === "fill" || action.type === "select") {
+    return `${action.type} ${summarizeTarget(action.target)} value=${JSON.stringify(action.value)}`;
+  }
+  return `${action.type} ${summarizeTarget(action.target)}`;
+}
+
+/**
+ * First locator strategy as `type key=value` pairs.
+ *
+ * @param target - Ranked strategies on the action
+ */
+function summarizeTarget(target: TargetDescriptor): string {
+  const strategy = target.strategies[0];
+  if (strategy === undefined) {
+    return "(empty target)";
+  }
+  const parts: string[] = [];
+  if ("role" in strategy && typeof strategy.role === "string") {
+    parts.push(`role=${strategy.role}`);
+  }
+  if ("text" in strategy && typeof strategy.text === "string") {
+    parts.push(`text=${strategy.text}`);
+  }
+  if ("label" in strategy && typeof strategy.label === "string") {
+    parts.push(`label=${strategy.label}`);
+  }
+  if ("selector" in strategy && typeof strategy.selector === "string") {
+    parts.push(`selector=${strategy.selector}`);
+  }
+  if ("xpath" in strategy && typeof strategy.xpath === "string") {
+    parts.push(`xpath=${strategy.xpath}`);
+  }
+  if (strategy.type === "coordinates") {
+    parts.push(`xy=${String(strategy.x)},${String(strategy.y)}`);
+  }
+  return parts.length === 0 ? strategy.type : `${strategy.type} ${parts.join(" ")}`;
 }

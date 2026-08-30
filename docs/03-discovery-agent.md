@@ -85,6 +85,8 @@ interface CandidateAction {
 
 A string transcript, an unknown `action.type`, or `continue` with zero candidates is a validation error. Numeric confidence may be recorded but is not a calibrated probability. Ranking is the useful property.
 
+OpenAI structured output cannot use `oneOf`, so generate uses a flat action schema and ICAS maps it onto catalog `CapabilityAction`. For fill/select/read, that map appends a `relative` fallback when the model used `label` or `visibleText` for a field caption: core banking screens often put the name in a table cell, not an associated `<label>`, so Playwright `getByLabel` misses the adjacent input.
+
 ## Bounded graph search
 
 UI navigation is modeled as heuristic-guided search over dynamically discovered states. A full generic graph-search framework is unnecessary, but the controller should own explicit state rather than trusting conversation memory alone.
@@ -146,7 +148,7 @@ Discovery evidence is intentionally richer than replay evidence. The trace shoul
 
 - observations;
 - model decisions/rationale;
-- ranked candidates where useful;
+- ranked candidates (full actions, not only a count);
 - chosen action;
 - policy decision;
 - surface action result;
@@ -154,6 +156,8 @@ Discovery evidence is intentionally richer than replay evidence. The trace shoul
 - backtracks/dead ends;
 - human interventions;
 - final success.
+
+`icas-agent discover` also prints each observation (ARIA snapshot preview), the LLM proposal JSON, and the chosen action to stderr. A thrown surface error (`TARGET_NOT_FOUND`) becomes a failed `action_result` with that message so the run still writes evidence.
 
 The trace is append-only JSONL plus referenced screenshots/observations.
 

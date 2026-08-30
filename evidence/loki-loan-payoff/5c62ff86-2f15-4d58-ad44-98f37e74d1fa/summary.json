@@ -1,0 +1,9 @@
+{
+  "runId": "5c62ff86-2f15-4d58-ad44-98f37e74d1fa",
+  "runType": "discovery",
+  "capabilityId": "loki-loan-payoff",
+  "status": "success",
+  "startedAt": "2026-08-30T08:06:41.009Z",
+  "steps": 7,
+  "backtracks": 0
+}
