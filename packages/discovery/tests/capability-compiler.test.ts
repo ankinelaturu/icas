@@ -29,6 +29,33 @@ describe("extractSuccessfulPath", () => {
       target: { strategies: [{ type: "visibleText", text: "Lending" }] },
     });
   });
+
+  it("keeps proposedInputParam from chosen_action", () => {
+    const path = extractSuccessfulPath([
+      {
+        type: "chosen_action",
+        payload: {
+          rank: 1,
+          action: {
+            type: "fill",
+            target: { strategies: [{ type: "label", label: "Account" }] },
+            value: { literal: "42" },
+            risk: "safe",
+          },
+          proposedInputParam: { name: "accountId", type: "string", required: true },
+        },
+      },
+      { type: "action_result", payload: { status: "ok" } },
+      { type: "success" },
+    ]);
+    expect(path).toHaveLength(1);
+    expect(path[0]?.proposedInputParam).toEqual({
+      name: "accountId",
+      type: "string",
+      required: true,
+    });
+    expect(path[0]?.action).toMatchObject({ value: { literal: "42" } });
+  });
 });
 
 describe("CapabilityCompiler", () => {

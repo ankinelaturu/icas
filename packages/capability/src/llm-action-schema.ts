@@ -49,10 +49,27 @@ export const LlmTargetDescriptorSchema = z.strictObject({
 });
 
 /**
+ * Invocation param the model proposes for a fill/select.
+ *
+ * Lives on the candidate / trace, never on catalog {@link CapabilityAction}.
+ * `name` is camelCase so replay CLI flags stay `--accountId`, not `--Account-Id`.
+ */
+export const ProposedInputParamSchema = z.strictObject({
+  name: z.string().regex(/^[a-z][a-zA-Z0-9]*$/, {
+    error: "proposedInputParam.name must be camelCase",
+  }),
+  type: z.enum(["string", "number", "boolean", "date", "money"]),
+  required: z.boolean(),
+});
+
+export type ProposedInputParam = z.infer<typeof ProposedInputParamSchema>;
+
+/**
  * Semantic action with every field present (null when unused).
  *
  * `value` is a fill/select literal string. Discovery parameterizes later;
- * this avoids a ValueRef `oneOf` in the model schema.
+ * this avoids a ValueRef `oneOf` in the model schema. `proposedInputParam` is
+ * null on click/navigate/read/handoff; fill/select must supply the object.
  */
 export const LlmCapabilityActionSchema = z.strictObject({
   type: z.enum(["click", "fill", "select", "navigate", "read", "handoff"]),
@@ -62,6 +79,7 @@ export const LlmCapabilityActionSchema = z.strictObject({
   reason: z.string().nullable(),
   value: z.string().nullable(),
   target: LlmTargetDescriptorSchema.nullable(),
+  proposedInputParam: ProposedInputParamSchema.nullable(),
 });
 
 export type LlmCapabilityAction = z.infer<typeof LlmCapabilityActionSchema>;

@@ -30,8 +30,13 @@ export {
   LlmCapabilityActionSchema,
   LlmTargetDescriptorSchema,
   LlmTargetStrategySchema,
+  ProposedInputParamSchema,
 } from "./llm-action-schema.js";
-export type { LlmCapabilityAction, LlmTargetStrategy } from "./llm-action-schema.js";
+export type {
+  LlmCapabilityAction,
+  LlmTargetStrategy,
+  ProposedInputParam,
+} from "./llm-action-schema.js";
 
 export type {
   CapabilityOverride,

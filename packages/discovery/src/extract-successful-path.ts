@@ -8,7 +8,9 @@
 
 import {
   CapabilityActionSchema,
+  ProposedInputParamSchema,
   type CapabilityAction,
+  type ProposedInputParam,
 } from "@icas/capability";
 
 import { classifyHumanIntervention } from "./classify-intervention.js";
@@ -34,6 +36,8 @@ export interface SuccessfulPathStep {
   after?: PathObservation;
   /** Recurring approval to insert as a `handoff` step before this action. */
   insertHandoff?: string;
+  /** Fill/select param name; compiler aggregates these. Absent on click/navigate. */
+  proposedInputParam?: ProposedInputParam;
 }
 
 /**
@@ -144,6 +148,7 @@ function parseChosenAction(payload: unknown): SuccessfulPathStep | undefined {
     action?: unknown;
     expectation?: unknown;
     rationale?: unknown;
+    proposedInputParam?: unknown;
   };
   // Skip malformed actions rather than failing compile; they never entered the stack.
   const parsed = CapabilityActionSchema.safeParse(record.action);
@@ -156,6 +161,10 @@ function parseChosenAction(payload: unknown): SuccessfulPathStep | undefined {
   }
   if (typeof record.rationale === "string" && record.rationale.length > 0) {
     step.rationale = record.rationale;
+  }
+  const hint = ProposedInputParamSchema.safeParse(record.proposedInputParam);
+  if (hint.success) {
+    step.proposedInputParam = hint.data;
   }
   return step;
 }

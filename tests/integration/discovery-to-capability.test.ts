@@ -45,6 +45,11 @@ describe("discovery-to-capability integration", () => {
                   value: { literal: "987654" },
                   risk: "safe",
                 },
+                proposedInputParam: {
+                  name: "loanAccountId",
+                  type: "string",
+                  required: true,
+                },
                 rationale: "Enter the loan account",
                 rank: 1,
                 expectation: "Loan Account",

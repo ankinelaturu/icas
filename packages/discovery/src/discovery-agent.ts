@@ -205,6 +205,9 @@ export class DiscoveryAgent {
           ...(candidate.expectation === undefined
             ? {}
             : { expectation: candidate.expectation }),
+          ...(candidate.proposedInputParam === undefined
+            ? {}
+            : { proposedInputParam: candidate.proposedInputParam }),
         },
       });
 

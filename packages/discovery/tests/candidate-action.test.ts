@@ -32,6 +32,66 @@ describe("validateCandidateProposal", () => {
     expect(proposal.status).toBe("continue");
     expect(proposal.candidates).toHaveLength(1);
     expect(proposal.candidates[0]?.action.type).toBe("click");
+    expect(proposal.candidates[0]?.proposedInputParam).toBeUndefined();
+  });
+
+  it("rejects fill without proposedInputParam", () => {
+    expect(() =>
+      validateCandidateProposal({
+        status: "continue",
+        candidates: [
+          {
+            action: {
+              type: "fill",
+              target: { strategies: [{ type: "label", label: "Account" }] },
+              value: { literal: "42" },
+              risk: "safe",
+            },
+            rationale: "Enter the account",
+            rank: 1,
+          },
+        ],
+      }),
+    ).toThrow(/proposedInputParam/);
+  });
+
+  it("rejects proposedInputParam on click", () => {
+    expect(() =>
+      validateCandidateProposal({
+        status: "continue",
+        candidates: [
+          {
+            ...clickLending,
+            proposedInputParam: { name: "accountId", type: "string", required: true },
+          },
+        ],
+      }),
+    ).toThrow(/proposedInputParam/);
+  });
+
+  it("accepts fill with proposedInputParam", () => {
+    const proposal = validateCandidateProposal({
+      status: "continue",
+      candidates: [
+        {
+          action: {
+            type: "fill",
+            target: { strategies: [{ type: "label", label: "Account" }] },
+            value: { literal: "42" },
+            risk: "safe",
+          },
+          rationale: "Enter the account",
+          rank: 1,
+          proposedInputParam: { name: "accountId", type: "string", required: true },
+        },
+      ],
+    });
+    expect(proposal.candidates[0]?.proposedInputParam).toEqual({
+      name: "accountId",
+      type: "string",
+      required: true,
+    });
+    expect(proposal.candidates[0]?.action).not.toHaveProperty("proposedInputParam");
   });
 
   it("accepts success with no further candidates", () => {

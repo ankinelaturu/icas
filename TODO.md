@@ -465,11 +465,11 @@ Do not reopen Pass 5.12. Design: proposer names params; compiler aggregates; no 
 
 Depends on Pass 5.16.
 
-- [ ] Flat LLM action schema: nullable `{ name, type, required }` on every action
-- [ ] Mapper copies the hint onto `CandidateAction`, not catalog `CapabilityAction`
-- [ ] Fill/select without a hint fail mapping; click/navigate/read/handoff must be null
-- [ ] `chosen_action` + `extractSuccessfulPath` keep the hint
-- [ ] Tests: LLM schema parse; fill without hint rejected
+- [x] Flat LLM action schema: nullable `{ name, type, required }` on every action
+- [x] Mapper copies the hint onto `CandidateAction`, not catalog `CapabilityAction`
+- [x] Fill/select without a hint fail mapping; click/navigate/read/handoff must be null
+- [x] `chosen_action` + `extractSuccessfulPath` keep the hint
+- [x] Tests: LLM schema parse; fill without hint rejected
 
 ### Pass 5.18 — Compiler: aggregate `proposedInputParam`
 

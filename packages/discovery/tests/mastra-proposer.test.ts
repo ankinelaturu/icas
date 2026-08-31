@@ -25,6 +25,7 @@ const validContinue = {
         path: null,
         reason: null,
         value: null,
+        proposedInputParam: null,
         target: {
           strategies: [
             {

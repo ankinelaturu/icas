@@ -20,15 +20,20 @@ const nullStrategyFields = {
   confidence: null,
 };
 
+const clickBase = {
+  intent: null as const,
+  risk: "safe" as const,
+  path: null,
+  reason: null,
+  value: null,
+  proposedInputParam: null,
+};
+
 describe("llmActionToCapabilityAction", () => {
   it("maps a visibleText click onto a catalog click", () => {
     const raw = LlmCapabilityActionSchema.parse({
       type: "click",
-      intent: null,
-      risk: "safe",
-      path: null,
-      reason: null,
-      value: null,
+      ...clickBase,
       target: {
         strategies: [{ ...nullStrategyFields, type: "visibleText", text: "Lending" }],
       },
@@ -48,6 +53,7 @@ describe("llmActionToCapabilityAction", () => {
       path: null,
       reason: null,
       value: "987654",
+      proposedInputParam: { name: "accountId", type: "string", required: true },
       target: {
         strategies: [{ ...nullStrategyFields, type: "label", label: "LN Acct #" }],
       },
@@ -72,6 +78,7 @@ describe("llmActionToCapabilityAction", () => {
       path: null,
       reason: null,
       value: "987654",
+      proposedInputParam: { name: "accountId", type: "string", required: true },
       target: {
         strategies: [
           {
@@ -100,11 +107,7 @@ describe("llmActionToCapabilityAction", () => {
   it("does not add a relative fallback on click", () => {
     const raw = LlmCapabilityActionSchema.parse({
       type: "click",
-      intent: null,
-      risk: "safe",
-      path: null,
-      reason: null,
-      value: null,
+      ...clickBase,
       target: {
         strategies: [{ ...nullStrategyFields, type: "visibleText", text: "Inquire" }],
       },
@@ -112,5 +115,43 @@ describe("llmActionToCapabilityAction", () => {
     expect(llmActionToCapabilityAction(raw).target).toEqual({
       strategies: [{ type: "visibleText", text: "Inquire" }],
     });
+  });
+
+  it("keeps proposedInputParam off the catalog action", () => {
+    const raw = LlmCapabilityActionSchema.parse({
+      type: "fill",
+      intent: null,
+      risk: null,
+      path: null,
+      reason: null,
+      value: "42",
+      proposedInputParam: { name: "amount", type: "money", required: true },
+      target: {
+        strategies: [{ ...nullStrategyFields, type: "label", label: "Amount" }],
+      },
+    });
+    expect(raw.proposedInputParam).toEqual({
+      name: "amount",
+      type: "money",
+      required: true,
+    });
+    expect(llmActionToCapabilityAction(raw)).not.toHaveProperty("proposedInputParam");
+  });
+
+  it("rejects a non-camelCase proposedInputParam name", () => {
+    expect(() =>
+      LlmCapabilityActionSchema.parse({
+        type: "fill",
+        intent: null,
+        risk: null,
+        path: null,
+        reason: null,
+        value: "42",
+        proposedInputParam: { name: "Account-Id", type: "string", required: true },
+        target: {
+          strategies: [{ ...nullStrategyFields, type: "label", label: "Account" }],
+        },
+      }),
+    ).toThrow(/camelCase/);
   });
 });

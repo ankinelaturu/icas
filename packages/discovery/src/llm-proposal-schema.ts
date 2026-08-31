@@ -60,16 +60,22 @@ export function llmProposalToCandidateProposal(value: unknown): CandidateProposa
   const llm = parsed.data;
   const mapped = {
     status: llm.status,
-    candidates: llm.candidates.map((candidate) => ({
-      ...(candidate.id === null || candidate.id.length === 0 ? {} : { id: candidate.id }),
-      action: llmActionToCapabilityAction(candidate.action),
-      rationale: candidate.rationale,
-      rank: candidate.rank,
-      ...(candidate.expectation === null || candidate.expectation.length === 0
-        ? {}
-        : { expectation: candidate.expectation }),
-      ...(candidate.risk === null ? {} : { risk: candidate.risk }),
-    })),
+    candidates: llm.candidates.map((candidate) => {
+      const action = llmActionToCapabilityAction(candidate.action);
+      const hint = candidate.action.proposedInputParam;
+      return {
+        ...(candidate.id === null || candidate.id.length === 0 ? {} : { id: candidate.id }),
+        action,
+        rationale: candidate.rationale,
+        rank: candidate.rank,
+        ...(candidate.expectation === null || candidate.expectation.length === 0
+          ? {}
+          : { expectation: candidate.expectation }),
+        ...(candidate.risk === null ? {} : { risk: candidate.risk }),
+        // Catalog actions never carry the hint; it stays on the candidate.
+        ...(hint === null ? {} : { proposedInputParam: hint }),
+      };
+    }),
     ...(llm.rationale === null || llm.rationale.length === 0
       ? {}
       : { rationale: llm.rationale }),

@@ -3,9 +3,14 @@
  *
  * The model must return {@link CandidateProposalSchema}, never free-form prose.
  * Ranking is the useful property; numeric confidence is not a calibrated probability.
+ * Fill/select carry {@link ProposedInputParamSchema} on the candidate, not the action.
  */
 
-import { CapabilityActionSchema, type CapabilityAction } from "@icas/capability";
+import {
+  CapabilityActionSchema,
+  ProposedInputParamSchema,
+  type CapabilityAction,
+} from "@icas/capability";
 import { z } from "zod";
 
 /**
@@ -26,7 +31,28 @@ export const CandidateActionSchema = z.strictObject({
   expectation: z.string().min(1).optional(),
   // Optional hint for PolicyGuard (risky → require-human). Not a search ranking.
   risk: z.enum(["safe", "risky"]).optional(),
-});
+  // Fill/select only. Compiler aggregates these into artifact inputs.
+  proposedInputParam: ProposedInputParamSchema.optional(),
+})
+  .superRefine((candidate, ctx) => {
+    const needsHint =
+      candidate.action.type === "fill" || candidate.action.type === "select";
+    if (needsHint && candidate.proposedInputParam === undefined) {
+      // Replay must not bake the discovery literal; the model has to name the param.
+      ctx.addIssue({
+        code: "custom",
+        path: ["proposedInputParam"],
+        message: "fill and select require proposedInputParam",
+      });
+    }
+    if (!needsHint && candidate.proposedInputParam !== undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["proposedInputParam"],
+        message: "proposedInputParam is only valid on fill and select",
+      });
+    }
+  });
 
 /**
  * Required LLM response for every proposer call.
