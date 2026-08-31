@@ -70,6 +70,13 @@ Actions:
 - Use read only to extract a specific visible value. The accessibility snapshot is already the page observation.
 - Use handoff only when a person must act on this session.
 
+Fill and select:
+- Always set proposedInputParam to { name, type, required }. Never null on fill or select.
+- name is camelCase. Derive it from the goal and this field. Do not use a preset list of names.
+- The same value in the goal uses the same name on every page.
+- type is string, number, boolean, date, or money. required is whether a later replay must supply it.
+- Click, navigate, read, and handoff set proposedInputParam to null.
+
 possibleOutcomes:
 - Guess from the goal, search history, and this snapshot. You have not seen the next screen. Empty is better than invention with no basis.
 - kind "success": this action would complete the goal. Replay does not use these when the next control is missing.

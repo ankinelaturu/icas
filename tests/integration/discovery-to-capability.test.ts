@@ -77,9 +77,6 @@ describe("discovery-to-capability integration", () => {
         name: "Generate Loan Payoff Statement",
         target: { vendor: "icas-bank", product: "icas-bank", tenant: "icas-bank" },
         events: result.events,
-        inputValues: {
-          loanAccountId: { type: "string", value: "987654", description: "Loan account identifier" },
-        },
         registry,
         runId: result.runId,
       });
@@ -88,6 +85,7 @@ describe("discovery-to-capability integration", () => {
       const fill = artifact.steps.find((step) => step.action.type === "fill");
       expect(fill?.action).toMatchObject({ value: { input: "loanAccountId" } });
       expect(JSON.stringify(artifact.steps)).not.toContain("987654");
+      expect(artifact.inputs.loanAccountId).toEqual({ type: "string", required: true });
       expect(artifact.success).toEqual([{ type: "textVisible", value: "Payoff Statement" }]);
       const stored = await registry.get("loan-payoff");
       expect(stored?.id).toBe("loan-payoff");

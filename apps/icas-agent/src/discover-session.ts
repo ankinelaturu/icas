@@ -16,7 +16,6 @@ import {
   createConfiguredDiscoveryProposer,
   hasDiscoveryApiKey,
   type CandidateProposer,
-  type DiscoveredInput,
   type DiscoveryRequest,
   type DiscoveryResult,
 } from "@icas/discovery";
@@ -42,7 +41,6 @@ export interface DiscoverRequest {
   product: string;
   name?: string;
   capabilityVersion?: string;
-  inputValues: Record<string, DiscoveredInput>;
   headed: boolean;
 }
 
@@ -115,7 +113,6 @@ export async function runDiscover(
       url: request.url,
     },
     events: result.events,
-    inputValues: request.inputValues,
     registry: deps.registry,
     runId: result.runId,
     capabilityVersion: version,

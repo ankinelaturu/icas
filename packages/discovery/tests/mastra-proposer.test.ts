@@ -137,7 +137,10 @@ describe("formatProposePrompt", () => {
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("possibleOutcomes");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("match.phrases");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("staff back-office");
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("Do not put invocation values");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("proposedInputParam");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("camelCase");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).not.toContain("loanAccountId");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).not.toContain("payoffDate");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("bounded graph search");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("materially different");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).not.toContain("payoff statement");

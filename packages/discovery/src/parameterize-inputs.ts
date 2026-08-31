@@ -1,99 +1,116 @@
 /**
- * @file Replace concrete discovery values with ValueRef input references.
+ * @file Rewrite fill/select literals using proposer `proposedInputParam` hints.
  *
- * Replay must not bake a discovery-time literal (e.g. loan id `987654`) into
- * the artifact. Only fill/select literals that match `inputValues` are rewritten.
+ * Replay must not bake discovery-time literals into the artifact. The compiler
+ * aggregates unique names from the success path; it does not reverse-map CLI
+ * flags onto fill values.
  */
 
-import type { CapabilityAction, PrimitiveType } from "@icas/capability";
+import type {
+  CapabilityAction,
+  PrimitiveType,
+  ProposedInputParam,
+} from "@icas/capability";
 
 /**
- * A value observed during discovery that should become a typed capability input.
+ * One success-path step as seen by the parameterizer.
+ *
+ * `proposedInputParam` is required for fill/select. Catalog `CapabilityAction`
+ * never carries the hint.
  */
-export interface DiscoveredInput {
-  type: PrimitiveType;
-  value: unknown;
-  description?: string;
+export interface ParameterizeStep {
+  action: CapabilityAction;
+  proposedInputParam?: ProposedInputParam;
 }
 
 /**
- * Rewrite fill/select literals that match a discovered input value.
+ * Thrown when fill/select cannot be parameterized from proposer hints.
+ */
+export class ParameterizeError extends Error {
+  /**
+   * @param message - Missing hint, type clash, or literal bound to two names
+   */
+  constructor(message: string) {
+    super(message);
+    this.name = "ParameterizeError";
+  }
+}
+
+/**
+ * Rewrite a fill/select literal to `{ input: name }` using the proposer hint.
  *
- * Already-parameterized `{ input }` refs are left alone. Navigate/click/read
- * never carry a typed input value, so they pass through.
+ * Click/navigate/read/handoff pass through. Already-parameterized `{ input }`
+ * refs are left alone after the hint is checked.
  *
  * @param action - One success-path action before semantic locator cleanup
- * @param inputValues - Name → observed literal, from the compile request
- * @returns A new action when a literal matched; otherwise `action`
+ * @param hint - Proposer name/type/required for this fill/select
+ * @returns A new action when a fill/select was rewritten; otherwise `action`
+ * @throws {ParameterizeError} When fill/select has no hint
  */
 export function parameterizeAction(
   action: CapabilityAction,
-  inputValues: Record<string, DiscoveredInput>,
+  hint: ProposedInputParam | undefined,
 ): CapabilityAction {
   if (action.type !== "fill" && action.type !== "select") {
     return action;
   }
-  // Caller already supplied a ValueRef; do not second-guess it.
-  if (action.value.input !== undefined) {
-    return action;
+  if (hint === undefined) {
+    throw new ParameterizeError(
+      "fill/select on the success path requires proposedInputParam",
+    );
   }
-  const literal = action.value.literal;
-  const name = inputNameForLiteral(literal, inputValues);
-  if (name === undefined) {
-    return action;
-  }
-  return { ...action, value: { input: name } };
+  return { ...action, value: { input: hint.name } };
 }
 
 /**
- * Input params that actually appear on parameterized steps.
+ * Aggregate unique `proposedInputParam` entries from the success path.
  *
- * Specs in `inputValues` that never matched a fill/select are omitted so the
- * artifact does not advertise unused inputs.
+ * Same name must keep the same type and `required`. The same discovery
+ * literal must not bind to two names.
  *
- * @param actions - Already-parameterized success-path actions
- * @param inputValues - Same map passed to {@link parameterizeAction}
+ * @param steps - Success-path actions still carrying discovery literals
+ * @returns Artifact `inputs` map
+ * @throws {ParameterizeError} On missing hint, clash, or dual binding
  */
-export function inputsFromActions(
-  actions: readonly CapabilityAction[],
-  inputValues: Record<string, DiscoveredInput>,
-): Record<string, { type: PrimitiveType; required: true; description?: string }> {
-  const used = new Set<string>();
-  for (const action of actions) {
-    if ((action.type === "fill" || action.type === "select") && action.value.input !== undefined) {
-      used.add(action.value.input);
-    }
-  }
-  const inputs: Record<
-    string,
-    { type: PrimitiveType; required: true; description?: string }
-  > = {};
-  for (const name of used) {
-    const spec = inputValues[name];
-    // A stray `{ input }` with no compile-time spec is skipped, not invented.
-    if (spec === undefined) {
+export function inputsFromHints(
+  steps: readonly ParameterizeStep[],
+): Record<string, { type: PrimitiveType; required: boolean }> {
+  const byName = new Map<string, { type: PrimitiveType; required: boolean }>();
+  const literalToName = new Map<string, string>();
+
+  for (const step of steps) {
+    if (step.action.type !== "fill" && step.action.type !== "select") {
       continue;
     }
-    inputs[name] = {
-      type: spec.type,
-      required: true,
-      ...(spec.description === undefined ? {} : { description: spec.description }),
-    };
-  }
-  return inputs;
-}
-
-/**
- * First matching name wins. Compare as strings so numeric literals still bind.
- */
-function inputNameForLiteral(
-  literal: unknown,
-  inputValues: Record<string, DiscoveredInput>,
-): string | undefined {
-  for (const [name, spec] of Object.entries(inputValues)) {
-    if (String(literal) === String(spec.value)) {
-      return name;
+    const hint = step.proposedInputParam;
+    if (hint === undefined) {
+      throw new ParameterizeError(
+        "fill/select on the success path requires proposedInputParam",
+      );
     }
+    const existing = byName.get(hint.name);
+    if (existing !== undefined) {
+      if (existing.type !== hint.type || existing.required !== hint.required) {
+        throw new ParameterizeError(
+          `proposedInputParam "${hint.name}" type/required clash`,
+        );
+      }
+    } else {
+      byName.set(hint.name, { type: hint.type, required: hint.required });
+    }
+    const literal = step.action.value.literal;
+    if (literal === undefined) {
+      continue;
+    }
+    const key = String(literal);
+    const bound = literalToName.get(key);
+    if (bound !== undefined && bound !== hint.name) {
+      throw new ParameterizeError(
+        `discovery literal bound to both "${bound}" and "${hint.name}"`,
+      );
+    }
+    literalToName.set(key, hint.name);
   }
-  return undefined;
+
+  return Object.fromEntries(byName);
 }

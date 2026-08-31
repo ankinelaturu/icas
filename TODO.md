@@ -475,11 +475,11 @@ Depends on Pass 5.16.
 
 Depends on Pass 5.17. Do not reopen Pass 5.12.
 
-- [ ] Compiler aggregates unique names into artifact `inputs` and rewrites fills/selects to `{ input: name }`
-- [ ] Fail closed: fill/select without hint; name / type / `required` clash; same literal bound to two names
-- [ ] Remove `CompileRequest.inputValues`, `inputNameForLiteral`, and discover CLI leftover `--loanAccountId` / `--input` compile wiring
-- [ ] Prompt: fill/select always set camelCase name + type + required; same goal value → same name; no product field-name examples
-- [ ] Tests: compile without a CLI value map; clash fails; integration fake fill carries a hint
+- [x] Compiler aggregates unique names into artifact `inputs` and rewrites fills/selects to `{ input: name }`
+- [x] Fail closed: fill/select without hint; name / type / `required` clash; same literal bound to two names
+- [x] Remove `CompileRequest.inputValues`, `inputNameForLiteral`, and discover CLI leftover `--loanAccountId` / `--input` compile wiring
+- [x] Prompt: fill/select always set camelCase name + type + required; same goal value → same name; no product field-name examples
+- [x] Tests: compile without a CLI value map; clash fails; integration fake fill carries a hint
 
 ### Pass 5.19 — Compiler: copy `possibleOutcomes`
 

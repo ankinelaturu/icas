@@ -147,6 +147,28 @@ describe("icas-agent discover", () => {
     expect(lines.join("\n")).toContain("enrolled tenant: icas-bank");
   });
 
+  it("does not accept leftover typed invocation flags", async () => {
+    await runAgent(
+      [
+        "node",
+        "icas-agent",
+        "discover",
+        "--id",
+        "loan-payoff",
+        "--url",
+        "https://bank.example/home",
+        "--goal",
+        "Generate a payoff statement",
+        "--loanAccountId",
+        "987654",
+      ],
+      deps(),
+    );
+    expect(process.exitCode).toBe(1);
+    expect(errors.join("\n")).toMatch(/unknown option/i);
+    expect(discoveryCalls).toBe(0);
+  });
+
   it("does not infer tenant from --url", async () => {
     await runAgent(
       [

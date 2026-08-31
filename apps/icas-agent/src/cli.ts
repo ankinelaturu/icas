@@ -26,7 +26,6 @@ import {
   type DiscoverRequest,
 } from "./discover-session.js";
 import { loadRepoEnv } from "./load-repo-env.js";
-import { parseCapabilityInputFlags } from "./parse-cli-inputs.js";
 
 /**
  * Injectable IO so tests never touch repo `capabilities/` or Chromium.
@@ -38,10 +37,6 @@ export interface AgentCliDeps {
   runDiscovery?: (request: DiscoveryRequest) => Promise<DiscoveryResult>;
   proposer?: CandidateProposer;
   env?: NodeJS.ProcessEnv;
-}
-
-function collectInput(value: string, previous: string[]): string[] {
-  return [...previous, value];
 }
 
 /**
@@ -83,13 +78,9 @@ export function createAgentProgram(deps: AgentCliDeps = {}): Command {
     .option("--product <product>", "Product identity", DEFAULT_ICAS_IDENTITY)
     .option("--name <name>", "Human-readable capability name")
     .option("--capability-version <semver>", "Explicit version bump when the id already exists")
-    .option("--input <name=value>", "Discovery-time value to parameterize (repeatable)", collectInput, [])
     .option("--headless", "Launch Chromium without a window")
-    .argument("[tokens...]", "Typed --name value inputs")
-    .allowUnknownOption()
-    .allowExcessArguments()
-    .action(async (tokens: string[], opts: DiscoverCommandOptions) => {
-      await executeDiscoverCommand(tokens, opts, {
+    .action(async (opts: DiscoverCommandOptions) => {
+      await executeDiscoverCommand(opts, {
         registry: resolveRegistry(),
         write,
         writeErr,
@@ -111,7 +102,6 @@ interface DiscoverCommandOptions {
   product: string;
   name?: string;
   capabilityVersion?: string;
-  input: string[];
   headless?: boolean;
 }
 
@@ -119,7 +109,6 @@ interface DiscoverCommandOptions {
  * Parse flags, refuse an existing id unless version is explicit, then discover.
  */
 async function executeDiscoverCommand(
-  tokens: string[],
   opts: DiscoverCommandOptions,
   io: {
     registry: CapabilityRegistry;
@@ -131,17 +120,6 @@ async function executeDiscoverCommand(
   },
 ): Promise<void> {
   try {
-    const fromRepeatable = parseCapabilityInputFlags(
-      opts.input.map((pair) => `--input=${pair}`),
-    );
-    const fromUnknown = parseCapabilityInputFlags(tokens);
-    const raw = { ...fromRepeatable, ...fromUnknown };
-    const inputValues = Object.fromEntries(
-      Object.entries(raw).map(([name, value]) => [
-        name,
-        { type: "string" as const, value },
-      ]),
-    );
     const request: DiscoverRequest = {
       id: opts.id,
       url: opts.url,
@@ -149,7 +127,6 @@ async function executeDiscoverCommand(
       tenant: opts.tenant,
       vendor: opts.vendor,
       product: opts.product,
-      inputValues,
       headed: resolveHeaded(opts.headless === true, io.env),
       ...(opts.name === undefined ? {} : { name: opts.name }),
       ...(opts.capabilityVersion === undefined

@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
 
 import { CapabilityCompiler } from "../src/capability-compiler.js";
 import { extractSuccessfulPath } from "../src/extract-successful-path.js";
+import { ParameterizeError } from "../src/parameterize-inputs.js";
 
 const fixtureTrace = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -79,14 +80,11 @@ describe("CapabilityCompiler", () => {
     ]);
   });
 
-  it("replaces loan id 987654 with an input reference", async () => {
+  it("rewrites fill literals from proposedInputParam without a CLI value map", async () => {
     const compiler = new CapabilityCompiler();
     const artifact = await compiler.compile({
       id: "loan-payoff",
       target: { vendor: "icas-bank", product: "icas-bank" },
-      inputValues: {
-        loanAccountId: { type: "string", value: "987654", description: "Loan account identifier" },
-      },
       events: [
         {
           type: "chosen_action",
@@ -95,10 +93,11 @@ describe("CapabilityCompiler", () => {
             rank: 1,
             action: {
               type: "fill",
-              target: { strategies: [{ type: "label", label: "Loan Account" }] },
-              value: { literal: "987654" },
+              target: { strategies: [{ type: "label", label: "Account" }] },
+              value: { literal: "42" },
               risk: "safe",
             },
+            proposedInputParam: { name: "accountId", type: "string", required: true },
           },
         },
         { type: "action_result", payload: { status: "ok" } },
@@ -107,13 +106,121 @@ describe("CapabilityCompiler", () => {
     });
     expect(artifact.steps[0]?.action).toMatchObject({
       type: "fill",
-      value: { input: "loanAccountId" },
+      value: { input: "accountId" },
     });
-    expect(artifact.inputs.loanAccountId).toEqual({
+    expect(artifact.inputs.accountId).toEqual({
       type: "string",
       required: true,
-      description: "Loan account identifier",
     });
+    expect(JSON.stringify(artifact.steps)).not.toContain("42");
+  });
+
+  it("fails when fill has no proposedInputParam", async () => {
+    const compiler = new CapabilityCompiler();
+    await expect(
+      compiler.compile({
+        id: "loan-payoff",
+        target: { vendor: "icas-bank", product: "icas-bank" },
+        events: [
+          {
+            type: "chosen_action",
+            payload: {
+              rank: 1,
+              action: {
+                type: "fill",
+                target: { strategies: [{ type: "label", label: "Account" }] },
+                value: { literal: "42" },
+                risk: "safe",
+              },
+            },
+          },
+          { type: "action_result", payload: { status: "ok" } },
+          { type: "success" },
+        ],
+      }),
+    ).rejects.toBeInstanceOf(ParameterizeError);
+  });
+
+  it("fails when the same literal is bound to two names", async () => {
+    const compiler = new CapabilityCompiler();
+    await expect(
+      compiler.compile({
+        id: "loan-payoff",
+        target: { vendor: "icas-bank", product: "icas-bank" },
+        events: [
+          {
+            type: "chosen_action",
+            payload: {
+              rank: 1,
+              action: {
+                type: "fill",
+                target: { strategies: [{ type: "label", label: "Account" }] },
+                value: { literal: "42" },
+                risk: "safe",
+              },
+              proposedInputParam: { name: "accountId", type: "string", required: true },
+            },
+          },
+          { type: "action_result", payload: { status: "ok" } },
+          {
+            type: "chosen_action",
+            payload: {
+              rank: 1,
+              action: {
+                type: "fill",
+                target: { strategies: [{ type: "label", label: "Confirm" }] },
+                value: { literal: "42" },
+                risk: "safe",
+              },
+              proposedInputParam: { name: "confirmId", type: "string", required: true },
+            },
+          },
+          { type: "action_result", payload: { status: "ok" } },
+          { type: "success" },
+        ],
+      }),
+    ).rejects.toThrow(/bound to both/);
+  });
+
+  it("fails when the same name has a type clash", async () => {
+    const compiler = new CapabilityCompiler();
+    await expect(
+      compiler.compile({
+        id: "loan-payoff",
+        target: { vendor: "icas-bank", product: "icas-bank" },
+        events: [
+          {
+            type: "chosen_action",
+            payload: {
+              rank: 1,
+              action: {
+                type: "fill",
+                target: { strategies: [{ type: "label", label: "When" }] },
+                value: { literal: "2026-09-30" },
+                risk: "safe",
+              },
+              proposedInputParam: { name: "asOfDate", type: "date", required: true },
+            },
+          },
+          { type: "action_result", payload: { status: "ok" } },
+          {
+            type: "chosen_action",
+            payload: {
+              rank: 1,
+              action: {
+                type: "fill",
+                target: { strategies: [{ type: "label", label: "As of" }] },
+                value: { literal: "2026-09-30" },
+                risk: "safe",
+              },
+              proposedInputParam: { name: "asOfDate", type: "string", required: true },
+            },
+          },
+          { type: "action_result", payload: { status: "ok" } },
+          { type: "success" },
+        ],
+      }),
+    ).rejects.toThrow(/type\/required clash/);
   });
 
   it("derives checkpoints, strips coordinates, and persists via the registry", async () => {
@@ -127,9 +234,6 @@ describe("CapabilityCompiler", () => {
         target: { vendor: "icas-bank", product: "icas-bank", tenant: "icas-bank" },
         registry,
         runId: "run-discover-1",
-        inputValues: {
-          loanAccountId: { type: "string", value: "987654" },
-        },
         events: [
           { type: "observation", payload: { id: "home", url: "http://localhost/home.html" } },
           {
@@ -158,9 +262,10 @@ describe("CapabilityCompiler", () => {
               action: {
                 type: "fill",
                 target: { strategies: [{ type: "label", label: "Loan Account" }] },
-                value: { literal: "987654" },
+                value: { literal: "42" },
                 risk: "safe",
               },
+              proposedInputParam: { name: "accountId", type: "string", required: true },
               expectation: "Search Loan Account",
             },
           },

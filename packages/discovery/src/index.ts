@@ -21,8 +21,9 @@ export {
   validateCandidateProposal,
 } from "./candidate-action.js";
 export type { CandidateProposer, ProposeContext } from "./candidate-proposer.js";
-export type { CompileRequest, DiscoveredInput } from "./capability-compiler.js";
+export type { CompileRequest } from "./capability-compiler.js";
 export { CapabilityCompiler, loadTraceEvents, persistDiscoveredCapability } from "./capability-compiler.js";
+export { ParameterizeError } from "./parameterize-inputs.js";
 export { classifyHumanIntervention } from "./classify-intervention.js";
 export type { SuccessfulPathStep } from "./extract-successful-path.js";
 export { extractSuccessfulPath } from "./extract-successful-path.js";

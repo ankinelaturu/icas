@@ -27,12 +27,9 @@ import {
   type SuccessfulPathStep,
 } from "./extract-successful-path.js";
 import {
-  inputsFromActions,
+  inputsFromHints,
   parameterizeAction,
-  type DiscoveredInput,
 } from "./parameterize-inputs.js";
-
-export type { DiscoveredInput };
 
 /**
  * Compile inputs. Provide in-memory `events` or a JSONL `tracePath`.
@@ -55,10 +52,6 @@ export interface CompileRequest {
   name?: string;
   /** Catalog version pin. Defaults to `1.0.0`; bump to persist over an existing id. */
   capabilityVersion?: string;
-  /**
-   * Discovery-time values to replace with `{ input: name }` on fill/select.
-   */
-  inputValues?: Record<string, DiscoveredInput>;
   /** When set, `save` the base artifact and a header-only tenant override. */
   registry?: CapabilityRegistry;
   /** Provenance pointer stored on the tenant override as `createdFromRun`. */
@@ -76,6 +69,7 @@ export class CapabilityCompiler {
    * @param request - Identity, trace source, optional persist registry
    * @returns Schema-shaped artifact (not yet replayed)
    * @throws {Error} When the trace has no executable success path
+   * @throws {ParameterizeError} When fill/select cannot be named from proposer hints
    */
   async compile(request: CompileRequest): Promise<CapabilityArtifact> {
     const events = await loadTraceEvents(request);
@@ -84,7 +78,9 @@ export class CapabilityCompiler {
       // Empty stack means every branch backtracked or no ok execute occurred.
       throw new Error("CapabilityCompiler: trace has no successful executable path");
     }
-    const inputValues = request.inputValues ?? {};
+    // Aggregate names before rewriting so literal clash detection still sees
+    // discovery-time values.
+    const inputs = inputsFromHints(path);
     const usedIds = new Set<string>();
     const steps: CapabilityStep[] = [];
     for (const [index, step] of path.entries()) {
@@ -102,7 +98,7 @@ export class CapabilityCompiler {
           postconditions: [],
         });
       }
-      steps.push(toStep(step, path[index - 1], index, inputValues, usedIds));
+      steps.push(toStep(step, path[index - 1], index, usedIds));
     }
     const version = request.capabilityVersion ?? "1.0.0";
     const artifact: CapabilityArtifact = {
@@ -118,10 +114,7 @@ export class CapabilityCompiler {
       ...(request.target.tenant === undefined
         ? {}
         : { discoveredOn: { tenant: request.target.tenant } }),
-      inputs: inputsFromActions(
-        steps.map((step) => step.action),
-        inputValues,
-      ),
+      inputs,
       outputs: deriveOutputs(steps),
       steps,
       success: deriveSuccess(path),
@@ -212,10 +205,9 @@ function toStep(
   step: SuccessfulPathStep,
   previous: SuccessfulPathStep | undefined,
   index: number,
-  inputValues: Record<string, DiscoveredInput>,
   usedIds: Set<string>,
 ): CapabilityStep {
-  const action = semanticAction(parameterizeAction(step.action, inputValues));
+  const action = semanticAction(parameterizeAction(step.action, step.proposedInputParam));
   const { preconditions, postconditions } = deriveCheckpoints(step, previous);
   return {
     id: uniqueStepId(action, index, usedIds),
