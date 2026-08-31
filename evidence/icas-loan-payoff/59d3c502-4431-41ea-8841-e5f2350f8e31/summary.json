@@ -1,0 +1,9 @@
+{
+  "runId": "59d3c502-4431-41ea-8841-e5f2350f8e31",
+  "runType": "replay",
+  "capabilityId": "icas-loan-payoff",
+  "status": "failure",
+  "startedAt": "2026-08-30T09:51:07.563Z",
+  "finishedAt": "2026-08-30T09:52:48.204Z",
+  "steps": 6
+}

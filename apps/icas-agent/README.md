@@ -10,6 +10,6 @@ pnpm icas-agent discover --id loan-payoff --url <url> --goal "Generate a payoff 
 
 On success the compiler writes the base capability and a header-only tenant override (`overrides: {}`).
 
-Discover prints live progress to stderr: observation snapshots, the LLM proposal JSON, chosen actions, and surface errors. Evidence still lands under `ICAS_EVIDENCE_ROOT` (default `./evidence`).
+Discover prints live progress to stderr: observation snapshots, agent instructions (once), each LLM user prompt, the LLM proposal JSON, chosen actions, and surface errors. Evidence still lands under `ICAS_EVIDENCE_ROOT` (default `./evidence`).
 
 `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `ICAS_MODEL` are read from the process env. When those keys are empty, the CLI loads repo-root `.env` (so `pnpm --filter @icas/agent exec` still works). A non-empty shell export is not overwritten.

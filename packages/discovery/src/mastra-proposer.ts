@@ -46,14 +46,21 @@ Return ONLY a JSON object matching this contract (never prose):
 
 Each candidate:
 - action: click | fill | select | navigate | read | handoff (semantic ICAS actions)
-- rationale: why this control
+- rationale: why this control (intent only; not a checkpoint)
 - rank: number, 1 is tried first
-- expectation: optional visible text after the action
+- expectation: optional. After execute, ICAS asserts this with exact visible-text match. It becomes a replay checkpoint.
 - risk: optional "safe" | "risky"
+
+expectation rules (strict):
+- Copy a short string that already appears in accessibilitySnapshot, character-for-character (a heading, button, link, or field caption on this screen).
+- Omit expectation (null) if you cannot copy such a string. Prefer omit over a guess.
+- Do not paraphrase, narrate, or predict ("page displays…", "will be generated", "the record is shown", "the form is ready").
+- Do not include invocation values from the goal or fills: account numbers, dates, customer names, amounts typed on this run.
+- Do not invent chrome that is not in the snapshot.
 
 Locators (put the caption in the field that matches type):
 - click a visible control with roleText (link/button + name) or visibleText. Do not guess a navigate path when a link or button is on the screen.
-- fill/select: prefer type "relative" with text equal to the field caption (the adjacent table-cell text such as "LN Acct #"). Core banking screens often have no associated <label>, so type "label" will not match.
+- fill/select: prefer type "relative" with text equal to the adjacent field caption. Many core screens put the caption in a table cell, not an associated <label>, so type "label" will not match.
 - type "label" only when the snapshot shows a real labelled textbox.
 - roleText needs role + text; relative/visibleText need text; label needs label.
 
@@ -105,16 +112,21 @@ export function createDiscoveryMastra(agent: Agent): Mastra {
  */
 export class MastraCandidateProposer implements CandidateProposer {
   private readonly log: ((line: string) => void) | undefined;
+  private readonly instructions: string | undefined;
+  /** Instructions are identical on every generate; print them only once. */
+  private loggedInstructions = false;
 
   /**
    * @param agent - Mastra `generate` (or a test fake)
-   * @param options.log - Optional stderr sink; prints the raw structured object
+   * @param options.log - Optional stderr sink for prompt and response
+   * @param options.instructions - Agent system text; logged once when `log` is set
    */
   constructor(
     private readonly agent: StructuredGenerateAgent,
-    options: { log?: (line: string) => void } = {},
+    options: { log?: (line: string) => void; instructions?: string } = {},
   ) {
     this.log = options.log;
+    this.instructions = options.instructions;
   }
 
   /**
@@ -125,10 +137,11 @@ export class MastraCandidateProposer implements CandidateProposer {
    * @throws {CandidateValidationError} When `result.object` is not a CandidateProposal
    */
   async propose(context: ProposeContext): Promise<CandidateProposal> {
-    this.log?.(`LLM generate observation=${context.observation.id} url=${context.observation.url ?? "(unknown)"}`);
+    const userPrompt = formatProposePrompt(context);
+    this.logPrompt(context, userPrompt);
     let result: { object: unknown };
     try {
-      result = await this.agent.generate(formatProposePrompt(context), {
+      result = await this.agent.generate(userPrompt, {
         structuredOutput: { schema: LlmCandidateProposalSchema },
       });
     } catch (error) {
@@ -144,6 +157,26 @@ export class MastraCandidateProposer implements CandidateProposer {
       this.log?.(`LLM response failed catalog mapping: ${message}`);
       throw error;
     }
+  }
+
+  /**
+   * Print agent instructions (once) and the user message for this node.
+   *
+   * @param context - Same inputs as {@link formatProposePrompt}
+   * @param userPrompt - Exact string passed to `generate`
+   */
+  private logPrompt(context: ProposeContext, userPrompt: string): void {
+    if (this.log === undefined) {
+      return;
+    }
+    this.log(
+      `LLM generate observation=${context.observation.id} url=${context.observation.url ?? "(unknown)"}`,
+    );
+    if (!this.loggedInstructions && this.instructions !== undefined && this.instructions.length > 0) {
+      this.loggedInstructions = true;
+      this.log(`LLM agent instructions (same on every generate):\n${this.instructions}`);
+    }
+    this.log(`LLM user prompt:\n${userPrompt}`);
   }
 }
 
@@ -233,10 +266,10 @@ export async function createConfiguredDiscoveryProposer(args: {
   const instructions = `${policyText}\n\n${DISCOVERY_PROPOSER_INSTRUCTIONS}`;
   const agent = createDiscoveryProposerAgent({ instructions, model });
   return {
-    proposer: new MastraCandidateProposer(
-      agent,
-      args.log === undefined ? {} : { log: args.log },
-    ),
+    proposer: new MastraCandidateProposer(agent, {
+      ...(args.log === undefined ? {} : { log: args.log }),
+      instructions,
+    }),
     model,
     instructions,
   };

@@ -92,8 +92,30 @@ describe("MastraCandidateProposer", () => {
     });
     const joined = lines.join("\n");
     expect(joined).toContain("LLM generate observation=home");
+    expect(joined).toContain("LLM user prompt:");
+    expect(joined).toContain("Goal: Generate a payoff statement");
     expect(joined).toContain("LLM raw response:");
     expect(joined).toContain('"text": "Lending"');
+  });
+
+  it("prints agent instructions once across two generate calls", async () => {
+    const lines: string[] = [];
+    const proposer = new MastraCandidateProposer(mockAgent(validContinue), {
+      log: (line) => {
+        lines.push(line);
+      },
+      instructions: "Do not transfer funds.",
+    });
+    const context = {
+      goal: "Generate a payoff statement",
+      observation: { id: "home", url: "http://localhost:4101/" },
+      history: [],
+    };
+    await proposer.propose(context);
+    await proposer.propose({ ...context, observation: { id: "lending" } });
+    const instructionHits = lines.filter((line) => line.includes("LLM agent instructions")).length;
+    expect(instructionHits).toBe(1);
+    expect(lines.join("\n")).toContain("Do not transfer funds.");
   });
 });
 
@@ -111,6 +133,8 @@ describe("formatProposePrompt", () => {
     expect(prompt).toContain("accessibilitySnapshot:");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("status: \"continue\"");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain('type "relative"');
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("character-for-character");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("Do not include invocation values");
   });
 });
 

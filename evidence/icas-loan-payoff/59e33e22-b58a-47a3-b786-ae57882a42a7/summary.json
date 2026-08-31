@@ -1,0 +1,9 @@
+{
+  "runId": "59e33e22-b58a-47a3-b786-ae57882a42a7",
+  "runType": "discovery",
+  "capabilityId": "icas-loan-payoff",
+  "status": "success",
+  "startedAt": "2026-08-30T08:51:01.808Z",
+  "steps": 7,
+  "backtracks": 0
+}

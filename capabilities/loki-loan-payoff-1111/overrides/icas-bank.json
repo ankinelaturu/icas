@@ -1,14 +1,14 @@
 {
   "schemaVersion": "1.0",
-  "id": "icas-loan-payoff-icas-bank",
-  "baseCapability": "icas-loan-payoff@1.0.0",
+  "id": "loki-loan-payoff-icas-bank",
+  "baseCapability": "loki-loan-payoff@1.0.0",
   "target": {
     "tenant": "icas-bank"
   },
   "overrides": {},
   "provenance": {
     "createdBy": "discovery",
-    "createdFromRun": "59e33e22-b58a-47a3-b786-ae57882a42a7",
+    "createdFromRun": "5c62ff86-2f15-4d58-ad44-98f37e74d1fa",
     "reason": "enrolled discovering tenant"
   }
 }

@@ -74,7 +74,7 @@ interface CandidateAction {
   action: Action; // click | fill | select | navigate | read | handoff
   rationale: string;
   rank: number; // 1 is tried before 2
-  expectation?: string;
+  expectation?: string; // exact visible snapshot text, or omit; not a narrative
   risk?: "safe" | "risky";
 }
 ```
@@ -82,6 +82,8 @@ interface CandidateAction {
 - `continue` — try `candidates` in rank order (at least one required).
 - `success` — the current observation already satisfies the goal; `candidates` may be empty.
 - `stuck` — do not improvise; the search controller requests HITL.
+
+`expectation` is copied into replay `textVisible` checkpoints. The proposer must copy exact chrome from the accessibility snapshot (or omit). It must not narrate success or embed invocation values (account id, date, name).
 
 A string transcript, an unknown `action.type`, or `continue` with zero candidates is a validation error. Numeric confidence may be recorded but is not a calibrated probability. Ranking is the useful property.
 
@@ -157,7 +159,7 @@ Discovery evidence is intentionally richer than replay evidence. The trace shoul
 - human interventions;
 - final success.
 
-`icas-agent discover` also prints each observation (ARIA snapshot preview), the LLM proposal JSON, and the chosen action to stderr. A thrown surface error (`TARGET_NOT_FOUND`) becomes a failed `action_result` with that message so the run still writes evidence.
+`icas-agent discover` also prints each observation (ARIA snapshot preview), agent instructions (once), the LLM user prompt, the LLM proposal JSON, and the chosen action to stderr. A thrown surface error (`TARGET_NOT_FOUND`) becomes a failed `action_result` with that message so the run still writes evidence.
 
 The trace is append-only JSONL plus referenced screenshots/observations.
 

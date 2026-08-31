@@ -21,7 +21,8 @@ export const CandidateActionSchema = z.strictObject({
   rationale: z.string().min(1),
   // Lowest number is tried first. Not a calibrated probability.
   rank: z.number(),
-  // Visible text the model expects after execute; compiler turns this into checkpoints.
+  // Exact visible snapshot text after execute; compiler copies this into
+  // textVisible checkpoints. Must not be a narrative or a discovery-time id.
   expectation: z.string().min(1).optional(),
   // Optional hint for PolicyGuard (risky → require-human). Not a search ranking.
   risk: z.enum(["safe", "risky"]).optional(),

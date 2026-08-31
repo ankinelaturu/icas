@@ -23,7 +23,7 @@
   "outputs": {},
   "steps": [
     {
-      "id": "navigate-lending-htm",
+      "id": "click-lending-services",
       "preconditions": [
         {
           "type": "urlMatches",
@@ -31,14 +31,23 @@
         }
       ],
       "action": {
-        "type": "navigate",
-        "path": "/lending.htm",
+        "type": "click",
+        "target": {
+          "strategies": [
+            {
+              "type": "roleText",
+              "role": "link",
+              "text": "Lending Services"
+            }
+          ]
+        },
+        "intent": "navigate to lending services",
         "risk": "safe"
       },
       "postconditions": [
         {
           "type": "textVisible",
-          "value": "Lending-related options such as inquiry, payoff quote, and statement are displayed."
+          "value": "Lending Services"
         },
         {
           "type": "urlMatches",
@@ -51,7 +60,7 @@
       "preconditions": [
         {
           "type": "textVisible",
-          "value": "Lending-related options such as inquiry, payoff quote, and statement are displayed."
+          "value": "Lending Services"
         }
       ],
       "action": {
@@ -64,12 +73,14 @@
               "text": "Loan Account Inquiry"
             }
           ]
-        }
+        },
+        "intent": "navigate to the Loan Account Inquiry screen to initiate payoff statement process",
+        "risk": "safe"
       },
       "postconditions": [
         {
           "type": "textVisible",
-          "value": "A screen for entering loan account details for inquiry."
+          "value": "Loan Account Inquiry"
         },
         {
           "type": "urlMatches",
@@ -82,7 +93,7 @@
       "preconditions": [
         {
           "type": "textVisible",
-          "value": "A screen for entering loan account details for inquiry."
+          "value": "Loan Account Inquiry"
         }
       ],
       "action": {
@@ -90,21 +101,24 @@
         "target": {
           "strategies": [
             {
+              "type": "label",
+              "label": "LN Acct #",
+              "confidence": 0.9
+            },
+            {
               "type": "relative",
-              "text": "LN Acct #"
+              "text": "LN Acct #",
+              "confidence": 0.9
             }
           ]
         },
         "value": {
           "input": "loanAccountId"
         },
+        "intent": "enter loan account number",
         "risk": "safe"
       },
       "postconditions": [
-        {
-          "type": "textVisible",
-          "value": "The loan information for account number 987654 is loaded upon clicking 'Inquire'."
-        },
         {
           "type": "urlMatches",
           "pattern": "/lending/search.htm"
@@ -115,8 +129,8 @@
       "id": "click-inquire",
       "preconditions": [
         {
-          "type": "textVisible",
-          "value": "The loan information for account number 987654 is loaded upon clicking 'Inquire'."
+          "type": "urlMatches",
+          "pattern": "/lending/search.htm"
         }
       ],
       "action": {
@@ -124,18 +138,18 @@
         "target": {
           "strategies": [
             {
-              "type": "roleText",
-              "role": "button",
+              "type": "visibleText",
               "text": "Inquire"
             }
           ]
         },
+        "intent": "search for the loan details",
         "risk": "safe"
       },
       "postconditions": [
         {
           "type": "textVisible",
-          "value": "Loan account details, including options to generate payoff statement, are displayed."
+          "value": "Inquire"
         },
         {
           "type": "urlMatches",
@@ -148,7 +162,7 @@
       "preconditions": [
         {
           "type": "textVisible",
-          "value": "Loan account details, including options to generate payoff statement, are displayed."
+          "value": "Inquire"
         }
       ],
       "action": {
@@ -156,18 +170,18 @@
         "target": {
           "strategies": [
             {
-              "type": "roleText",
-              "role": "link",
+              "type": "visibleText",
               "text": "Payoff"
             }
           ]
         },
+        "intent": "navigate to payoff screen",
         "risk": "safe"
       },
       "postconditions": [
         {
           "type": "textVisible",
-          "value": "The payoff quote screen is opened."
+          "value": "Payoff"
         },
         {
           "type": "urlMatches",
@@ -180,7 +194,7 @@
       "preconditions": [
         {
           "type": "textVisible",
-          "value": "The payoff quote screen is opened."
+          "value": "Payoff"
         }
       ],
       "action": {
@@ -196,13 +210,10 @@
         "value": {
           "input": "payoffDate"
         },
+        "intent": "enter payoff date",
         "risk": "safe"
       },
       "postconditions": [
-        {
-          "type": "textVisible",
-          "value": "The payoff date field is updated with 2026-09-30."
-        },
         {
           "type": "urlMatches",
           "pattern": "/lending/payoff.htm"
@@ -213,8 +224,8 @@
       "id": "click-calculate-generate",
       "preconditions": [
         {
-          "type": "textVisible",
-          "value": "The payoff date field is updated with 2026-09-30."
+          "type": "urlMatches",
+          "pattern": "/lending/payoff.htm"
         }
       ],
       "action": {
@@ -228,13 +239,13 @@
             }
           ]
         },
-        "intent": "generatePayoffStatement",
+        "intent": "generate payoff statement",
         "risk": "safe"
       },
       "postconditions": [
         {
           "type": "textVisible",
-          "value": "The payoff statement for loan 987654 dated 2026-09-30 is generated or begins processing."
+          "value": "Calculate / Generate"
         },
         {
           "type": "urlMatches",
@@ -246,7 +257,7 @@
   "success": [
     {
       "type": "textVisible",
-      "value": "The payoff statement for loan 987654 dated 2026-09-30 is generated or begins processing."
+      "value": "Calculate / Generate"
     }
   ]
 }
