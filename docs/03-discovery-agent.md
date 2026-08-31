@@ -69,9 +69,13 @@ type CandidateProposal = {
   rationale?: string;
 };
 
+interface OutcomeMatch {
+  phrases: string[]; // 1–3 guessed page phrases; any one visible is a hit (OR)
+}
+
 interface PossibleOutcome {
   kind: "success" | "error" | "hitl";
-  match: string; // phrase replay may look for on the page; not a paragraph
+  match: OutcomeMatch;
   heading: string | null; // tool / HITL title; never used as a locator
   summary: string | null; // tool / HITL body; never used as a locator
 }
@@ -82,7 +86,7 @@ interface CandidateAction {
   rationale: string;
   rank: number; // 1 is tried before 2
   expectation?: string; // optional current-snapshot chrome; not an error catalog
-  possibleOutcomes: PossibleOutcome[]; // ordered; first matching `match` wins at replay
+  possibleOutcomes: PossibleOutcome[]; // ordered; first outcome whose match hits wins
   risk?: "safe" | "risky";
 }
 ```
@@ -103,7 +107,11 @@ The model may include a happy-path entry (`kind: "success"`). Compile **drops** 
 - `error` — the application has already answered; the caller can stop. No person needs this session.
 - `hitl` — automation cannot continue; a person must operate the **same** session.
 
-`match` is the only field replay searches for (visible text). `heading` and `summary` are for `icas-play` / MCP / HITL copy. Array **order** is priority: specific phrases before generic ones. Empty `possibleOutcomes` is valid.
+`match.phrases` is the only field replay searches on the page. Each phrase is several words of distinctive copy, not a single generic token (`error`, `invalid`, `not found` alone) and not a narration paragraph. Within one outcome, **any** phrase may hit (**OR**): the model lists alternative wordings, not a fingerprint that must all appear. `possibleOutcomes` **order** is still priority: more specific outcomes first. Empty `possibleOutcomes` is valid.
+
+`heading` and `summary` are for `icas-play` / MCP / HITL copy. Do not search the page with `heading`.
+
+A later replay matcher may compare embeddings of page text to these phrases. Do not put vectors in the proposal or the compiled artifact. See [`05-replay-engine.md`](05-replay-engine.md).
 
 Do not put sample error sentences, loan-specific codes, or a closed enum of domain results in the proposer **instructions**. Instructions set environment (bank and credit union **staff** back-office, often legacy, no API) and the JSON contract. The **user** message supplies `--goal` and the current observation.
 

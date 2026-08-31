@@ -79,7 +79,7 @@ tests/integration/
 ### 3. Business outcome
 
 - run with a nonexistent synthetic loan (or any input that leaves the happy path);
-- next-step locator misses; a previous step `possibleOutcomes` `match` is visible;
+- next-step locator misses; any `match.phrases` entry on a previous-step `possibleOutcomes` item is visible (OR);
 - return `business_outcome` with that entry’s heading/summary, not a Playwright exception.
 - ReplayEngine must not classify from a hardcoded loan-message table.
 

@@ -156,9 +156,13 @@ interface CapabilityStep {
   timeoutMs?: number;
 }
 
+interface OutcomeMatch {
+  phrases: string[]; // any one visible → this outcome hits (OR)
+}
+
 interface PossibleOutcome {
   kind: "success" | "error" | "hitl";
-  match: string;
+  match: OutcomeMatch;
   heading: string | null;
   summary: string | null;
 }
@@ -172,7 +176,9 @@ A capability is **one** happy-path step list. It does not encode a decision tree
 
 `possibleOutcomes` are guessed matchers for when that path **cannot continue**. Replay uses them only after the **next** step’s action locator misses (or after last-step `success` assertions miss). See [`05-replay-engine.md`](05-replay-engine.md).
 
-`match` is the only field that touches the page. `heading` and `summary` are the formatted result for the calling tool and for HITL context. A screenshot still goes to evidence on that stop.
+`match.phrases` is the only field that touches the page. An outcome hits when **any** phrase is visible (OR). `heading` and `summary` are the formatted result for the calling tool and for HITL context. A screenshot still goes to evidence on that stop.
+
+Do not persist embedding vectors in the artifact. Phrases stay reviewable text. A later matcher may embed page text and compare it to those phrases; that is still deterministic replay (no LLM). See [`05-replay-engine.md`](05-replay-engine.md).
 
 A `textVisible` precondition that repeats the click target is redundant with the action locator. `possibleOutcomes` are not preconditions.
 

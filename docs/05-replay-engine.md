@@ -20,10 +20,11 @@ resolve the *next* step’s action locator
     ↓ found → continue to that step (do not scan possibleOutcomes)
     ↓ missing → walk the *just-executed* step’s possibleOutcomes in order
                  skip kind "success"
-                 first visible `match` wins:
+                 an outcome hits when *any* match.phrases entry is visible (OR)
+                 first hitting outcome wins:
                    error → business_outcome (heading, summary, match in details)
                    hitl  → same message + handoff on this session
-                 none match → failure (or HITL only if this run already treats unknown as stuck)
+                 none hit → failure (or HITL only if this run already treats unknown as stuck)
 ```
 
 This step’s target missing (cannot click Inquire) is a locator/script miss. It is **not** classified from this step’s `possibleOutcomes`. Those hints explain why the **following** control (e.g. Payoff) is absent after this action ran.
@@ -74,11 +75,19 @@ type ExecutionResult =
 
 Expected application results that the caller must know about. They are not crashes.
 
-Replay does **not** own a product-specific message table. It walks `possibleOutcomes` on the effective capability (`match` in array order). The first visible hit with `kind: "error"` returns `business_outcome`. `details` carries that entry’s `heading`, `summary`, and `match` so MCP/`icas-play` can format a response. Evidence still includes a screenshot.
+Replay does **not** own a product-specific message table. It walks `possibleOutcomes` on the effective capability in array order. An entry hits when **any** `match.phrases` string is visible (**OR**). The first hitting entry with `kind: "error"` returns `business_outcome`. `details` carries that entry’s `heading`, `summary`, and `match` so MCP/`icas-play` can format a response. Evidence still includes a screenshot.
 
-`outcome` on `ExecutionResult` may be a stable slug derived from the hit (or the `match` text). It is **not** a hardcoded loan-payoff enum inside `ReplayEngine`.
+`outcome` on `ExecutionResult` may be a stable slug derived from the hit (or the matching phrase). It is **not** a hardcoded loan-payoff enum inside `ReplayEngine`.
 
 Behavior: stop normally and return `business_outcome`.
+
+### Matching `match.phrases`
+
+The first implementation uses exact/substring visible-text search (same family as `textVisible`). A single generic token is too weak; phrases should be distinctive multi-word copy.
+
+A later matcher may embed the page text and the stored phrases and compare them (local embeddings, bounded latency). That does **not** change the artifact: do not store vectors on the capability. Strict replay still has **no LLM**. Thresholds and false-positive policy belong to that later pass, not to discover.
+
+Do not search `heading` or `summary` on the page.
 
 ### Recoverable runtime conditions
 
@@ -202,7 +211,7 @@ Replay can emit an intervention request when:
 
 - a `possibleOutcomes` hit has `kind: "hitl"` (message plus the same session);
 - a risky encoded action requires approval;
-- an unexpected state cannot be recovered (no `match` hit);
+- an unexpected state cannot be recovered (no `match.phrases` hit);
 - policy requires human control;
 - assisted fallback is disabled/exhausted.
 
