@@ -39,7 +39,7 @@ export const LlmRepairProposalSchema = z.strictObject({
 });
 
 /** Contract text for Mastra `instructions`. */
-export const REPAIR_PROPOSER_INSTRUCTIONS = `You repair ONE failed replay step on a banking back-office UI.
+export const REPAIR_PROPOSER_INSTRUCTIONS = `You repair ONE failed replay step on a bank or credit union staff back-office UI. This is not consumer or retail online banking.
 
 Return ONLY a JSON object:
 - actions: 1..N semantic ICAS actions (click, fill, select, navigate, read, handoff)

@@ -133,8 +133,10 @@ describe("formatProposePrompt", () => {
     expect(prompt).toContain("accessibilitySnapshot:");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("status: \"continue\"");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain('type "relative"');
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("character-for-character");
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("Do not include invocation values");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("possibleOutcomes");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("match.phrases");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("staff back-office");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("Do not put invocation values");
   });
 });
 

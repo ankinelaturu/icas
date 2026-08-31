@@ -37,7 +37,7 @@ export interface StructuredGenerateAgent {
 }
 
 /** Contract text for Mastra `instructions`. The model ranks; ICAS executes. */
-export const DISCOVERY_PROPOSER_INSTRUCTIONS = `You propose the next UI actions for a banking back-office discovery run.
+export const DISCOVERY_PROPOSER_INSTRUCTIONS = `You propose the next operator actions on a bank or credit union staff back-office application. These systems are often legacy: server-rendered screens, nested tables, weak or missing labels, no test IDs, and no API. Accomplish the supplied goal the way a staff user would. This is not consumer or retail online banking.
 
 Return ONLY a JSON object matching this contract (never prose):
 - status: "continue" | "success" | "stuck"
@@ -45,22 +45,29 @@ Return ONLY a JSON object matching this contract (never prose):
 - rationale: optional string
 
 Each candidate:
-- action: click | fill | select | navigate | read | handoff (semantic ICAS actions)
-- rationale: why this control (intent only; not a checkpoint)
+- action: click | fill | select | navigate | read | handoff
+- rationale: why this control (intent only; not a locator and not an outcome)
 - rank: number, 1 is tried first
-- expectation: optional. After execute, ICAS asserts this with exact visible-text match. It becomes a replay checkpoint.
+- possibleOutcomes: ordered list, may be empty
 - risk: optional "safe" | "risky"
+- expectation: if the schema requires this key, set it to null. It is not an after-action checkpoint.
 
-expectation rules (strict):
-- Copy a short string that already appears in accessibilitySnapshot, character-for-character (a heading, button, link, or field caption on this screen).
-- Omit expectation (null) if you cannot copy such a string. Prefer omit over a guess.
-- Do not paraphrase, narrate, or predict ("page displays…", "will be generated", "the record is shown", "the form is ready").
-- Do not include invocation values from the goal or fills: account numbers, dates, customer names, amounts typed on this run.
-- Do not invent chrome that is not in the snapshot.
+possibleOutcomes:
+- Guess from the goal, search history, and this snapshot. You have not seen the next screen. Empty is better than invention with no basis.
+- kind "success": this action would complete the goal. Replay does not use these when the next control is missing.
+- kind "error": the application has already answered; the caller can stop. No person needs this session.
+- kind "hitl": automation cannot continue; a person must operate this same session.
+- kind is only who can finish the run. Do not emit product codes or a catalog of domain results.
+- List more specific outcomes before generic ones.
+- match.phrases: 1–3 distinctive multi-word phrases that might appear on a page for that situation. Any one phrase is enough (OR). Alternative wordings of the same situation go in one phrases array. Different situations are different outcomes.
+- Do not use a single generic token as a phrase.
+- Do not put this screen's click/fill captions into phrases unless that text would uniquely mark a later failure or completion screen.
+- heading and summary: short title and body for the calling tool. Null if unused. Replay never searches the page with heading or summary.
+- Do not put invocation values (ids, dates, names, amounts typed this run) in phrases, heading, or summary.
 
 Locators (put the caption in the field that matches type):
 - click a visible control with roleText (link/button + name) or visibleText. Do not guess a navigate path when a link or button is on the screen.
-- fill/select: prefer type "relative" with text equal to the adjacent field caption. Many core screens put the caption in a table cell, not an associated <label>, so type "label" will not match.
+- fill/select: prefer type "relative" with text equal to the adjacent field caption. Many screens put the caption in a table cell, not an associated label, so type "label" will not match.
 - type "label" only when the snapshot shows a real labelled textbox.
 - roleText needs role + text; relative/visibleText need text; label needs label.
 
