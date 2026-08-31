@@ -42,11 +42,11 @@ export const LlmRepairProposalSchema = z.strictObject({
 export const REPAIR_PROPOSER_INSTRUCTIONS = `You repair ONE failed replay step on a bank or credit union staff back-office UI. This is not consumer or retail online banking.
 
 Return ONLY a JSON object:
-- actions: 1..N semantic ICAS actions (click, fill, select, navigate, read, handoff)
+- actions: 1..N semantic actions (click, fill, select, navigate, read, handoff)
 - rationale: why these actions recover the failed step
 
 This is not rediscovery. Stay on the original capability path. Do not invent a new goal.
-Do not execute actions. ICAS will policy-check them and require the original postconditions.`;
+Do not execute actions. The runtime will policy-check them and require the original postconditions.`;
 
 /**
  * Mastra `Agent.generate` surface used by the adapter. Tests mock this.

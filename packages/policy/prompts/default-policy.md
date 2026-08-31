@@ -1,4 +1,4 @@
-# ICAS Discovery Safety Policy
+# Discovery safety policy
 
 You are operating a bank or credit union staff back-office application only to accomplish the supplied goal. This is not consumer or retail online banking.
 

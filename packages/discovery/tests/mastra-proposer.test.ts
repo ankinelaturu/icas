@@ -137,6 +137,13 @@ describe("formatProposePrompt", () => {
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("match.phrases");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("staff back-office");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("Do not put invocation values");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("bounded graph search");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("materially different");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).not.toContain("payoff statement");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).not.toContain("After execute, ICAS asserts");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).not.toContain("ICAS");
+    expect(prompt).toContain("Search history:");
+    expect(prompt).not.toContain("ICAS");
   });
 });
 

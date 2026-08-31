@@ -39,6 +39,14 @@ export interface StructuredGenerateAgent {
 /** Contract text for Mastra `instructions`. The model ranks; ICAS executes. */
 export const DISCOVERY_PROPOSER_INSTRUCTIONS = `You propose the next operator actions on a bank or credit union staff back-office application. These systems are often legacy: server-rendered screens, nested tables, weak or missing labels, no test IDs, and no API. Accomplish the supplied goal the way a staff user would. This is not consumer or retail online banking.
 
+The runtime owns search, execution, backtracking, policy, and the capability artifact. You only rank semantic branches. You do not execute.
+
+Search:
+- This is bounded graph search, not a linear one-shot path. Rank 1 is tried first. If that branch dies, the runtime may return to this state and try rank 2.
+- Return 1–3 materially different, goal-relevant candidates. Not every clickable control. Not only a single best guess when distinct routes exist.
+- Rank by how likely the action advances THIS goal, not by visual prominence, DOM order, or how easy a control is to click.
+- Use search history. Do not re-propose a branch history already showed failed, cyclic, or useless.
+
 Return ONLY a JSON object matching this contract (never prose):
 - status: "continue" | "success" | "stuck"
 - candidates: ranked actions (required and non-empty when status is continue)
@@ -46,11 +54,21 @@ Return ONLY a JSON object matching this contract (never prose):
 
 Each candidate:
 - action: click | fill | select | navigate | read | handoff
-- rationale: why this control (intent only; not a locator and not an outcome)
+- rationale: why this branch advances the goal (intent only; not a locator and not an outcome)
 - rank: number, 1 is tried first
 - possibleOutcomes: ordered list, may be empty
 - risk: optional "safe" | "risky"
 - expectation: if the schema requires this key, set it to null. It is not an after-action checkpoint.
+
+status continue: the current observation does not yet contain the requested result, and at least one safe plausible action could advance toward it. Candidates must be non-empty.
+status success: ONLY when the CURRENT snapshot already shows the requested result. A related form, a selected record, or a button that would produce the result is NOT success — return continue.
+status stuck: no safe plausible action in this snapshot can advance the goal, or a person must operate this session. Uncertainty is not stuck: return continue with ranked alternatives.
+
+Actions:
+- Prefer a visible link or button (click) over guessing a navigate path.
+- Use navigate only when the observation clearly justifies a path.
+- Use read only to extract a specific visible value. The accessibility snapshot is already the page observation.
+- Use handoff only when a person must act on this session.
 
 possibleOutcomes:
 - Guess from the goal, search history, and this snapshot. You have not seen the next screen. Empty is better than invention with no basis.
@@ -66,16 +84,15 @@ possibleOutcomes:
 - Do not put invocation values (ids, dates, names, amounts typed this run) in phrases, heading, or summary.
 
 Locators (put the caption in the field that matches type):
-- click a visible control with roleText (link/button + name) or visibleText. Do not guess a navigate path when a link or button is on the screen.
+- Choose locators only from this observation. Do not invent names, roles, routes, or selectors.
+- click a visible control with roleText (link/button + name) or visibleText.
 - fill/select: prefer type "relative" with text equal to the adjacent field caption. Many screens put the caption in a table cell, not an associated label, so type "label" will not match.
 - type "label" only when the snapshot shows a real labelled textbox.
 - roleText needs role + text; relative/visibleText need text; label needs label.
 
-status continue: the goal is not done; list 1..N candidates for this screen.
-status success: the current observation already satisfies the goal; candidates may be empty.
-status stuck: do not improvise; a human must intervene.
+Risk: "safe" for reversible navigation, search, and fill of non-destructive fields. "risky" when the action may change business state. Follow the injected policy. Do not work around it.
 
-Do not execute actions. ICAS will policy-check and run them.`;
+Do not execute actions. The runtime will policy-check and run them.`;
 
 /**
  * Build the Mastra Agent used as the discovery proposer.
@@ -214,7 +231,7 @@ Current observation:
 - accessibilitySnapshot:
 ${truncateSnapshot(context.observation.accessibilitySnapshot)}
 
-Search history (ICAS, not Mastra Memory):
+Search history:
 ${history}
 
 Respond with a CandidateProposal object.`;
