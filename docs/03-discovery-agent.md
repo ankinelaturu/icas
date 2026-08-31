@@ -19,7 +19,7 @@ interface DiscoveryRequest {
 }
 ```
 
-`--id`, `--url`, and `--goal` are required. Vendor, product, and tenant may be omitted on the CLI; each defaults to `icas-bank`. ICAS is not responsible for inferring vendor, product, tenant, or capability id from the URL.
+`--id`, `--url`, and `--goal` are required. Vendor, product, and tenant may be omitted on the CLI; each defaults to `icas-bank`. ICAS is not responsible for inferring vendor, product, tenant, or capability id from the URL. Discover does **not** take typed invocation flags. Concrete values belong in `--goal`. The proposer names parameters; the compiler aggregates those names. Replay (`icas-play` / MCP) still takes typed params from the compiled `inputs` contract.
 
 `--id` is unique in the catalog. It names the Vendor+Product capability, not a tenant copy. A later institution uses `icas-adapt --id loan-payoff --tenant loki-bank`, not a second discover with a new id.
 
@@ -80,6 +80,12 @@ interface PossibleOutcome {
   summary: string | null; // tool / HITL body; never used as a locator
 }
 
+interface ProposedInputParam {
+  name: string; // camelCase; same goal value → same name on every page
+  type: "string" | "number" | "boolean" | "date" | "money";
+  required: boolean;
+}
+
 interface CandidateAction {
   id?: string; // assigned by ICAS when omitted
   action: Action; // click | fill | select | navigate | read | handoff
@@ -87,6 +93,7 @@ interface CandidateAction {
   rank: number; // 1 is tried before 2
   expectation?: string; // optional current-snapshot chrome; not an error catalog
   possibleOutcomes: PossibleOutcome[]; // ordered; first outcome whose match hits wins
+  proposedInputParam: ProposedInputParam | null; // non-null for fill/select; null otherwise
   risk?: "safe" | "risky";
 }
 ```
@@ -120,6 +127,10 @@ Optional `expectation` is not this catalog. It must not narrate success or embed
 A string transcript, an unknown `action.type`, or `continue` with zero candidates is a validation error. Numeric confidence may be recorded but is not a calibrated probability. Ranking is the useful property.
 
 OpenAI structured output cannot use `oneOf`, so generate uses a flat action schema and ICAS maps it onto catalog `CapabilityAction`. For fill/select/read, that map appends a `relative` fallback when the model used `label` or `visibleText` for a field caption: core banking screens often put the name in a table cell, not an associated `<label>`, so Playwright `getByLabel` misses the adjacent input.
+
+Fill/select `value` on the wire is a literal string (not a ValueRef `oneOf`). The same flat action includes `proposedInputParam` (nullable object so every key stays required). Click, navigate, read, and handoff set it to `null`. The mapper copies a non-null hint onto the **candidate**, not onto catalog `CapabilityAction`. Fill/select without a hint is a mapping error.
+
+The proposer **instructions** stay goal-agnostic: how to name a param (camelCase, stable for the same goal value, type + required), not a list of product field names. Names come from this run’s `--goal` and the current observation.
 
 ## Bounded graph search
 
@@ -204,7 +215,7 @@ A capability must be decoupled from the raw model transcript. `CapabilityCompile
 1. identify the successful path;
 2. remove failed exploration branches from the executable artifact;
 3. retain failed branches only in evidence;
-4. replace concrete discovery values with typed input references (`inputValues` maps e.g. `987654` → `{ input: "loanAccountId" }`);
+4. rewrite fill/select literals using each success-path step’s `proposedInputParam`: aggregate unique `{ name, type, required }` into artifact `inputs`, set `value` to `{ input: name }`. Do not reverse-map CLI flags onto literals. Fill/select without a hint fails compile. The same `name` with a conflicting `type` or `required` fails. The same discovery literal bound to two names fails. Saved steps do not keep `proposedInputParam`;
 5. derive semantic target descriptors from successful actions;
 6. derive preconditions and postconditions from meaningful observed state;
 7. copy this step’s `possibleOutcomes` (`error` and `hitl` only, same order) onto the compiled step;
@@ -220,7 +231,7 @@ Human actions require classification. A normal reusable approval boundary (`appr
 Mastra is the LLM/tool layer, not the owner of ICAS search or artifacts.
 
 - Construct `new Agent({ id, name, instructions, model })` with `model` as `'provider/model'` (e.g. `openai/gpt-4o`).
-- `instructions` are the **system** contract: staff back-office at banks and credit unions (not consumer banking), often legacy surfaces, JSON shape including `possibleOutcomes`, locator rules, policy text. They must stay goal-agnostic.
+- `instructions` are the **system** contract: staff back-office at banks and credit unions (not consumer banking), often legacy surfaces, JSON shape including `possibleOutcomes` and `proposedInputParam` rules, locator rules, policy text. They must stay goal-agnostic (no product field-name list).
 - Call `agent.generate(prompt, { structuredOutput: { schema: … } })` **once per DFS node**. That `prompt` is the **user** turn: goal, this observation, search history.
 - `icas-agent discover` logs instructions once (`LLM agent instructions`) and each user turn (`LLM user prompt`).
 - Do not give the agent click/fill tools. ICAS policy-checks and executes.

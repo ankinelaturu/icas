@@ -454,20 +454,34 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 - [x] `tests/integration/discovery-to-capability.test.ts`
 - [x] Fake or recorded model + HTML fixtures → validated capability file
 
-### Pass 5.16 — Compiler: aggregate `proposedInputParam`
+### Pass 5.16 — Docs: `proposedInputParam` compile
 
-Do not reopen Pass 5.12. Discover parameterization no longer reverse-looks up CLI literals (`987654` → `--loanAccountId`). See `docs/03-discovery-agent.md` compile step 4.
+Do not reopen Pass 5.12. Design: proposer names params; compiler aggregates; no CLI literal reverse-lookup.
 
-- [ ] Every fill/select LLM action includes `proposedInputParam` `{ name, type, required }` (nullable on the flat OpenAI schema; required after map for fill/select)
-- [ ] Click / navigate / read / handoff send `null`; same goal value → same camelCase `name` on every page
-- [ ] Hint lives on the candidate / `chosen_action` / success-path step, never on catalog `CapabilityAction`
+- [x] `docs/03` compile step 4 and candidate `proposedInputParam`; instructions stay goal-agnostic (no product field-name list)
+- [x] `docs/01` / `docs/04` / agent README: discover is `--id` `--url` `--goal`; replay still takes typed params
+
+### Pass 5.17 — LLM `proposedInputParam` schema
+
+Depends on Pass 5.16.
+
+- [ ] Flat LLM action schema: nullable `{ name, type, required }` on every action
+- [ ] Mapper copies the hint onto `CandidateAction`, not catalog `CapabilityAction`
+- [ ] Fill/select without a hint fail mapping; click/navigate/read/handoff must be null
+- [ ] `chosen_action` + `extractSuccessfulPath` keep the hint
+- [ ] Tests: LLM schema parse; fill without hint rejected
+
+### Pass 5.18 — Compiler: aggregate `proposedInputParam`
+
+Depends on Pass 5.17. Do not reopen Pass 5.12.
+
 - [ ] Compiler aggregates unique names into artifact `inputs` and rewrites fills/selects to `{ input: name }`
 - [ ] Fail closed: fill/select without hint; name / type / `required` clash; same literal bound to two names
-- [ ] Remove `CompileRequest.inputValues`, `inputNameForLiteral`, and discover CLI leftover `--loanAccountId` / `--input` compile wiring (`--id` `--url` `--goal` only)
-- [ ] Prompt: fill/select always set name + type + required
-- [ ] Tests: compile without a CLI value map; clash fails; LLM schema; integration fake fill carries a hint
+- [ ] Remove `CompileRequest.inputValues`, `inputNameForLiteral`, and discover CLI leftover `--loanAccountId` / `--input` compile wiring
+- [ ] Prompt: fill/select always set camelCase name + type + required; same goal value → same name; no product field-name examples
+- [ ] Tests: compile without a CLI value map; clash fails; integration fake fill carries a hint
 
-### Pass 5.17 — Compiler: copy `possibleOutcomes`
+### Pass 5.19 — Compiler: copy `possibleOutcomes`
 
 Depends on Pass 1.10. Prompt already describes the field; structured output and compile still omit it.
 
@@ -624,7 +638,7 @@ Do not hand-author `capabilities/` merely to look complete. Commit artifacts pro
 
 ### Pass 8.3 — Business outcome evidence
 
-Depends on Pass 4.14 / 5.17. Replay classifies from compiled `possibleOutcomes`, not an engine enum.
+Depends on Pass 4.14 / 5.19. Replay classifies from compiled `possibleOutcomes`, not an engine enum.
 
 - [ ] Unknown loan → `business_outcome` (heading/summary from the matching entry, not a hardcoded `LOAN_NOT_FOUND` in `ReplayEngine`)
 - [ ] Commit exceptional replay log

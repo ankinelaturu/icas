@@ -37,6 +37,9 @@ pnpm icas-agent -- \
   --url http://localhost:4101 \
   --goal "Generate a payoff statement for loan 987654 for 2026-09-30"
 
+# Discover takes --id, --url, --goal only (plus optional identity/version).
+# The model names invocation params; icas-play still passes them by name.
+
 # Browse known capabilities
 pnpm icas-play -- list
 pnpm icas-play -- describe loan-payoff

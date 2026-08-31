@@ -54,7 +54,9 @@ Required:
 
 - `--id` — unique catalog id for the capability being created (e.g. `loan-payoff`)
 - `--url` — entry point of the live surface
-- `--goal` — natural-language goal
+- `--goal` — natural-language goal (include any values the operator would type)
+
+Discover does not take typed invocation flags. The proposer names fill/select parameters from the goal and the page; the compiler aggregates those names onto the artifact. Replay still requires typed params from that contract.
 
 Optional (default `icas-bank` for each):
 

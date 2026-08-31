@@ -101,7 +101,7 @@ Rules:
 
 ## Inputs
 
-Inputs are typed invocation parameters:
+Inputs are typed invocation parameters on the **compiled** artifact. Replay and MCP pass values by those names. Discovery does not receive a CLI name→literal map. The proposer emits `proposedInputParam` on every fill/select; the compiler aggregates unique names into this object and rewrites step values to `{ "input": "<name>" }`.
 
 ```json
 {
@@ -118,7 +118,7 @@ Recorded concrete discovery values must be replaced with parameter references:
 }
 ```
 
-not hard-coded values such as `987654`.
+not hard-coded literals. The names above are an example of a compiled contract for this take-home flow. They are not a closed list in the discovery prompt.
 
 ## Outputs
 
