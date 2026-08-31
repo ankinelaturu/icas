@@ -94,6 +94,16 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 - [x] Error when the referenced step id does not exist
 - [x] Tests: insert, disable, unknown step id
 
+### Pass 1.10 — Step `possibleOutcomes` schema
+
+Do not reopen Pass 1.2. Exceptional-state catalog on the artifact; see `docs/04-capability-artifact.md`.
+
+- [ ] `PossibleOutcome` / `OutcomeMatch` on capability steps (`kind`: `success` | `error` | `hitl`; `match.phrases`; `heading` / `summary` nullable)
+- [ ] Optional array; empty is valid; 1–3 phrases per outcome
+- [ ] `heading` is tool/HITL copy only, never a locator
+- [ ] `StepOverride` may replace `possibleOutcomes`
+- [ ] Tests: valid fixture with outcomes; unknown kind / empty phrases fail; resolver replace
+
 ---
 
 ## Phase 2 — Surface and browser
@@ -323,6 +333,28 @@ Replay previously wrote JSONL only on recovery, `--assist`, and hard failure. A 
 - [x] Rich signal (screenshot/DOM) on failure, HITL, and business-outcome stops — not on success
 - [x] Tests: success log without screenshots; business_outcome log; HITL human events; failure still captures screenshot
 
+### Pass 4.14 — Classify from `possibleOutcomes`
+
+Do not reopen Pass 4.6. Pass 4.6’s hardcoded product table (`LOAN_NOT_FOUND`, …) is replaced here. Depends on Pass 1.10. See `docs/05-replay-engine.md`.
+
+- [ ] After execute (not last step): resolve the **next** step’s action locator first; if found, continue (do not scan outcomes)
+- [ ] If that locator is missing, walk the **just-executed** step’s `possibleOutcomes` in order; skip `kind: "success"`; an outcome hits when any `match.phrases` entry is visible (OR); first hit wins
+- [ ] `error` → `business_outcome` with that entry’s `heading`, `summary`, and `match` in details — not an engine loan-message enum
+- [ ] `hitl` → intervention message + same-session handoff
+- [ ] None hit → `failure`
+- [ ] Last step: overall `success` assertions miss, then scan that last step’s list the same way
+- [ ] This step’s own target miss is locator/script failure, not this step’s `possibleOutcomes`
+- [ ] Remove `ReplayEngine` product copy table (`packages/replay/src/business-outcomes.ts` or equivalent)
+- [ ] Tests: next locator missing + phrase visible → `business_outcome`; `hitl` kind pauses; no match → `failure`; engine has no loan-copy strings
+
+### Pass 4.15 — Phrase embeddings (deferred)
+
+Same artifact field. Do not store vectors on the capability. Strict replay still has no LLM.
+
+- [ ] Matcher may embed page text vs stored `match.phrases` (local, bounded latency)
+- [ ] Threshold / false-positive policy lives here, not in discover
+- [ ] Tests against the same fixtures as Pass 4.14
+
 ---
 
 ## Phase 5 — Discovery and compiler
@@ -422,6 +454,29 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 - [x] `tests/integration/discovery-to-capability.test.ts`
 - [x] Fake or recorded model + HTML fixtures → validated capability file
 
+### Pass 5.16 — Compiler: aggregate `proposedInputParam`
+
+Do not reopen Pass 5.12. Discover parameterization no longer reverse-looks up CLI literals (`987654` → `--loanAccountId`). See `docs/03-discovery-agent.md` compile step 4.
+
+- [ ] Every fill/select LLM action includes `proposedInputParam` `{ name, type, required }` (nullable on the flat OpenAI schema; required after map for fill/select)
+- [ ] Click / navigate / read / handoff send `null`; same goal value → same camelCase `name` on every page
+- [ ] Hint lives on the candidate / `chosen_action` / success-path step, never on catalog `CapabilityAction`
+- [ ] Compiler aggregates unique names into artifact `inputs` and rewrites fills/selects to `{ input: name }`
+- [ ] Fail closed: fill/select without hint; name / type / `required` clash; same literal bound to two names
+- [ ] Remove `CompileRequest.inputValues`, `inputNameForLiteral`, and discover CLI leftover `--loanAccountId` / `--input` compile wiring (`--id` `--url` `--goal` only)
+- [ ] Prompt: fill/select always set name + type + required
+- [ ] Tests: compile without a CLI value map; clash fails; LLM schema; integration fake fill carries a hint
+
+### Pass 5.17 — Compiler: copy `possibleOutcomes`
+
+Depends on Pass 1.10. Prompt already describes the field; structured output and compile still omit it.
+
+- [ ] Flat LLM candidate schema includes `possibleOutcomes`; mapper copies onto `CandidateAction`
+- [ ] `chosen_action` + `extractSuccessfulPath` keep the list
+- [ ] Compile copies `error` and `hitl` only (same order) onto the step; drop `kind: "success"`
+- [ ] Empty list is valid; do not invent outcomes from failed DFS branches
+- [ ] Tests: compile copies error/hitl; success entries stripped; missing field → empty array
+
 ---
 
 ## Phase 6 — Apps / CLIs
@@ -496,6 +551,13 @@ Thin entry points. Packages own behavior.
 - [x] Tool call delegates to `ReplayEngine` with resolved effective capability for an enrolled tenant (default `icas-bank`)
 - [x] No duplicated browser or replay logic
 
+### Pass 6.13 — MCP `business_outcome` copy
+
+Depends on Pass 4.14. Do not duplicate replay matching in the adapter.
+
+- [ ] On `business_outcome`, surface `heading` and `summary` from the matching `possibleOutcomes` entry (plus the phrase that hit)
+- [ ] Evidence still holds the screenshot
+
 ---
 
 ## Phase 7 — Synthetic tenant apps
@@ -562,7 +624,9 @@ Do not hand-author `capabilities/` merely to look complete. Commit artifacts pro
 
 ### Pass 8.3 — Business outcome evidence
 
-- [ ] Unknown loan → `LOAN_NOT_FOUND`
+Depends on Pass 4.14 / 5.17. Replay classifies from compiled `possibleOutcomes`, not an engine enum.
+
+- [ ] Unknown loan → `business_outcome` (heading/summary from the matching entry, not a hardcoded `LOAN_NOT_FOUND` in `ReplayEngine`)
 - [ ] Commit exceptional replay log
 
 ### Pass 8.4 — Recoverable interstitial evidence
