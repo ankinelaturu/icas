@@ -2,7 +2,7 @@
 
 ## Goal
 
-Neither an LLM nor a recorded capability should have unrestricted authority over a banking application.
+Neither an LLM nor a recorded capability should have unrestricted authority over a **staff** back-office application at a bank or credit union (not consumer banking).
 
 Safety is split into three independent concerns:
 

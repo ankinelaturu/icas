@@ -30,7 +30,7 @@ On success the compiler:
 
 ## Observation model
 
-The initial implementation is expected to favor rendered visual observation because legacy banking surfaces may have poor/non-semantic DOMs. Playwright can capture a full-page rendered image. DOM/accessibility information may be added as supplementary context, but discovery must not assume clean selectors or test IDs.
+The initial implementation is expected to favor rendered visual observation because bank and credit union **staff** back-office surfaces are often legacy (poor or non-semantic DOM). Playwright can capture a full-page rendered image. DOM/accessibility information may be added as supplementary context, but discovery must not assume clean selectors or test IDs.
 
 The observation is surface-neutral:
 
@@ -69,12 +69,20 @@ type CandidateProposal = {
   rationale?: string;
 };
 
+interface PossibleOutcome {
+  kind: "success" | "error" | "hitl";
+  match: string; // phrase replay may look for on the page; not a paragraph
+  heading: string | null; // tool / HITL title; never used as a locator
+  summary: string | null; // tool / HITL body; never used as a locator
+}
+
 interface CandidateAction {
   id?: string; // assigned by ICAS when omitted
   action: Action; // click | fill | select | navigate | read | handoff
   rationale: string;
   rank: number; // 1 is tried before 2
-  expectation?: string; // exact visible snapshot text, or omit; not a narrative
+  expectation?: string; // optional current-snapshot chrome; not an error catalog
+  possibleOutcomes: PossibleOutcome[]; // ordered; first matching `match` wins at replay
   risk?: "safe" | "risky";
 }
 ```
@@ -83,7 +91,23 @@ interface CandidateAction {
 - `success` — the current observation already satisfies the goal; `candidates` may be empty.
 - `stuck` — do not improvise; the search controller requests HITL.
 
-`expectation` is copied into replay `textVisible` checkpoints. The proposer must copy exact chrome from the accessibility snapshot (or omit). It must not narrate success or embed invocation values (account id, date, name).
+### `possibleOutcomes`
+
+These are **unverified guesses** from the goal, search history, and this snapshot. Discovery does **not** run extra error-path goals and merge them into one capability. One successful discover still compiles **one** linear happy path. Failed DFS branches stay evidence-only.
+
+The model may include a happy-path entry (`kind: "success"`). Compile **drops** those. Replay **ignores** `success` on the locator-miss path. Locators on the **next** step are how replay knows the happy path continued.
+
+`kind` is only about **who can finish the run**, not a catalog of product messages:
+
+- `success` — this outcome means the goal completed (not used when the next locator misses).
+- `error` — the application has already answered; the caller can stop. No person needs this session.
+- `hitl` — automation cannot continue; a person must operate the **same** session.
+
+`match` is the only field replay searches for (visible text). `heading` and `summary` are for `icas-play` / MCP / HITL copy. Array **order** is priority: specific phrases before generic ones. Empty `possibleOutcomes` is valid.
+
+Do not put sample error sentences, loan-specific codes, or a closed enum of domain results in the proposer **instructions**. Instructions set environment (bank and credit union **staff** back-office, often legacy, no API) and the JSON contract. The **user** message supplies `--goal` and the current observation.
+
+Optional `expectation` is not this catalog. It must not narrate success or embed invocation values. See [`04-capability-artifact.md`](04-capability-artifact.md) and [`05-replay-engine.md`](05-replay-engine.md) for how compile and replay use `possibleOutcomes`.
 
 A string transcript, an unknown `action.type`, or `continue` with zero candidates is a validation error. Numeric confidence may be recorded but is not a calibrated probability. Ranking is the useful property.
 
@@ -175,10 +199,11 @@ A capability must be decoupled from the raw model transcript. `CapabilityCompile
 4. replace concrete discovery values with typed input references (`inputValues` maps e.g. `987654` → `{ input: "loanAccountId" }`);
 5. derive semantic target descriptors from successful actions;
 6. derive preconditions and postconditions from meaningful observed state;
-7. derive output extraction rules;
-8. derive final success conditions;
-9. attach schema/capability version metadata;
-10. write the base artifact through `CapabilityRegistry.save` (refuse if `id@version` already exists unless `capabilityVersion` is bumped) and a header-only tenant override through `saveOverride` (`createdBy: "discovery"`). Tests use a temp registry root, never repo `capabilities/`.
+7. copy this step’s `possibleOutcomes` (`error` and `hitl` only, same order) onto the compiled step;
+8. derive output extraction rules;
+9. derive final success conditions;
+10. attach schema/capability version metadata;
+11. write the base artifact through `CapabilityRegistry.save` (refuse if `id@version` already exists unless `capabilityVersion` is bumped) and a header-only tenant override through `saveOverride` (`createdBy: "discovery"`). Tests use a temp registry root, never repo `capabilities/`.
 
 Human actions require classification. A normal reusable approval boundary (`approval_required`) becomes an explicit `handoff` step on the success path. An exceptional manual recovery (`policy_block`, `discovery_stuck`) remains evidence rather than being compiled into the happy-path capability.
 
@@ -187,7 +212,9 @@ Human actions require classification. A normal reusable approval boundary (`appr
 Mastra is the LLM/tool layer, not the owner of ICAS search or artifacts.
 
 - Construct `new Agent({ id, name, instructions, model })` with `model` as `'provider/model'` (e.g. `openai/gpt-4o`).
-- Call `agent.generate(prompt, { structuredOutput: { schema: CandidateProposalSchema } })` **once per DFS node**.
+- `instructions` are the **system** contract: staff back-office at banks and credit unions (not consumer banking), often legacy surfaces, JSON shape including `possibleOutcomes`, locator rules, policy text. They must stay goal-agnostic.
+- Call `agent.generate(prompt, { structuredOutput: { schema: … } })` **once per DFS node**. That `prompt` is the **user** turn: goal, this observation, search history.
+- `icas-agent discover` logs instructions once (`LLM agent instructions`) and each user turn (`LLM user prompt`).
 - Do not give the agent click/fill tools. ICAS policy-checks and executes.
 - Do not store the search graph in Mastra Memory. `SearchNode` parent/tried sets live in `DiscoveryAgent`.
 

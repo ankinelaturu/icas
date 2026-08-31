@@ -41,6 +41,8 @@ Press ENTER here when finished.
 
 The human operates the exact browser session already controlled by Playwright.
 
+Replay may also pause when a compiled `possibleOutcomes` entry with `kind: "hitl"` matches after the next locator misses. Use that entry’s `heading` and `summary` as the intervention message. `kind: "error"` returns `business_outcome` and does **not** transfer control. See [`05-replay-engine.md`](05-replay-engine.md).
+
 ## Ownership state
 
 Ownership should be explicit:

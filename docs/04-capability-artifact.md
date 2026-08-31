@@ -69,7 +69,8 @@ interface CapabilityOverride {
 - replace a whole step;
 - replace only the target/locator;
 - replace preconditions;
-- replace postconditions.
+- replace postconditions;
+- replace `possibleOutcomes`.
 
 ### Tenant enrollment
 
@@ -96,7 +97,7 @@ Rules:
 - base capability + tenant override must be resolved first;
 - the resulting effective capability must be schema-validated;
 - `ReplayEngine` only receives the resolved effective capability;
-- `ReplayEngine` should contain no tenant-specific if/else branches.
+- `ReplayEngine` should contain no tenant-specific if/else branches and no hardcoded product error copy (no engine-level “loan not found” table). Exceptional-state phrases live on the artifact as `possibleOutcomes`.
 
 ## Inputs
 
@@ -151,9 +152,29 @@ interface CapabilityStep {
   preconditions: Assertion[];
   action: CapabilityAction;
   postconditions: Assertion[];
+  possibleOutcomes?: PossibleOutcome[];
   timeoutMs?: number;
 }
+
+interface PossibleOutcome {
+  kind: "success" | "error" | "hitl";
+  match: string;
+  heading: string | null;
+  summary: string | null;
+}
 ```
+
+Compiled steps keep `error` and `hitl` entries from the kept candidate, in the same order. `kind: "success"` is not stored.
+
+### `possibleOutcomes` vs checkpoints
+
+A capability is **one** happy-path step list. It does not encode a decision tree of error flows.
+
+`possibleOutcomes` are guessed matchers for when that path **cannot continue**. Replay uses them only after the **next** step’s action locator misses (or after last-step `success` assertions miss). See [`05-replay-engine.md`](05-replay-engine.md).
+
+`match` is the only field that touches the page. `heading` and `summary` are the formatted result for the calling tool and for HITL context. A screenshot still goes to evidence on that stop.
+
+A `textVisible` precondition that repeats the click target is redundant with the action locator. `possibleOutcomes` are not preconditions.
 
 ### Why both preconditions and postconditions?
 
@@ -283,6 +304,7 @@ A human reviewer and an agent/tool adapter should be able to understand:
 - which outputs it returns;
 - what actions it performs;
 - what state it expects before/after each action;
+- what `possibleOutcomes` it may report when the happy path cannot continue;
 - what constitutes overall success.
 
 ## Capability repository

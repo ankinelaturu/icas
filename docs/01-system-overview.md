@@ -133,7 +133,7 @@ Discovery evidence can contain failed branches, model decisions, human intervent
 
 ### 3. Guarded replay
 
-Replay validates current state before acting and validates resulting state afterward. This provides safety, debuggability, and a basis for tenant compatibility detection.
+Replay validates that the next action’s target is present before acting. When it is not, it classifies from that capability’s `possibleOutcomes` rather than a hardcoded product message list. That provides safety, a structured result for the caller, and a basis for tenant compatibility detection.
 
 ### 4. Same Vendor+Product is a reuse hint, not proof
 

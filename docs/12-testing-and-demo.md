@@ -78,8 +78,10 @@ tests/integration/
 
 ### 3. Business outcome
 
-- run with a nonexistent synthetic loan;
-- return `LOAN_NOT_FOUND` as `business_outcome`, not a Playwright exception.
+- run with a nonexistent synthetic loan (or any input that leaves the happy path);
+- next-step locator misses; a previous step `possibleOutcomes` `match` is visible;
+- return `business_outcome` with that entry’s heading/summary, not a Playwright exception.
+- ReplayEngine must not classify from a hardcoded loan-message table.
 
 ### 4. Recoverable condition
 

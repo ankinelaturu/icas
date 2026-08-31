@@ -62,6 +62,7 @@ step N precondition ✓|✗
 policy decision
 step N action ✓|✗          # type "action" (deterministic)
 step N postcondition ✓|✗
+possible_outcome           # next locator missed; a `match` hit (error or hitl)
 recovery                   # known interstitial, if any
 assisted_fallback          # `--assist` only; not a deterministic action
 success_check / outputs

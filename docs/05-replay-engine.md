@@ -8,26 +8,37 @@ Strict replay contains no LLM decisions.
 
 ## Core loop
 
-For every step:
+For every step except the last, replay:
 
 ```text
-validate preconditions
+validate preconditions (if any)
     ↓ fail → stop with structured result
 execute action through PolicyGuard + Surface
-    ↓ fail → classify/recover/stop
-validate postconditions
-    ↓ fail → classify/recover/stop
-continue
+    ↓ fail → this step’s target missing: not a previous-step outcome
+    ↓        recover interstitial / assist / stop
+resolve the *next* step’s action locator
+    ↓ found → continue to that step (do not scan possibleOutcomes)
+    ↓ missing → walk the *just-executed* step’s possibleOutcomes in order
+                 skip kind "success"
+                 first visible `match` wins:
+                   error → business_outcome (heading, summary, match in details)
+                   hitl  → same message + handoff on this session
+                 none match → failure (or HITL only if this run already treats unknown as stuck)
 ```
 
-After all steps:
+This step’s target missing (cannot click Inquire) is a locator/script miss. It is **not** classified from this step’s `possibleOutcomes`. Those hints explain why the **following** control (e.g. Payoff) is absent after this action ran.
+
+After the last step:
 
 ```text
-verify overall success
+verify overall success assertions
+    ↓ fail → scan that last step’s possibleOutcomes the same way
 extract declared outputs
 validate output types
 return structured success
 ```
+
+Per-step postconditions remain in the schema. They are not the exceptional-state catalog. `possibleOutcomes` are. Empty `preconditions` / `postconditions` are valid.
 
 ## Structured result contract
 
@@ -61,14 +72,11 @@ type ExecutionResult =
 
 ### Business outcomes
 
-Expected domain results that the caller must know about. They are not crashes.
+Expected application results that the caller must know about. They are not crashes.
 
-Examples:
+Replay does **not** own a product-specific message table. It walks `possibleOutcomes` on the effective capability (`match` in array order). The first visible hit with `kind: "error"` returns `business_outcome`. `details` carries that entry’s `heading`, `summary`, and `match` so MCP/`icas-play` can format a response. Evidence still includes a screenshot.
 
-- `LOAN_NOT_FOUND`
-- `PAYOFF_NOT_AVAILABLE`
-- `INVALID_PAYOFF_DATE`
-- `LOAN_ALREADY_PAID`
+`outcome` on `ExecutionResult` may be a stable slug derived from the hit (or the `match` text). It is **not** a hardcoded loan-payoff enum inside `ReplayEngine`.
 
 Behavior: stop normally and return `business_outcome`.
 
@@ -168,7 +176,7 @@ effective capability
 ReplayEngine
 ```
 
-This avoids tenant-specific branching inside replay. Normal precondition/action/postcondition, policy, HITL, error, and evidence handling remain unchanged.
+This avoids tenant-specific branching inside replay. Exceptional copy lives on the artifact (`possibleOutcomes`). Normal policy, HITL, error, and evidence handling remain unchanged.
 
 Registry CRUD, on-disk layout, tenant enrollment, and `FileSystemCapabilityRegistry({ root })` are specified in [`04-capability-artifact.md`](04-capability-artifact.md). Replay depends on the `CapabilityRegistry` interface and the resolved effective artifact only. `icas-play` / `icas-mcp` resolve with a tenant (CLI default `icas-bank`) and require that tenant to already be enrolled.
 
@@ -192,10 +200,15 @@ When `icas-adapt` sees a mismatch, it may generate an override. The override is 
 
 Replay can emit an intervention request when:
 
+- a `possibleOutcomes` hit has `kind: "hitl"` (message plus the same session);
 - a risky encoded action requires approval;
-- an unexpected state cannot be recovered;
+- an unexpected state cannot be recovered (no `match` hit);
 - policy requires human control;
 - assisted fallback is disabled/exhausted.
+
+If `kind: "hitl"` fires but no `HandoffController` is available, fail closed with the heading/summary in the result. Do not hang.
+
+`kind: "error"` must not pause for a human. The application already answered.
 
 The same browser session remains alive during handoff.
 
