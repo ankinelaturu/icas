@@ -43,31 +43,31 @@ pnpm icas-bank
 
 # Required: --id (unique), --url, --goal. Put values to type in the goal.
 # Discover refuses an existing --id. The model names params; do not pass --loanAccountId here.
-pnpm icas-agent -- \
+pnpm icas-agent \
   discover \
   --id loan-payoff \
   --url http://localhost:4101 \
   --goal "Generate a payoff statement for loan 987654 for 2026-09-30"
 
-pnpm icas-play -- list
-pnpm icas-play -- describe loan-payoff
+pnpm icas-play list
+pnpm icas-play describe loan-payoff
 
 # Deterministic replay (no LLM). Tenant must be enrolled. Different loan than discovery:
-pnpm icas-play -- \
+pnpm icas-play \
   run loan-payoff \
   --url http://localhost:4101 \
   --loanAccountId 112233 \
   --payoffDate 2026-09-30
 
 # Unknown loan → business_outcome from compiled possibleOutcomes (not an engine enum)
-pnpm icas-play -- \
+pnpm icas-play \
   run loan-payoff \
   --url http://localhost:4101 \
   --loanAccountId 000000 \
   --payoffDate 2026-09-30
 
 # Optional one-step assisted fallback (ICAS_ASSIST_LLM_*)
-pnpm icas-play -- \
+pnpm icas-play \
   run loan-payoff \
   --assist \
   --url http://localhost:4101 \
@@ -76,7 +76,7 @@ pnpm icas-play -- \
 
 # Loki Bank: same vendor/product, label drift. Keep icas-bank running on 4101.
 pnpm loki-bank
-pnpm icas-adapt -- \
+pnpm icas-adapt \
   loan-payoff \
   --tenant loki-bank \
   --url http://localhost:4102 \
