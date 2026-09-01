@@ -713,7 +713,7 @@ Depends on Pass 4.14 / 5.19. Replay classifies from compiled `possibleOutcomes`,
 
 ### Pass 8.8 — README demo path
 
-- [ ] Root README commands match reality; no undocumented setup
+- [x] Root README commands match reality; no undocumented setup
 
 ### Pass 8.9 — Optional screen recording
 
