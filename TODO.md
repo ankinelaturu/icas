@@ -34,7 +34,6 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 - [x] Add `CapabilityOverride`, `StepOverride`, override operations (`steps`, `insertBefore`, `insertAfter`, `disabledSteps`), and provenance types (`createdBy`: `discovery` | `verified` | `icas-adapt` | `human`)
 - [x] Export from `@icas/capability`
-- [x] No runtime yet; types only
 
 ### Pass 1.2 — Base capability schema validation
 
@@ -96,7 +95,7 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 ### Pass 1.10 — Step `possibleOutcomes` schema
 
-Do not reopen Pass 1.2. Exceptional-state catalog on the artifact; see `docs/04-capability-artifact.md`.
+Exceptional-state catalog on the artifact; see `docs/04-capability-artifact.md`.
 
 - [ ] `PossibleOutcome` / `OutcomeMatch` on capability steps (`kind`: `success` | `error` | `hitl`; `match.phrases`; `heading` / `summary` nullable)
 - [ ] Optional array; empty is valid; 1–3 phrases per outcome
@@ -106,7 +105,7 @@ Do not reopen Pass 1.2. Exceptional-state catalog on the artifact; see `docs/04-
 
 ### Pass 1.11 — One base per id
 
-Do not uncheck Pass 1.2–1.7. Catalog identity is `id` only.
+Catalog identity is `id` only.
 
 - [x] One `capability.json` per catalog id
 - [x] Override `baseCapability` is the catalog id
@@ -124,7 +123,6 @@ Do not uncheck Pass 1.2–1.7. Catalog identity is `id` only.
 
 - [x] Static pages under `tests/fixtures/` for home / lending / loan-search / labeled fields
 - [x] Enough markup to exercise role+text, label, and visible-text strategies
-- [x] No full tenant app yet
 
 ### Pass 2.2 — Browser lifecycle
 
@@ -173,7 +171,6 @@ Do not uncheck Pass 1.2–1.7. Catalog identity is `id` only.
 - [x] `handoffToHuman`: stop issuing automation actions; keep the same session alive
 - [x] Resume returns control to automation
 - [x] Test: execute is rejected while human owns the session; allowed after resume
-- [x] Full CLI takeover UX waits for Phase 3 / 4
 
 ### Pass 2.10 — Document HTTP status on observation
 
@@ -279,7 +276,7 @@ Callers resolve with `CapabilityResolver` first. `ReplayEngine` never branches o
 ### Pass 4.3 — Policy gate before execute
 
 - [x] Every action goes through `PolicyGuard`
-- [x] `POLICY_BLOCKED` on deny; HITL path not wired yet (return structured failure)
+- [x] `POLICY_BLOCKED` on deny
 - [x] Tests: allowed action executes; denied action never hits `Surface.execute`
 
 ### Pass 4.4 — Execute + postconditions
@@ -343,8 +340,6 @@ Callers resolve with `CapabilityResolver` first. `ReplayEngine` never branches o
 
 ### Pass 4.13 — Full-run replay evidence
 
-Replay previously wrote JSONL only on recovery, `--assist`, and hard failure. A successful `icas-play run` left `summary.json` alone.
-
 - [x] Append checkpoint JSONL for every step on all terminal statuses (`success`, `business_outcome`, `failure`)
 - [x] Engine writes `summary.json` for every run (play / adapt / MCP no longer duplicate it)
 - [x] HITL records start, before/after observation, resume, and end (`actor: human`)
@@ -353,7 +348,7 @@ Replay previously wrote JSONL only on recovery, `--assist`, and hard failure. A 
 
 ### Pass 4.14 — Classify from `possibleOutcomes`
 
-Do not reopen Pass 4.6. Pass 4.6’s hardcoded product table (`LOAN_NOT_FOUND`, …) is replaced here. Depends on Pass 1.10. See `docs/05-replay-engine.md`.
+Depends on Pass 1.10. Replaces Pass 4.6’s hardcoded product table (`LOAN_NOT_FOUND`, …). See `docs/05-replay-engine.md`.
 
 - [ ] After execute (not last step): resolve the **next** step’s action locator first; if found, continue (do not scan outcomes)
 - [ ] If that locator is missing, walk the **just-executed** step’s `possibleOutcomes` in order; skip `kind: "success"`; an outcome hits when any `match.phrases` entry is visible (OR); first hit wins
@@ -401,7 +396,7 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 
 - [x] `SearchNode` (state id, observation, candidates, tried ids, parent)
 - [x] Limits: max steps, max depth, max candidates per state, timeout
-- [x] Tests: budget fields exist and are applied as numbers (enforcement in later passes)
+- [x] Tests: budget fields parse as numbers
 
 ### Pass 5.3 — Discovery loop skeleton (no live model)
 
@@ -462,7 +457,6 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 ### Pass 5.12 — Compiler: parameterize inputs
 
 - [x] Replace concrete discovery values with `ValueRef` input references
-- [x] Test: loan id `987654` in the trace becomes `{ "input": "loanAccountId" }`
 
 ### Pass 5.13 — Compiler: targets, checkpoints, outputs
 
@@ -484,7 +478,7 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 
 ### Pass 5.16 — Docs: `proposedInputParam` compile
 
-Do not reopen Pass 5.12. Design: proposer names params; compiler aggregates; no CLI literal reverse-lookup.
+Proposer names params; compiler aggregates; no CLI literal reverse-lookup.
 
 - [x] `docs/03` compile step 4 and candidate `proposedInputParam`; instructions stay goal-agnostic (no product field-name list)
 - [x] `docs/01` / `docs/04` / agent README: discover is `--id` `--url` `--goal`; replay still takes typed params
@@ -501,7 +495,7 @@ Depends on Pass 5.16.
 
 ### Pass 5.18 — Compiler: aggregate `proposedInputParam`
 
-Depends on Pass 5.17. Do not reopen Pass 5.12.
+Depends on Pass 5.17.
 
 - [x] Compiler aggregates unique names into artifact `inputs` and rewrites fills/selects to `{ input: name }`
 - [x] Fail closed: fill/select without hint; name / type / `required` clash; same literal bound to two names
@@ -521,7 +515,7 @@ Depends on Pass 1.10. Prompt already describes the field; structured output and 
 
 ### Pass 5.20 — Docs: separate discovery / assist LLM env
 
-Do not reopen Pass 5.5. Operator surface is already in `.env.example` (`ICAS_DISCOVERY_LLM_*` / `ICAS_ASSIST_LLM_*`). This pass is docs only.
+Operator surface is already in `.env.example` (`ICAS_DISCOVERY_LLM_*` / `ICAS_ASSIST_LLM_*`). This pass is docs only.
 
 - [x] `docs/03`: discover reads `ICAS_DISCOVERY_LLM_*`; provider is the `MODEL` prefix; empty `BASE_URL` means the provider's public host
 - [x] `docs/05` (assist): `--assist` reads `ICAS_ASSIST_LLM_*`; strict replay stays model-free
@@ -531,7 +525,7 @@ Do not reopen Pass 5.5. Operator surface is already in `.env.example` (`ICAS_DIS
 
 ### Pass 5.21 — Code: wire `ICAS_DISCOVERY_LLM_*` / `ICAS_ASSIST_LLM_*`
 
-Depends on Pass 5.20. Do not reopen Pass 5.5.
+Depends on Pass 5.20.
 
 - [x] One settings object per flow: `MODEL`, `API_KEY`, `BASE_URL`, `TEMPERATURE`, `TOP_K`, `TOP_P`, `MAX_OUTPUT_TOKENS`
 - [x] Discover uses discovery settings; `--assist` uses assist settings. Do not share one inferred model
@@ -541,7 +535,7 @@ Depends on Pass 5.20. Do not reopen Pass 5.5.
 
 ### Pass 5.22 — Attach observation image to generate
 
-Do not reopen Pass 5.5. Today `generate` is one string; `imagePath` is a filesystem path in that text, not pixels. Evidence still stores the PNG either way.
+Today `generate` is one string; `imagePath` is a filesystem path in that text, not pixels. Evidence still stores the PNG either way.
 
 - [ ] Discover `generate` sends the screenshot as image content when `observation.imagePath` is set
 - [ ] Keep a vision-capable default (`openai/gpt-4o`); a text-only local model must still work if the operator sets one
@@ -604,12 +598,11 @@ Thin entry points. Packages own behavior.
 
 - [x] If divergence is large, downstream preconditions cannot be restored, or the business flow differs, stop
 - [x] Do not accumulate a large brittle patch
-- [x] `tests/integration/tenant-adaptation.test.ts` (fixtures; full Loki Bank in Phase 7)
+- [x] `tests/integration/tenant-adaptation.test.ts`
 
 ### Pass 6.10 — Pin MCP SDK
 
 - [x] Replace `@modelcontextprotocol/sdk: latest` with a concrete stable version
-- [x] No server behavior yet
 
 ### Pass 6.11 — MCP server + tool catalog
 
