@@ -9,7 +9,7 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 - Implementation order: capability → surface/browser → replay → discovery/compiler, then apps.
 - Add fixtures and tests in the same pass that introduces the behavior.
 - Full tenant apps: icas-bank and loki-bank are in (Phase 7).
-- Model/provider (including vision) is deferred until discovery needs it (Phase 5).
+- LLM env is Phase 5 (`ICAS_*_LLM_*`). Screenshot pixels on `generate` are Pass 5.22.
 - Assisted fallback, `icas-adapt`, HITL browser takeover, and MCP are in scope.
 - Tenant specialization is a declarative `CapabilityOverride` resolved by `CapabilityResolver`. `ReplayEngine` stays tenant-agnostic.
 - Every discovered or verified tenant gets an override file (empty patch allowed). `icas-play` / MCP require enrollment.
@@ -38,9 +38,9 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 ### Pass 1.2 — Base capability schema validation
 
-- [x] Validate required fields, versions, inputs/outputs, step shape, action vocabulary, assertion families
+- [x] Validate required fields, `schemaVersion`, inputs/outputs, step shape, action vocabulary, assertion families
 - [x] Clear errors for invalid artifacts
-- [x] Distinguish `schemaVersion` vs `capabilityVersion`
+- [x] `schemaVersion` is the JSON format (`"1.0"`)
 - [x] Tests: valid `tests/fixtures/loan-payoff.capability.json` passes; truncated/unknown-action fixtures fail
 - [x] Add package Vitest config in this pass (first tests in the package)
 
@@ -52,33 +52,33 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 ### Pass 1.4 — Override schema validation
 
-- [x] Validate override shape, required `baseCapability` version pin, tenant target, provenance
+- [x] Validate override shape, `baseCapability` catalog id, tenant target, provenance
 - [x] Reject executable / `customJavaScript`-style patches
-- [x] Tests: valid override fixture; JS-patch rejection; missing base version pin
+- [x] Tests: valid override fixture; JS-patch rejection; missing base id
 
 ### Pass 1.5 — Filesystem capability registry
 
 - [x] Implement `CapabilityRegistry` plus `FileSystemCapabilityRegistry({ root })` as specified in `docs/04-capability-artifact.md`
-- [x] `list` (latest per id, optional vendor/product filter), `get(id, version?)`, `save` (upsert + validate), `remove`
-- [x] On-disk layout: `capabilities/<id>/<version>.json`
+- [x] `list` (optional vendor/product filter), `get(id)`, `save` (upsert + validate), `remove`
+- [x] On-disk layout: `capabilities/<id>/capability.json`
 - [x] Do not bake tenant identity into the base artifact
 - [x] Tests against a temp directory (not the real `capabilities/` submission dir)
 
 ### Pass 1.6 — Override storage and registry
 
-- [x] On-disk layout: `capabilities/<id>/overrides/<tenant>.json` pinned to `id@version`
+- [x] On-disk layout: `capabilities/<id>/overrides/<tenant>.json` pinned to the catalog id
 - [x] Empty `overrides: {}` is valid (header-only enrollment)
 - [x] `listOverrides` / `getOverride` / `saveOverride` / `removeOverride`
-- [x] `saveOverride` rejects if the pinned base version is not stored
+- [x] `saveOverride` rejects if that catalog id is not stored
 - [x] Tests for round-trip save/load and header-only override
 
-### Pass 1.7 — Resolver: version pin + whole-step replace
+### Pass 1.7 — Resolver: whole-step replace
 
 - [x] `CapabilityResolver`: load base + tenant override
-- [x] Refuse mismatched `baseCapability` version (never apply silently)
+- [x] Refuse when `baseCapability` is not the stored catalog id
 - [x] Apply whole-step replace
 - [x] Schema-validate the effective capability before returning it
-- [x] Tests: happy replace; version mismatch; invalid resolved artifact rejected
+- [x] Tests: happy replace; unknown base id; invalid resolved artifact rejected
 
 ### Pass 1.8 — Resolver: partial step patches
 
@@ -108,10 +108,10 @@ Do not reopen Pass 1.2. Exceptional-state catalog on the artifact; see `docs/04-
 
 Do not uncheck Pass 1.2–1.7. Catalog identity is `id` only.
 
-- [x] One `capability.json` per catalog id; drop `capabilityVersion` from the artifact schema
-- [x] Override `baseCapability` is the catalog id (no `@version` pin)
-- [x] Discover refuses an existing id; no `--capability-version`
-- [x] `icas-play` / `icas-adapt` drop `--version`
+- [x] One `capability.json` per catalog id
+- [x] Override `baseCapability` is the catalog id
+- [x] Discover refuses an existing id
+- [x] `icas-play` / `icas-adapt` select by id (no flow-version flag)
 - [x] Document future second-base / version pin if a base edit must not leak to every tenant
 
 ---
@@ -174,6 +174,14 @@ Do not uncheck Pass 1.2–1.7. Catalog identity is `id` only.
 - [x] Resume returns control to automation
 - [x] Test: execute is rejected while human owns the session; allowed after resume
 - [x] Full CLI takeover UX waits for Phase 3 / 4
+
+### Pass 2.10 — Document HTTP status on observation
+
+Replay Pass 4.16 needs this. Do not classify business outcomes here.
+
+- [ ] When Playwright observed a document response status, put it on `Observation` (optional field; missing is valid)
+- [ ] XHR, frames, and `200` error banners may omit status — that is not a miss of this pass
+- [ ] Tests: a fixture 404 reports `404`; a normal page may omit status or report `200`
 
 ---
 
@@ -367,7 +375,7 @@ Same artifact field. Do not store vectors on the capability. Strict replay still
 
 ### Pass 4.16 — HTTP status and generic chrome fallback
 
-Depends on Pass 4.14. Do not put this catalog on the capability or in discover instructions. See `docs/05-replay-engine.md`.
+Depends on Pass 4.14 and Pass 2.10. Do not put this catalog on the capability or in discover instructions. See `docs/05-replay-engine.md`.
 
 - [ ] When the next locator misses: if the surface reported document HTTP 403 / 404, stop as `failure` before scanning phrases; 5xx uses existing recoverable wait then `failure`
 - [ ] After step `possibleOutcomes` miss, walk a tiny runtime list of distinctive visible chrome (same `PossibleOutcome` shape; not stored on the artifact)
@@ -410,7 +418,7 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 
 ### Pass 5.5 — Model / vision provider
 
-- [x] Choose and document default provider/model (image-capable if observations are screenshots)
+- [x] Choose and document default provider/model (vision-capable default; pixels are Pass 5.22)
 - [x] Env: `ICAS_DISCOVERY_LLM_*` / `ICAS_ASSIST_LLM_*`
 - [x] Inject prompt policy from Pass 3.1
 - [x] Smoke test behind a flag or recorded fixture if CI has no keys
@@ -456,10 +464,10 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 - [x] Replace concrete discovery values with `ValueRef` input references
 - [x] Test: loan id `987654` in the trace becomes `{ "input": "loanAccountId" }`
 
-### Pass 5.13 — Compiler: targets, checkpoints, outputs, versions
+### Pass 5.13 — Compiler: targets, checkpoints, outputs
 
 - [x] Derive semantic targets, pre/post, output extraction, overall success
-- [x] Attach `schemaVersion` / `capabilityVersion` / Vendor+Product identity
+- [x] Attach `schemaVersion` and Vendor+Product identity
 - [x] Write via `CapabilityRegistry`
 - [x] Test: compiled artifact passes Pass 1.2 validation
 
@@ -531,6 +539,15 @@ Depends on Pass 5.20. Do not reopen Pass 5.5.
 - [x] Pass key / base URL / sampling into the existing proposer adapters (not only a `provider/model` string)
 - [x] Tests: resolve discovery vs assist independently; empty BASE_URL; local BASE_URL without a cloud key; fail closed when neither key nor BASE_URL is set
 
+### Pass 5.22 — Attach observation image to generate
+
+Do not reopen Pass 5.5. Today `generate` is one string; `imagePath` is a filesystem path in that text, not pixels. Evidence still stores the PNG either way.
+
+- [ ] Discover `generate` sends the screenshot as image content when `observation.imagePath` is set
+- [ ] Keep a vision-capable default (`openai/gpt-4o`); a text-only local model must still work if the operator sets one
+- [ ] Same pass: `--assist` either attaches the image or documents that repair stays path-only
+- [ ] Tests: request includes image parts when a path exists; ARIA snapshot remains in the user text
+
 ---
 
 ## Phase 6 — Apps / CLIs
@@ -540,7 +557,7 @@ Thin entry points. Packages own behavior.
 ### Pass 6.1 — `icas-play list`
 
 - [x] Load catalog from `CapabilityRegistry`
-- [x] Print id, name, Vendor+Product, version
+- [x] Print id, name, Vendor+Product
 
 ### Pass 6.2 — `icas-play describe`
 
@@ -564,7 +581,7 @@ Thin entry points. Packages own behavior.
 
 - [x] Required: `--id` (unique), `--url`, `--goal`
 - [x] Optional: `--vendor` `--product` `--tenant` (default `icas-bank`)
-- [x] Refuse if `--id` already exists unless version bump is explicit
+- [x] Refuse if `--id` already exists
 - [x] Wire surface, policy, evidence, handoff, compiler
 - [x] On success: `save` base + `saveOverride` header-only for the discovering tenant; write discovery evidence
 

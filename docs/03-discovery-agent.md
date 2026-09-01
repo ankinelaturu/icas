@@ -44,6 +44,8 @@ interface Observation {
 }
 ```
 
+`imagePath` is a file on disk (evidence). The discover user message currently includes that path as text, not image bytes (Pass 5.22). Document HTTP status is not on this object yet (Pass 2.10).
+
 ## Agent loop
 
 The discovery process is not a pre-programmed flow. At each state:
@@ -245,7 +247,7 @@ Discover reads **`ICAS_DISCOVERY_LLM_*`** from the process env (repo-root `.env`
 
 | Variable | Role |
 |---|---|
-| `ICAS_DISCOVERY_LLM_MODEL` | `provider/model` id (default `openai/gpt-4o`, vision-capable for `observation.imagePath`) |
+| `ICAS_DISCOVERY_LLM_MODEL` | `provider/model` id (default `openai/gpt-4o`, vision-capable). Today the user message includes `imagePath` as a local filesystem string, not pixels. Attaching the screenshot to `generate` is Pass 5.22. |
 | `ICAS_DISCOVERY_LLM_API_KEY` | Credential. Hosted providers need a real key. |
 | `ICAS_DISCOVERY_LLM_BASE_URL` | OpenAI-compatible HTTP root including `/v1`. **Empty** means the provider's public host (`api.openai.com`, `api.anthropic.com`). Local servers (Ollama, LM Studio, vLLM) set this instead of a cloud key. |
 | `ICAS_DISCOVERY_LLM_TEMPERATURE` / `TOP_K` / `TOP_P` / `MAX_OUTPUT_TOKENS` | Optional sampling. Empty means the provider default. |

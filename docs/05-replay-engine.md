@@ -188,7 +188,7 @@ If one step fails:
 
 If the repaired state does not rejoin the known path, stop. Assisted fallback is not open-ended rediscovery.
 
-`--assist` reads **`ICAS_ASSIST_LLM_*`** (independent of discovery). Same shape: `MODEL` (`provider/model`), `API_KEY`, optional `BASE_URL` (`/v1` for OpenAI-compatible local servers; empty means the provider's public host), and optional sampling (`TEMPERATURE`, `TOP_K`, `TOP_P`, `MAX_OUTPUT_TOKENS`). Ready when `MODEL` is set and either `API_KEY` or `BASE_URL` is set. Strict replay without `--assist` ignores this env entirely.
+`--assist` reads **`ICAS_ASSIST_LLM_*`** (independent of discovery). Same shape: `MODEL` (`provider/model`), `API_KEY`, optional `BASE_URL` (`/v1` for OpenAI-compatible local servers; empty means the provider's public host), and optional sampling (`TEMPERATURE`, `TOP_K`, `TOP_P`, `MAX_OUTPUT_TOKENS`). Ready when `MODEL` is set and either `API_KEY` or `BASE_URL` is set. Strict replay without `--assist` ignores this env entirely. The repair prompt currently includes `imagePath` as a path string; whether `--assist` also gets image bytes is Pass 5.22.
 
 Env is model transport. The SDK seam is `RepairProposer` (injected in `icas-play`; `@icas/replay` stays model-free). `--assist` reads only `ICAS_ASSIST_LLM_*`.
 

@@ -38,7 +38,7 @@ interface Surface {
 
 ## Visual-first discovery
 
-Discovery may use full rendered page images with a vision-capable model because legacy systems can have poor DOM semantics. The browser driver may supplement the image with accessibility/DOM hints where useful, but the LLM should not depend on clean test IDs.
+Discovery may use full rendered page images with a vision-capable model because legacy systems can have poor DOM semantics. Playwright already writes `observation.imagePath` for evidence; `generate` currently embeds that path as text. Attaching pixels is Pass 5.22. The browser driver may supplement the image with accessibility/DOM hints where useful, but the LLM should not depend on clean test IDs.
 
 ## Deterministic replay targeting
 

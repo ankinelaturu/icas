@@ -235,7 +235,8 @@ export class MastraCandidateProposer implements CandidateProposer {
 }
 
 /**
- * User message for one DFS node. Screenshot path is text here; vision is Pass 5.5.
+ * User message for one DFS node. `imagePath` is a filesystem path in this
+ * string, not image bytes. Attaching pixels is Pass 5.22.
  *
  * Empty prompt policy is omitted so the model does not see a blank header.
  * Empty history renders as `(none)` so the field is still present.

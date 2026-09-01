@@ -156,6 +156,9 @@ export class MastraRepairProposer implements RepairProposer {
 /**
  * User message for one assist attempt.
  *
+ * `observation.imagePath` is a filesystem path in this string, not pixels.
+ * Whether `--assist` attaches the screenshot is Pass 5.22.
+ *
  * @param context - Frozen step, capability, failure, and observation
  */
 export function formatRepairPrompt(context: RepairContext): string {
