@@ -33,6 +33,7 @@ describe("validateCandidateProposal", () => {
     expect(proposal.candidates).toHaveLength(1);
     expect(proposal.candidates[0]?.action.type).toBe("click");
     expect(proposal.candidates[0]?.proposedInputParam).toBeUndefined();
+    expect(proposal.candidates[0]?.possibleOutcomes).toBeUndefined();
   });
 
   it("rejects fill without proposedInputParam", () => {
@@ -92,6 +93,27 @@ describe("validateCandidateProposal", () => {
       required: true,
     });
     expect(proposal.candidates[0]?.action).not.toHaveProperty("proposedInputParam");
+  });
+
+  it("accepts possibleOutcomes on a click candidate", () => {
+    const proposal = validateCandidateProposal({
+      status: "continue",
+      candidates: [
+        {
+          ...clickLending,
+          possibleOutcomes: [
+            {
+              kind: "error",
+              match: { phrases: ["Loan not found"] },
+              heading: "Loan not found",
+              summary: "No loan matches the requested account id.",
+            },
+          ],
+        },
+      ],
+    });
+    expect(proposal.candidates[0]?.possibleOutcomes).toHaveLength(1);
+    expect(proposal.candidates[0]?.possibleOutcomes?.[0]?.kind).toBe("error");
   });
 
   it("accepts success with no further candidates", () => {

@@ -42,6 +42,7 @@ describe("llmProposalToCandidateProposal", () => {
           rank: 1,
           expectation: null,
           risk: null,
+          possibleOutcomes: [],
         },
       ],
     });
@@ -55,6 +56,62 @@ describe("llmProposalToCandidateProposal", () => {
       value: { literal: "42" },
     });
     expect(proposal.candidates[0]?.action).not.toHaveProperty("proposedInputParam");
+  });
+
+  it("copies possibleOutcomes onto the candidate", () => {
+    const proposal = llmProposalToCandidateProposal({
+      status: "continue",
+      rationale: null,
+      candidates: [
+        {
+          id: null,
+          action: {
+            type: "click",
+            intent: null,
+            risk: "safe",
+            path: null,
+            reason: null,
+            value: null,
+            proposedInputParam: null,
+            target: {
+              strategies: [{ ...nullStrategyFields, type: "visibleText", text: "Inquire" }],
+            },
+          },
+          rationale: "Submit the search",
+          rank: 1,
+          expectation: null,
+          risk: null,
+          possibleOutcomes: [
+            {
+              kind: "success",
+              match: { phrases: ["Loan Details"] },
+              heading: null,
+              summary: null,
+            },
+            {
+              kind: "error",
+              match: { phrases: ["Loan not found"] },
+              heading: "Loan not found",
+              summary: "No loan matches the requested account id.",
+            },
+          ],
+        },
+      ],
+    });
+    expect(proposal.candidates[0]?.possibleOutcomes).toEqual([
+      {
+        kind: "success",
+        match: { phrases: ["Loan Details"] },
+        heading: null,
+        summary: null,
+      },
+      {
+        kind: "error",
+        match: { phrases: ["Loan not found"] },
+        heading: "Loan not found",
+        summary: "No loan matches the requested account id.",
+      },
+    ]);
   });
 
   it("rejects fill when proposedInputParam is null", () => {
@@ -81,6 +138,7 @@ describe("llmProposalToCandidateProposal", () => {
             rank: 1,
             expectation: null,
             risk: null,
+            possibleOutcomes: [],
           },
         ],
       }),

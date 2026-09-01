@@ -256,7 +256,7 @@ flowchart TB
   class pixels todo
 ```
 
-Vision-capable default is `openai/gpt-4o`. Today `generate` still embeds `imagePath` as text (Pass 5.22). The step schema accepts `possibleOutcomes` (Pass 1.10). Structured output and compile still omit the field (Pass 5.19). Details: [`03-discovery-agent.md`](03-discovery-agent.md).
+Vision-capable default is `openai/gpt-4o`. Today `generate` still embeds `imagePath` as text (Pass 5.22). Compile copies `error` and `hitl` `possibleOutcomes` onto the step and drops `kind: "success"` (Pass 5.19). Replay classification is Pass 4.14. Details: [`03-discovery-agent.md`](03-discovery-agent.md).
 
 ### 5.2 Catalog and resolve
 

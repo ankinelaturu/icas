@@ -57,6 +57,40 @@ describe("extractSuccessfulPath", () => {
     });
     expect(path[0]?.action).toMatchObject({ value: { literal: "42" } });
   });
+
+  it("keeps possibleOutcomes from chosen_action", () => {
+    const path = extractSuccessfulPath([
+      {
+        type: "chosen_action",
+        payload: {
+          rank: 1,
+          action: {
+            type: "click",
+            target: { strategies: [{ type: "visibleText", text: "Inquire" }] },
+            risk: "safe",
+          },
+          possibleOutcomes: [
+            {
+              kind: "error",
+              match: { phrases: ["Loan not found"] },
+              heading: "Loan not found",
+              summary: "No loan matches the requested account id.",
+            },
+          ],
+        },
+      },
+      { type: "action_result", payload: { status: "ok" } },
+      { type: "success" },
+    ]);
+    expect(path[0]?.possibleOutcomes).toEqual([
+      {
+        kind: "error",
+        match: { phrases: ["Loan not found"] },
+        heading: "Loan not found",
+        summary: "No loan matches the requested account id.",
+      },
+    ]);
+  });
 });
 
 describe("CapabilityCompiler", () => {
@@ -78,6 +112,7 @@ describe("CapabilityCompiler", () => {
     expect(artifact.success).toEqual([
       { type: "textVisible", value: "Lending Services" },
     ]);
+    expect(artifact.steps[0]?.possibleOutcomes).toEqual([]);
   });
 
   it("rewrites fill literals from proposedInputParam without a CLI value map", async () => {
@@ -310,5 +345,62 @@ describe("CapabilityCompiler", () => {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
+  });
+
+  it("copies error and hitl possibleOutcomes and strips success", async () => {
+    const compiler = new CapabilityCompiler();
+    const artifact = await compiler.compile({
+      id: "loan-payoff",
+      target: { vendor: "icas-bank", product: "icas-bank" },
+      events: [
+        {
+          type: "chosen_action",
+          payload: {
+            rank: 1,
+            action: {
+              type: "click",
+              target: { strategies: [{ type: "visibleText", text: "Inquire" }] },
+              risk: "safe",
+            },
+            possibleOutcomes: [
+              {
+                kind: "success",
+                match: { phrases: ["Loan Details"] },
+                heading: null,
+                summary: null,
+              },
+              {
+                kind: "error",
+                match: { phrases: ["Loan not found"] },
+                heading: "Loan not found",
+                summary: "No loan matches the requested account id.",
+              },
+              {
+                kind: "hitl",
+                match: { phrases: ["Call member services"] },
+                heading: "Need assistance",
+                summary: "A person must continue this session.",
+              },
+            ],
+          },
+        },
+        { type: "action_result", payload: { status: "ok" } },
+        { type: "success" },
+      ],
+    });
+    expect(artifact.steps[0]?.possibleOutcomes).toEqual([
+      {
+        kind: "error",
+        match: { phrases: ["Loan not found"] },
+        heading: "Loan not found",
+        summary: "No loan matches the requested account id.",
+      },
+      {
+        kind: "hitl",
+        match: { phrases: ["Call member services"] },
+        heading: "Need assistance",
+        summary: "A person must continue this session.",
+      },
+    ]);
   });
 });

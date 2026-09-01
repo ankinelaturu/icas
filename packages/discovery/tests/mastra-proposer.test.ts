@@ -46,6 +46,7 @@ const validContinue = {
       rank: 1,
       expectation: null,
       risk: null,
+      possibleOutcomes: [],
     },
   ],
 };

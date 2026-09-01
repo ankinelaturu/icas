@@ -12,6 +12,7 @@ import type {
   CapabilityArtifact,
   CapabilityRegistry,
   CapabilityStep,
+  PossibleOutcome,
 } from "@icas/capability";
 
 import {
@@ -210,5 +211,22 @@ function toStep(
     preconditions,
     action,
     postconditions,
+    possibleOutcomes: compiledPossibleOutcomes(step.possibleOutcomes),
   };
+}
+
+/**
+ * Keep error and hitl guesses in proposer order. Drop `success`: the next
+ * step's locator is how replay knows the happy path continued. Missing or
+ * empty stays `[]` so replay can walk the field without inventing from DFS.
+ */
+function compiledPossibleOutcomes(
+  outcomes: readonly PossibleOutcome[] | undefined,
+): PossibleOutcome[] {
+  if (outcomes === undefined) {
+    return [];
+  }
+  return outcomes.filter(
+    (outcome) => outcome.kind === "error" || outcome.kind === "hitl",
+  );
 }

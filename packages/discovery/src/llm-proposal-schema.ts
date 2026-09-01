@@ -10,6 +10,7 @@
 import {
   llmActionToCapabilityAction,
   LlmCapabilityActionSchema,
+  PossibleOutcomeSchema,
 } from "@icas/capability";
 import * as z from "zod";
 
@@ -32,6 +33,8 @@ export const LlmCandidateActionSchema = z.strictObject({
   rank: z.number(),
   expectation: z.string().nullable(),
   risk: z.enum(["safe", "risky"]).nullable(),
+  // Required key for OpenAI strict JSON Schema; empty array is a valid guess.
+  possibleOutcomes: z.array(PossibleOutcomeSchema),
 });
 
 /**
@@ -72,6 +75,7 @@ export function llmProposalToCandidateProposal(value: unknown): CandidateProposa
           ? {}
           : { expectation: candidate.expectation }),
         ...(candidate.risk === null ? {} : { risk: candidate.risk }),
+        possibleOutcomes: candidate.possibleOutcomes,
         // Catalog actions never carry the hint; it stays on the candidate.
         ...(hint === null ? {} : { proposedInputParam: hint }),
       };

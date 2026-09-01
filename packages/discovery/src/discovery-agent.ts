@@ -208,6 +208,9 @@ export class DiscoveryAgent {
           ...(candidate.proposedInputParam === undefined
             ? {}
             : { proposedInputParam: candidate.proposedInputParam }),
+          ...(candidate.possibleOutcomes === undefined
+            ? {}
+            : { possibleOutcomes: candidate.possibleOutcomes }),
         },
       });
 

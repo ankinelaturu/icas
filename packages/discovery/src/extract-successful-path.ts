@@ -8,10 +8,13 @@
 
 import {
   CapabilityActionSchema,
+  PossibleOutcomeSchema,
   ProposedInputParamSchema,
   type CapabilityAction,
+  type PossibleOutcome,
   type ProposedInputParam,
 } from "@icas/capability";
+import { z } from "zod";
 
 import { classifyHumanIntervention } from "./classify-intervention.js";
 import type { DiscoveryTraceEvent } from "./discovery-types.js";
@@ -38,6 +41,8 @@ export interface SuccessfulPathStep {
   insertHandoff?: string;
   /** Fill/select param name; compiler aggregates these. Absent on click/navigate. */
   proposedInputParam?: ProposedInputParam;
+  /** Proposer guesses for when the next locator misses. Compile strips `success`. */
+  possibleOutcomes?: PossibleOutcome[];
 }
 
 /**
@@ -149,6 +154,7 @@ function parseChosenAction(payload: unknown): SuccessfulPathStep | undefined {
     expectation?: unknown;
     rationale?: unknown;
     proposedInputParam?: unknown;
+    possibleOutcomes?: unknown;
   };
   // Skip malformed actions rather than failing compile; they never entered the stack.
   const parsed = CapabilityActionSchema.safeParse(record.action);
@@ -165,6 +171,10 @@ function parseChosenAction(payload: unknown): SuccessfulPathStep | undefined {
   const hint = ProposedInputParamSchema.safeParse(record.proposedInputParam);
   if (hint.success) {
     step.proposedInputParam = hint.data;
+  }
+  const outcomes = z.array(PossibleOutcomeSchema).safeParse(record.possibleOutcomes);
+  if (outcomes.success) {
+    step.possibleOutcomes = outcomes.data;
   }
   return step;
 }

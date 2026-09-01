@@ -8,6 +8,7 @@
 
 import {
   CapabilityActionSchema,
+  PossibleOutcomeSchema,
   ProposedInputParamSchema,
   type CapabilityAction,
 } from "@icas/capability";
@@ -31,6 +32,8 @@ export const CandidateActionSchema = z.strictObject({
   expectation: z.string().min(1).optional(),
   // Optional hint for PolicyGuard (risky → require-human). Not a search ranking.
   risk: z.enum(["safe", "risky"]).optional(),
+  // Guessed exceptional-state matchers. Compile keeps error/hitl only.
+  possibleOutcomes: z.array(PossibleOutcomeSchema).optional(),
   // Fill/select only. Compiler aggregates these into artifact inputs.
   proposedInputParam: ProposedInputParamSchema.optional(),
 })

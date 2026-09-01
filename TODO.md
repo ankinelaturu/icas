@@ -504,13 +504,13 @@ Depends on Pass 5.17.
 
 ### Pass 5.19 — Compiler: copy `possibleOutcomes`
 
-Depends on Pass 1.10. Prompt already describes the field; structured output and compile still omit it.
+Depends on Pass 1.10. Prompt already described the field; this pass wires structured output and compile.
 
-- [ ] Flat LLM candidate schema includes `possibleOutcomes`; mapper copies onto `CandidateAction`
-- [ ] `chosen_action` + `extractSuccessfulPath` keep the list
-- [ ] Compile copies `error` and `hitl` only (same order) onto the step; drop `kind: "success"`
-- [ ] Empty list is valid; do not invent outcomes from failed DFS branches
-- [ ] Tests: compile copies error/hitl; success entries stripped; missing field → empty array
+- [x] Flat LLM candidate schema includes `possibleOutcomes`; mapper copies onto `CandidateAction`
+- [x] `chosen_action` + `extractSuccessfulPath` keep the list
+- [x] Compile copies `error` and `hitl` only (same order) onto the step; drop `kind: "success"`
+- [x] Empty list is valid; do not invent outcomes from failed DFS branches
+- [x] Tests: compile copies error/hitl; success entries stripped; missing field → empty array
 
 ### Pass 5.20 — Docs: separate discovery / assist LLM env
 
