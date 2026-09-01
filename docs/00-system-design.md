@@ -670,7 +670,7 @@ flowchart TB
     r4["5.22 screenshot pixels in generate"]
     r5["MCP heading/summary"]
     r6["Phase 8 real run artifacts"]
-    r7["Phase 9 distill REPORT.md"]
+    r7["REPORT.md"]
   end
 ```
 
@@ -679,8 +679,8 @@ flowchart TB
 | Must | Discover → artifact → enroll → replay + errors → HITL → evidence | [`01`](01-system-overview.md), Phases 1–5 and 6.1–6.5 |
 | Stretch | `--assist`, `icas-adapt`, MCP, browser takeover | Built in-repo; draw dashed. |
 | Out | Co-browsing console, queues, real PII, desktop driver, REST/DB registry, URL inference | Keep the `Surface` and `CapabilityRegistry` seams; do not implement the extras |
-| Remaining | vision pixels, Phase 8 evidence, `REPORT.md` | See [`TODO.md`](../TODO.md). Pass 4.15 is deferred on purpose |
+| Remaining | vision pixels (5.22), phrase embeddings (4.15, deferred), Phase 8 live-run artifacts | See [`TODO.md`](../TODO.md) |
 
 Synthetic tenants `icas-bank` and `loki-bank` are in (Phase 7). The first concrete capability remains: generate a loan payoff statement for `loanAccountId` + `payoffDate`, extracting `totalPayoffAmount`, `principalBalance`, and `perDiemInterest`. Discovery must learn that path from the live UI; it must not hard-code it.
 
-Reviewer-facing seven headings stay in [`REPORT.md`](../REPORT.md) (still a scaffold until Pass 9.1). Demo commands live in the root README; they must match a real run before Phase 8 is closed. Testing philosophy: [`12-testing-and-demo.md`](12-testing-and-demo.md).
+Reviewer-facing seven headings stay in [`REPORT.md`](../REPORT.md). Demo commands live in the root README. Testing philosophy: [`12-testing-and-demo.md`](12-testing-and-demo.md).

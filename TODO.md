@@ -725,9 +725,9 @@ Depends on Pass 4.14 / 5.19. Replay classifies from compiled `possibleOutcomes`,
 
 ### Pass 9.1 — Distill `REPORT.md`
 
-- [ ] Concise final answers under the seven Interface.AI headings
-- [ ] Mention tenant overrides / `CapabilityResolver` under schema and multi-tenant
-- [ ] Keep `docs/` as the detailed source of truth
+- [x] Concise final answers under the seven Interface.AI headings
+- [x] Mention tenant overrides / `CapabilityResolver` under schema and multi-tenant
+- [x] Keep `docs/` as the detailed source of truth
 
 ---
 
