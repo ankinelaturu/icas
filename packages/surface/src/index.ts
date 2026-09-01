@@ -24,6 +24,14 @@ export interface Observation {
   imagePath?: string;
   accessibilitySnapshot?: unknown;
   metadata?: Record<string, unknown>;
+  /**
+   * Main-document HTTP status when the surface observed it.
+   *
+   * Missing is valid: file URLs, XHR-driven screens, frames, and some 200
+   * error banners never expose a document status. Replay must not treat omit
+   * as a classifier miss.
+   */
+  httpStatus?: number;
 }
 
 /**

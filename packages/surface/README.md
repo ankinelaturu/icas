@@ -2,4 +2,4 @@
 
 Surface-independent observation/action abstraction for web now and desktop/accessibility later.
 
-`close()` tears down the session and is safe to call twice. `resumeFromHuman()` returns control after `handoffToHuman()`.
+`close()` tears down the session and is safe to call twice. `resumeFromHuman()` returns control after `handoffToHuman()`. `Observation.httpStatus` is optional document status when the driver observed it.

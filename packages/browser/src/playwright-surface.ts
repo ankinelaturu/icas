@@ -24,7 +24,7 @@ import type {
   Surface,
   SurfaceActionResult,
 } from "@icas/surface";
-import { chromium, type Browser, type BrowserContext, type Locator, type Page } from "playwright";
+import { chromium, type Browser, type BrowserContext, type Locator, type Page, type Response } from "playwright";
 
 import { SurfaceError } from "./surface-error.js";
 
@@ -68,6 +68,11 @@ export class PlaywrightSurface implements Surface {
   private readonly pollingMs: number;
   private readonly screenshotDir: string;
   private owner: ControlOwner = "automation";
+  /**
+   * Last main-frame document HTTP status. Cleared on close. Missing until a
+   * document response is observed (file URLs and XHR screens may never set it).
+   */
+  private lastDocumentHttpStatus: number | undefined;
 
   /**
    * @param options.headed - Headed window when true; tests should pass false
@@ -92,7 +97,10 @@ export class PlaywrightSurface implements Surface {
     this.browser = await chromium.launch({ headless: !this.headed });
     this.context = await this.browser.newContext();
     this.page = await this.context.newPage();
-    await this.page.goto(url);
+    this.lastDocumentHttpStatus = undefined;
+    this.watchDocumentResponses(this.page);
+    const response = await this.page.goto(url);
+    this.recordDocumentResponse(response);
   }
 
   /**
@@ -107,6 +115,7 @@ export class PlaywrightSurface implements Surface {
     this.context = undefined;
     this.browser = undefined;
     this.owner = "automation";
+    this.lastDocumentHttpStatus = undefined;
     if (browser !== undefined) {
       await browser.close();
     }
@@ -140,6 +149,9 @@ export class PlaywrightSurface implements Surface {
       imagePath,
       accessibilitySnapshot,
       metadata: { title: await page.title() },
+      ...(this.lastDocumentHttpStatus === undefined
+        ? {}
+        : { httpStatus: this.lastDocumentHttpStatus }),
     };
   }
 
@@ -334,6 +346,38 @@ export class PlaywrightSurface implements Surface {
       throw new Error("PlaywrightSurface has no open page; call open() first.");
     }
     return this.page;
+  }
+
+  /**
+   * Record main-frame document responses only. XHR and iframe documents are
+   * not this field; replay treats a missing status as normal.
+   */
+  private watchDocumentResponses(page: Page): void {
+    page.on("response", (response) => {
+      this.recordDocumentResponse(response);
+    });
+  }
+
+  /**
+   * Keep the latest main-document status when Playwright exposed one.
+   *
+   * `goto` can return null (some file URLs). The response listener still
+   * captures later in-page navigations.
+   *
+   * @param response - Playwright document response, or null from `goto`
+   */
+  private recordDocumentResponse(response: Response | null): void {
+    if (response === null) {
+      return;
+    }
+    if (response.request().resourceType() !== "document") {
+      return;
+    }
+    const page = this.page;
+    if (page === undefined || response.frame() !== page.mainFrame()) {
+      return;
+    }
+    this.lastDocumentHttpStatus = response.status();
   }
 }
 

@@ -175,9 +175,9 @@ Catalog identity is `id` only.
 
 Replay Pass 4.16 needs this. Do not classify business outcomes here.
 
-- [ ] When Playwright observed a document response status, put it on `Observation` (optional field; missing is valid)
-- [ ] XHR, frames, and `200` error banners may omit status — that is not a miss of this pass
-- [ ] Tests: a fixture 404 reports `404`; a normal page may omit status or report `200`
+- [x] When Playwright observed a document response status, put it on `Observation` (optional field; missing is valid)
+- [x] XHR, frames, and `200` error banners may omit status — that is not a miss of this pass
+- [x] Tests: a fixture 404 reports `404`; a normal page may omit status or report `200`
 
 ---
 

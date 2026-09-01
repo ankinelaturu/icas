@@ -41,10 +41,11 @@ interface Observation {
   imagePath?: string;
   accessibilitySnapshot?: unknown;
   metadata?: Record<string, unknown>;
+  httpStatus?: number; // document response when observed; omit is valid
 }
 ```
 
-`imagePath` is a file on disk (evidence). The discover user message currently includes that path as text, not image bytes (Pass 5.22). Document HTTP status is not on this object yet (Pass 2.10).
+`imagePath` is a file on disk (evidence). The discover user message currently includes that path as text, not image bytes (Pass 5.22). `httpStatus` is the main-document status when Playwright saw one. XHR, frames, and 200 error banners may omit it.
 
 ## Agent loop
 

@@ -34,7 +34,8 @@ interface Surface {
 - wait/assertion primitives;
 - navigation policy hooks;
 - browser handoff instrumentation;
-- screenshot/DOM evidence capture.
+- screenshot/DOM evidence capture;
+- optional document `httpStatus` on `Observation` when Playwright saw a main-frame document response (omit is valid).
 
 ## Visual-first discovery
 

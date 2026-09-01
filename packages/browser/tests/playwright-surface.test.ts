@@ -306,6 +306,48 @@ describe("PlaywrightSurface observe", () => {
     expect(existsSync(observation.imagePath ?? "")).toBe(true);
     expect(observation.accessibilitySnapshot).toBeDefined();
   });
+
+  it("reports document HTTP 404 from a fixture server", async () => {
+    const { createServer } = await import("node:http");
+    const server = createServer((req, res) => {
+      if (req.url === "/missing") {
+        res.writeHead(404, { "content-type": "text/html" });
+        res.end("<html><body>Not Found</body></html>");
+        return;
+      }
+      res.writeHead(200, { "content-type": "text/html" });
+      res.end("<html><body><h1>Home</h1></body></html>");
+    });
+    await new Promise<void>((resolve) => {
+      server.listen(0, "127.0.0.1", () => resolve());
+    });
+    const address = server.address();
+    if (address === null || typeof address === "string") {
+      server.close();
+      throw new Error("expected a TCP address");
+    }
+    screenshotDir = await mkdtemp(join(tmpdir(), "icas-obs-404-"));
+    surface = new PlaywrightSurface({ headed: false, screenshotDir });
+    try {
+      await surface.open(`http://127.0.0.1:${String(address.port)}/missing`);
+      const observation = await surface.observe();
+      expect(observation.httpStatus).toBe(404);
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => (error === undefined ? resolve() : reject(error)));
+      });
+    }
+  });
+
+  it("may omit httpStatus or report 200 on a normal page", async () => {
+    screenshotDir = await mkdtemp(join(tmpdir(), "icas-obs-200-"));
+    surface = new PlaywrightSurface({ headed: false, screenshotDir });
+    await surface.open(pageUrl("home.html"));
+    const observation = await surface.observe();
+    if (observation.httpStatus !== undefined) {
+      expect(observation.httpStatus).toBe(200);
+    }
+  });
 });
 
 describe("PlaywrightSurface navigation hooks", () => {

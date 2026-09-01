@@ -366,7 +366,7 @@ flowchart TB
   class desktop todo
 ```
 
-Target resolution is ranked: `roleText`, `visibleText`, `label`, then `relative` / `css` / `xpath`. Coordinates are last resort. HTTP status on `Observation` is Pass 2.10 (needed by replay 4.16). Details: [`10-surface-abstraction.md`](10-surface-abstraction.md).
+Target resolution is ranked: `roleText`, `visibleText`, `label`, then `relative` / `css` / `xpath`. Coordinates are last resort. Document HTTP status is an optional `Observation.httpStatus` when Playwright observed a main-frame document response. Details: [`10-surface-abstraction.md`](10-surface-abstraction.md).
 
 ### 5.5 Safety
 
