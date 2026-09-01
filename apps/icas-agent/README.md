@@ -12,4 +12,4 @@ On success the compiler writes the base capability and a header-only tenant over
 
 Discover prints live progress to stderr: observation snapshots, agent instructions (once), each LLM user prompt, the LLM proposal JSON, chosen actions, and surface errors. Evidence still lands under `ICAS_EVIDENCE_ROOT` (default `./evidence`).
 
-`OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `ICAS_MODEL` are read from the process env. When those keys are empty, the CLI loads repo-root `.env` (so `pnpm --filter @icas/agent exec` still works). A non-empty shell export is not overwritten.
+Model settings are `ICAS_DISCOVERY_LLM_*` (`MODEL`, `API_KEY`, optional `BASE_URL`, sampling). `MODEL` is `provider/model` (default `openai/gpt-4o`). Leave `BASE_URL` empty for hosted OpenAI or Anthropic; set it to an OpenAI-compatible `/v1` URL for a local server. When those keys are empty, the CLI loads repo-root `.env` (so `pnpm --filter @icas/agent exec` still works). A non-empty shell export is not overwritten. Until wired, `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `ICAS_MODEL` still work as a fallback.

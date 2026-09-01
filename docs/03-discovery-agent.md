@@ -237,6 +237,21 @@ Mastra is the LLM/tool layer, not the owner of ICAS search or artifacts.
 - Do not give the agent click/fill tools. ICAS policy-checks and executes.
 - Do not store the search graph in Mastra Memory. `SearchNode` parent/tried sets live in `DiscoveryAgent`.
 
-Default discovery model is `openai/gpt-4o` (vision-capable for `observation.imagePath`). Override with `ICAS_MODEL`. Provider keys: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`. Live smoke is `ICAS_DISCOVERY_SMOKE=1` and is off in CI.
-
 ICAS still owns: search state, visited-state handling, branch ranking, backtracking, budget, trace, compiler, surface, policy, and evidence.
+
+## Model configuration
+
+Discover reads **`ICAS_DISCOVERY_LLM_*`** from the process env (repo-root `.env` fills empty keys). Do not infer the provider from `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` names.
+
+| Variable | Role |
+|---|---|
+| `ICAS_DISCOVERY_LLM_MODEL` | `provider/model` id (default `openai/gpt-4o`, vision-capable for `observation.imagePath`) |
+| `ICAS_DISCOVERY_LLM_API_KEY` | Credential. Hosted providers need a real key. |
+| `ICAS_DISCOVERY_LLM_BASE_URL` | OpenAI-compatible HTTP root including `/v1`. **Empty** means the provider's public host (`api.openai.com`, `api.anthropic.com`). Local servers (Ollama, LM Studio, vLLM) set this instead of a cloud key. |
+| `ICAS_DISCOVERY_LLM_TEMPERATURE` / `TOP_K` / `TOP_P` / `MAX_OUTPUT_TOKENS` | Optional sampling. Empty means the provider default. |
+
+Ready to run: `MODEL` is set and either `API_KEY` or `BASE_URL` is set. `ICAS_DISCOVERY_SMOKE=1` opts into the live smoke test; leave it unset in CI.
+
+Until the code pass lands, CLIs still accept `ICAS_MODEL` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` as a fallback.
+
+Env is **model transport**. The SDK seam remains `CandidateProposer`: production injects one implementation; tests inject a fake. A second SDK is a new class on that interface, not extra env vars.

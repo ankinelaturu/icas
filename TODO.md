@@ -515,11 +515,11 @@ Depends on Pass 1.10. Prompt already describes the field; structured output and 
 
 Do not reopen Pass 5.5. Operator surface is already in `.env.example` (`ICAS_DISCOVERY_LLM_*` / `ICAS_ASSIST_LLM_*`). This pass is docs only.
 
-- [ ] `docs/03`: discover reads `ICAS_DISCOVERY_LLM_*`; do not infer provider from `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` names; empty `BASE_URL` means the provider's public host
-- [ ] `docs/05` (assist): `--assist` reads `ICAS_ASSIST_LLM_*`; strict replay stays model-free
-- [ ] Agent / play READMEs: load-repo-env still applies; operator-facing names are the `*_LLM_*` vars (no Mastra in those READMEs)
-- [ ] Keep `CandidateProposer` / `RepairProposer` as the SDK seam; env is model transport, not a second proposer interface
-- [ ] Note hosted vs local: `provider/model` + optional `BASE_URL` (`/v1` for OpenAI-compatible servers)
+- [x] `docs/03`: discover reads `ICAS_DISCOVERY_LLM_*`; do not infer provider from `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` names; empty `BASE_URL` means the provider's public host
+- [x] `docs/05` (assist): `--assist` reads `ICAS_ASSIST_LLM_*`; strict replay stays model-free
+- [x] Agent / play READMEs: load-repo-env still applies; operator-facing names are the `*_LLM_*` vars (no Mastra in those READMEs)
+- [x] Keep `CandidateProposer` / `RepairProposer` as the SDK seam; env is model transport, not a second proposer interface
+- [x] Note hosted vs local: `provider/model` + optional `BASE_URL` (`/v1` for OpenAI-compatible servers)
 
 ### Pass 5.21 — Code: wire `ICAS_DISCOVERY_LLM_*` / `ICAS_ASSIST_LLM_*`
 

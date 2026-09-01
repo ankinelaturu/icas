@@ -188,6 +188,10 @@ If one step fails:
 
 If the repaired state does not rejoin the known path, stop. Assisted fallback is not open-ended rediscovery.
 
+`--assist` reads **`ICAS_ASSIST_LLM_*`** (independent of discovery). Same shape: `MODEL` (`provider/model`), `API_KEY`, optional `BASE_URL` (`/v1` for OpenAI-compatible local servers; empty means the provider's public host), and optional sampling (`TEMPERATURE`, `TOP_K`, `TOP_P`, `MAX_OUTPUT_TOKENS`). Ready when `MODEL` is set and either `API_KEY` or `BASE_URL` is set. Strict replay without `--assist` ignores this env entirely.
+
+Env is model transport. The SDK seam is `RepairProposer` (injected in `icas-play`; `@icas/replay` stays model-free). Until the code pass lands, `--assist` still accepts `ICAS_MODEL` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` as a fallback.
+
 ## Effective capability resolution
 
 `ReplayEngine` remains tenant-agnostic. A `CapabilityResolver` loads the base capability and applicable tenant override, applies the declarative patch, and schema-validates the resulting effective capability. Only then is the effective capability passed to `ReplayEngine`.
