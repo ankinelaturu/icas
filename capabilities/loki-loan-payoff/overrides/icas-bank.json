@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "id": "loki-loan-payoff-icas-bank",
-  "baseCapability": "loki-loan-payoff@1.0.0",
+  "baseCapability": "loki-loan-payoff",
   "target": {
     "tenant": "icas-bank"
   },

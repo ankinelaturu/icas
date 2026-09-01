@@ -23,7 +23,7 @@ describe("validateCapabilityOverride", () => {
     );
     expect(override.target.tenant).toBe("icas-bank");
     expect(override.overrides).toEqual({});
-    expect(override.baseCapability).toBe("loan-payoff@1.0.0");
+    expect(override.baseCapability).toBe("loan-payoff");
   });
 
   it("rejects executable customJavaScript-style patches", () => {
@@ -40,17 +40,20 @@ describe("validateCapabilityOverride", () => {
     }
   });
 
-  it("rejects a baseCapability that does not pin a version", () => {
+  it("rejects a baseCapability that still uses an @version pin", () => {
     const valid = loadFixture("loan-payoff.override.icas-bank.json") as {
       baseCapability: string;
     };
     try {
-      validateCapabilityOverride({ ...valid, baseCapability: "loan-payoff" });
+      validateCapabilityOverride({
+        ...valid,
+        baseCapability: "loan-payoff@1.0.0",
+      });
       expect.unreachable("expected validation to fail");
     } catch (error) {
       expect(error).toBeInstanceOf(CapabilityOverrideValidationError);
       expect((error as CapabilityOverrideValidationError).message).toMatch(
-        /pin a version|baseCapability/,
+        /catalog id|baseCapability/,
       );
     }
   });

@@ -89,7 +89,7 @@ describe("discovery-to-capability integration", () => {
       expect(artifact.success).toEqual([{ type: "textVisible", value: "Payoff Statement" }]);
       const stored = await registry.get("loan-payoff");
       expect(stored?.id).toBe("loan-payoff");
-      const override = await registry.getOverride("icas-bank", "loan-payoff@1.0.0");
+      const override = await registry.getOverride("icas-bank", "loan-payoff");
       expect(override?.overrides).toEqual({});
       expect(override?.provenance.createdBy).toBe("discovery");
     } finally {

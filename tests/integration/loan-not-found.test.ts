@@ -8,7 +8,6 @@ import { fixturePolicy, pageUrl } from "./fixture-pages.js";
 
 const missingLoan: CapabilityArtifact = {
   schemaVersion: "1.0",
-  capabilityVersion: "1.0.0",
   id: "loan-payoff",
   name: "Missing loan",
   target: { vendor: "icas-bank", product: "icas-bank" },

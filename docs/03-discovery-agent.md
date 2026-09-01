@@ -25,7 +25,7 @@ interface DiscoveryRequest {
 
 On success the compiler:
 
-1. `save`s the base artifact under that id (refuse if the id already exists, unless the caller explicitly bumps `capabilityVersion`);
+1. `save`s the base artifact under that id (refuse if the id already exists);
 2. `saveOverride`s a header-only tenant override for `target.tenant` with `overrides: {}` and `createdBy: "discovery"`.
 
 ## Observation model
@@ -221,8 +221,8 @@ A capability must be decoupled from the raw model transcript. `CapabilityCompile
 7. copy this step’s `possibleOutcomes` (`error` and `hitl` only, same order) onto the compiled step;
 8. derive output extraction rules;
 9. derive final success conditions;
-10. attach schema/capability version metadata;
-11. write the base artifact through `CapabilityRegistry.save` (refuse if `id@version` already exists unless `capabilityVersion` is bumped) and a header-only tenant override through `saveOverride` (`createdBy: "discovery"`). Tests use a temp registry root, never repo `capabilities/`.
+10. attach `schemaVersion` and Vendor+Product identity;
+11. write the base artifact through `CapabilityRegistry.save` (refuse if `id` already exists) and a header-only tenant override through `saveOverride` (`createdBy: "discovery"`). Tests use a temp registry root, never repo `capabilities/`.
 
 Human actions require classification. A normal reusable approval boundary (`approval_required`) becomes an explicit `handoff` step on the success path. An exceptional manual recovery (`policy_block`, `discovery_stuck`) remains evidence rather than being compiled into the happy-path capability.
 

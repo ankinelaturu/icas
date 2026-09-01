@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "id": "loan-payoff-tenant-b",
-  "baseCapability": "loan-payoff@1.0.0",
+  "baseCapability": "loan-payoff",
   "target": { "tenant": "tenant-b" },
   "overrides": {
     "customJavaScript": "document.querySelector('#payoff').click()"

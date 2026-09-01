@@ -104,6 +104,16 @@ Do not reopen Pass 1.2. Exceptional-state catalog on the artifact; see `docs/04-
 - [ ] `StepOverride` may replace `possibleOutcomes`
 - [ ] Tests: valid fixture with outcomes; unknown kind / empty phrases fail; resolver replace
 
+### Pass 1.11 — One base per id
+
+Do not uncheck Pass 1.2–1.7. Catalog identity is `id` only.
+
+- [x] One `capability.json` per catalog id; drop `capabilityVersion` from the artifact schema
+- [x] Override `baseCapability` is the catalog id (no `@version` pin)
+- [x] Discover refuses an existing id; no `--capability-version`
+- [x] `icas-play` / `icas-adapt` drop `--version`
+- [x] Document future second-base / version pin if a base edit must not leak to every tenant
+
 ---
 
 ## Phase 2 — Surface and browser

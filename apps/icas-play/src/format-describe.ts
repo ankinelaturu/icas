@@ -17,7 +17,6 @@ export function formatCapabilityDescription(artifact: CapabilityArtifact): strin
     `id: ${artifact.id}`,
     `name: ${artifact.name}`,
     `schemaVersion: ${artifact.schemaVersion}`,
-    `capabilityVersion: ${artifact.capabilityVersion}`,
     `target: ${artifact.target.vendor} / ${artifact.target.product}`,
   ];
   // discoveredOn is optional on older fixtures; omit the section rather than print "undefined".

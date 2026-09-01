@@ -64,7 +64,7 @@ Optional (default `icas-bank` for each):
 - `--product`
 - `--tenant`
 
-Do not infer vendor, product, tenant, or capability id from the URL. `--id` is unique in the catalog: a second discover with the same id is rejected unless the caller explicitly bumps `capabilityVersion`. Tenants share that id; they do not get a second capability.
+Do not infer vendor, product, tenant, or capability id from the URL. `--id` is unique in the catalog: a second discover with the same id is rejected. Tenants share that id; they do not get a second capability.
 
 It observes the live surface, asks the model to rank/propose actions, executes permitted actions, handles bounded exploration/backtracking, records a discovery trace, and compiles the successful path into a capability artifact plus a header-only tenant override for the discovering tenant.
 

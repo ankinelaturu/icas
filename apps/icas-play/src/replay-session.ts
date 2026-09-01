@@ -42,7 +42,6 @@ export interface PlayRunRequest {
   tenant: string;
   vendor: string;
   product: string;
-  version?: string;
   inputs: Record<string, unknown>;
   /** When true, ReplayEngine may invoke one bounded {@link RepairProposer}. */
   assist: boolean;
@@ -94,7 +93,6 @@ export async function runEnrolledReplay(
   const capability = await resolver.resolve({
     id: request.id,
     tenant: request.tenant,
-    ...(request.version === undefined ? {} : { version: request.version }),
   });
   if (
     capability.target.vendor !== request.vendor ||

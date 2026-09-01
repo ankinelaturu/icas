@@ -77,7 +77,6 @@ export function createAgentProgram(deps: AgentCliDeps = {}): Command {
     .option("--vendor <vendor>", "Vendor identity", DEFAULT_ICAS_IDENTITY)
     .option("--product <product>", "Product identity", DEFAULT_ICAS_IDENTITY)
     .option("--name <name>", "Human-readable capability name")
-    .option("--capability-version <semver>", "Explicit version bump when the id already exists")
     .option("--headless", "Launch Chromium without a window")
     .action(async (opts: DiscoverCommandOptions) => {
       await executeDiscoverCommand(opts, {
@@ -101,12 +100,11 @@ interface DiscoverCommandOptions {
   vendor: string;
   product: string;
   name?: string;
-  capabilityVersion?: string;
   headless?: boolean;
 }
 
 /**
- * Parse flags, refuse an existing id unless version is explicit, then discover.
+ * Parse flags, refuse an existing id, then discover.
  */
 async function executeDiscoverCommand(
   opts: DiscoverCommandOptions,
@@ -129,9 +127,6 @@ async function executeDiscoverCommand(
       product: opts.product,
       headed: resolveHeaded(opts.headless === true, io.env),
       ...(opts.name === undefined ? {} : { name: opts.name }),
-      ...(opts.capabilityVersion === undefined
-        ? {}
-        : { capabilityVersion: opts.capabilityVersion }),
     };
     const { artifact, result } = await runDiscover(request, {
       registry: io.registry,
@@ -142,7 +137,6 @@ async function executeDiscoverCommand(
     });
     io.write(`status: ${result.status}`);
     io.write(`id: ${artifact.id}`);
-    io.write(`capabilityVersion: ${artifact.capabilityVersion}`);
     io.write(`runId: ${result.runId}`);
     io.write(`enrolled tenant: ${opts.tenant} (header-only override)`);
   } catch (error) {

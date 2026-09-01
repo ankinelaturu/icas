@@ -41,7 +41,6 @@ export interface AdaptRunRequest {
   tenant: string;
   vendor: string;
   product: string;
-  version?: string;
   inputs: Record<string, unknown>;
   headed: boolean;
   runId?: string;
@@ -81,10 +80,7 @@ export async function runGuardedAdapt(
   capability: CapabilityArtifact;
   override?: CapabilityOverride;
 }> {
-  const base =
-    request.version === undefined
-      ? await deps.registry.get(request.id)
-      : await deps.registry.get(request.id, request.version);
+  const base = await deps.registry.get(request.id);
   if (base === undefined) {
     throw new Error(`capability "${request.id}" is not in the catalog`);
   }
@@ -117,7 +113,7 @@ export async function runGuardedAdapt(
   if (!verified) {
     await deps.registry.removeOverride(
       request.tenant,
-      `${base.id}@${base.capabilityVersion}`,
+      base.id,
     );
     throw new Error(
       `override for tenant "${request.tenant}" failed re-verify; enrollment was rolled back`,
@@ -142,7 +138,6 @@ async function reverifyOverride(
   const effective = await new CapabilityResolver(deps.registry).resolve({
     id: base.id,
     tenant: request.tenant,
-    ...(request.version === undefined ? {} : { version: request.version }),
   });
   const invocation: AdaptReplayInvocation = { capability: effective, request };
   const result =

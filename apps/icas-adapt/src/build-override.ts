@@ -44,7 +44,7 @@ export async function buildAdaptOverride(args: {
   report: GuardedReplayReport;
   specializer?: StepSpecializer;
 }): Promise<CapabilityOverride> {
-  const pin = `${args.base.id}@${args.base.capabilityVersion}`;
+  const pin = args.base.id;
   const runId =
     args.report.status === "mismatch"
       ? args.report.result.runId

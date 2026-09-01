@@ -9,7 +9,7 @@ Do not hand-author files here merely to make the demo look complete. The primary
 ```text
 capabilities/
   loan-payoff/
-    1.0.0.json           # base CapabilityArtifact (Vendor+Product)
+    capability.json      # base CapabilityArtifact (Vendor+Product)
     overrides/
       icas-bank.json      # header-only enrollment after first discover
       loki-bank.json      # header-only if compatible, or a declarative patch
@@ -19,7 +19,7 @@ The effective capability (base + override) is never stored here. See `docs/04-ca
 
 A capability is expected to include:
 
-- schema and capability versions;
+- `schemaVersion` (JSON format);
 - capability identity/name/description;
 - Vendor + Product target identity;
 - discovery/verification metadata;

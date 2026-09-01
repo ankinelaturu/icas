@@ -1,6 +1,5 @@
 {
   "schemaVersion": "1.0",
-  "capabilityVersion": "1.0.0",
   "id": "loki-loan-payoff",
   "name": "loki-loan-payoff",
   "target": {
@@ -41,9 +40,14 @@
             }
           ]
         },
+        "intent": "navigate to lending module",
         "risk": "safe"
       },
       "postconditions": [
+        {
+          "type": "textVisible",
+          "value": "Member Lending"
+        },
         {
           "type": "urlMatches",
           "pattern": "/lending.htm"
@@ -54,8 +58,8 @@
       "id": "click-loan-servicing",
       "preconditions": [
         {
-          "type": "urlMatches",
-          "pattern": "/lending.htm"
+          "type": "textVisible",
+          "value": "Member Lending"
         }
       ],
       "action": {
@@ -69,9 +73,14 @@
             }
           ]
         },
+        "intent": "access loan servicing to issue payoff quotes",
         "risk": "safe"
       },
       "postconditions": [
+        {
+          "type": "textVisible",
+          "value": "Loan Servicing"
+        },
         {
           "type": "urlMatches",
           "pattern": "/lending/search.htm"
@@ -82,8 +91,8 @@
       "id": "fill-loan",
       "preconditions": [
         {
-          "type": "urlMatches",
-          "pattern": "/lending/search.htm"
+          "type": "textVisible",
+          "value": "Loan Servicing"
         }
       ],
       "action": {
@@ -99,6 +108,7 @@
         "value": {
           "input": "loanAccountId"
         },
+        "intent": "enter loan number",
         "risk": "safe"
       },
       "postconditions": [
@@ -127,13 +137,10 @@
             }
           ]
         },
+        "intent": "search for loan details",
         "risk": "safe"
       },
       "postconditions": [
-        {
-          "type": "textVisible",
-          "value": "Page displays loan details for loan #987654."
-        },
         {
           "type": "urlMatches",
           "pattern": "/lending/account.htm"
@@ -144,8 +151,8 @@
       "id": "click-payoff",
       "preconditions": [
         {
-          "type": "textVisible",
-          "value": "Page displays loan details for loan #987654."
+          "type": "urlMatches",
+          "pattern": "/lending/account.htm"
         }
       ],
       "action": {
@@ -159,13 +166,10 @@
             }
           ]
         },
+        "intent": "navigate to the payoff section",
         "risk": "safe"
       },
       "postconditions": [
-        {
-          "type": "textVisible",
-          "value": "Page navigates to the payoff quote screen for loan #987654."
-        },
         {
           "type": "urlMatches",
           "pattern": "/lending/payoff.htm"
@@ -176,8 +180,8 @@
       "id": "fill-payoff-dt",
       "preconditions": [
         {
-          "type": "textVisible",
-          "value": "Page navigates to the payoff quote screen for loan #987654."
+          "type": "urlMatches",
+          "pattern": "/lending/payoff.htm"
         }
       ],
       "action": {
@@ -186,14 +190,14 @@
           "strategies": [
             {
               "type": "relative",
-              "text": "Payoff Dt",
-              "confidence": 0.9
+              "text": "Payoff Dt"
             }
           ]
         },
         "value": {
           "input": "payoffDate"
         },
+        "intent": "enter the payoff date for the statement",
         "risk": "safe"
       },
       "postconditions": [
@@ -222,12 +226,13 @@
             }
           ]
         },
+        "intent": "initiate calculation and generation of the payoff statement",
         "risk": "safe"
       },
       "postconditions": [
         {
           "type": "textVisible",
-          "value": "The payoff statement is generated and displayed."
+          "value": "Calculate / Generate"
         },
         {
           "type": "urlMatches",
@@ -239,7 +244,7 @@
   "success": [
     {
       "type": "textVisible",
-      "value": "The payoff statement is generated and displayed."
+      "value": "Calculate / Generate"
     }
   ]
 }

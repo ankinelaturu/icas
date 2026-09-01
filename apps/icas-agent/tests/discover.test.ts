@@ -96,7 +96,7 @@ describe("icas-agent discover", () => {
     expect(discoveryCalls).toBe(0);
   });
 
-  it("refuses an existing id unless --capability-version is explicit", async () => {
+  it("refuses an existing id", async () => {
     await registry.save(loadLoanPayoff());
     await runAgent(
       [
@@ -138,7 +138,7 @@ describe("icas-agent discover", () => {
     expect(process.exitCode).toBe(0);
     expect(discoveryCalls).toBe(1);
     const artifact = await registry.get("loan-payoff");
-    expect(artifact?.capabilityVersion).toBe("1.0.0");
+    expect(artifact?.id).toBe("loan-payoff");
     expect(artifact?.name).toBe("Generate Loan Payoff Statement");
     const overrides = await registry.listOverrides({ tenant: "icas-bank" });
     expect(overrides).toHaveLength(1);
@@ -188,27 +188,5 @@ describe("icas-agent discover", () => {
     const overrides = await registry.listOverrides({ tenant: "icas-bank" });
     expect(overrides).toHaveLength(1);
     expect(await registry.listOverrides({ tenant: "loki-bank" })).toEqual([]);
-  });
-
-  it("accepts an explicit version bump for an existing id", async () => {
-    await registry.save(loadLoanPayoff());
-    await runAgent(
-      [
-        "node",
-        "icas-agent",
-        "discover",
-        "--id",
-        "loan-payoff",
-        "--url",
-        "https://bank.example/home",
-        "--goal",
-        "Generate a payoff statement",
-        "--capability-version",
-        "1.1.0",
-      ],
-      deps(),
-    );
-    expect(process.exitCode).toBe(0);
-    expect((await registry.get("loan-payoff"))?.capabilityVersion).toBe("1.1.0");
   });
 });

@@ -10,7 +10,7 @@
 
 import * as z from "zod";
 
-/** JSON format id. Distinct from `capabilityVersion` (the learned flow). */
+/** JSON format id. Flow identity is `id`; tenant differences live on overrides. */
 const SCHEMA_VERSION = "1.0";
 
 /**
@@ -204,21 +204,17 @@ export const CapabilityStepSchema = z.strictObject({
 });
 
 /**
- * Base capability artifact. `schemaVersion` is the JSON format; `capabilityVersion`
- * is the learned flow (semver).
+ * Base capability artifact. `schemaVersion` is the JSON format only.
  *
  * `target` is Vendor+Product identity. `discoveredOn` is provenance only — do
  * not treat tenant URL as reusable identity. `success` is the overall checkpoint,
- * distinct from the last step's postconditions.
+ * distinct from the last step's postconditions. One file per `id`; do not
+ * version the learned flow on disk in this prototype.
  */
 export const CapabilityArtifactSchema = z
   .strictObject({
     schemaVersion: z.literal(SCHEMA_VERSION, {
-      error: `schemaVersion must be "${SCHEMA_VERSION}" (artifact format), not capabilityVersion`,
-    }),
-    capabilityVersion: z.string().regex(/^\d+\.\d+\.\d+$/, {
-      error:
-        'capabilityVersion must be a three-part semver such as "1.0.0", not schemaVersion',
+      error: `schemaVersion must be "${SCHEMA_VERSION}" (artifact format)`,
     }),
     id: z.string().min(1),
     name: z.string().min(1),

@@ -23,7 +23,6 @@ describe("validateCapabilityArtifact", () => {
     );
     expect(artifact.id).toBe("loan-payoff");
     expect(artifact.schemaVersion).toBe("1.0");
-    expect(artifact.capabilityVersion).toBe("1.0.0");
   });
 
   it("rejects a truncated artifact missing required fields", () => {
@@ -69,23 +68,21 @@ describe("validateCapabilityArtifact", () => {
       expect((error as CapabilityValidationError).message).toMatch(
         /schemaVersion/,
       );
-      expect((error as CapabilityValidationError).message).not.toMatch(
-        /capabilityVersion must be a three-part/,
-      );
     }
   });
 
-  it("rejects a two-part capabilityVersion so format and flow versions stay distinct", () => {
-    const valid = loadFixture("loan-payoff.capability.json") as {
-      capabilityVersion: string;
-    };
+  it("rejects leftover capabilityVersion as an unknown key", () => {
+    const valid = loadFixture("loan-payoff.capability.json") as Record<
+      string,
+      unknown
+    >;
     try {
-      validateCapabilityArtifact({ ...valid, capabilityVersion: "1.0" });
+      validateCapabilityArtifact({ ...valid, capabilityVersion: "1.0.0" });
       expect.unreachable("expected validation to fail");
     } catch (error) {
       expect(error).toBeInstanceOf(CapabilityValidationError);
       expect((error as CapabilityValidationError).message).toMatch(
-        /capabilityVersion/,
+        /unrecognized key|capabilityVersion/i,
       );
     }
   });

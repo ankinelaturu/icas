@@ -8,7 +8,6 @@ import { fixturePolicy, pageUrl } from "./fixture-pages.js";
 
 const brokenClick: CapabilityArtifact = {
   schemaVersion: "1.0",
-  capabilityVersion: "1.0.0",
   id: "open-lending",
   name: "Assist onto lending",
   target: { vendor: "icas-bank", product: "icas-bank" },

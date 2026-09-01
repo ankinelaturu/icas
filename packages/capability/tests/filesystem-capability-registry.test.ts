@@ -51,20 +51,20 @@ describe("FileSystemCapabilityRegistry", () => {
     expect(loaded).toEqual(artifact);
   });
 
-  it("lists the latest version per id", async () => {
+  it("lists one row per id and a second save overwrites the base", async () => {
     const artifact = loadLoanPayoff();
     await registry.save(artifact);
-    await registry.save({ ...artifact, capabilityVersion: "1.1.0", name: "Newer" });
+    await registry.save({ ...artifact, name: "Newer" });
     const listed = await registry.list();
     expect(listed).toEqual([
       {
         id: "loan-payoff",
         name: "Newer",
-        capabilityVersion: "1.1.0",
         schemaVersion: "1.0",
         target: { vendor: "icas-bank", product: "icas-bank" },
       },
     ]);
+    expect((await registry.get("loan-payoff"))?.name).toBe("Newer");
   });
 
   it("filters list by vendor and product", async () => {
@@ -78,14 +78,6 @@ describe("FileSystemCapabilityRegistry", () => {
     );
   });
 
-  it("loads a specific version when given", async () => {
-    const artifact = loadLoanPayoff();
-    await registry.save(artifact);
-    await registry.save({ ...artifact, capabilityVersion: "1.1.0" });
-    const v100 = await registry.get("loan-payoff", "1.0.0");
-    expect(v100?.capabilityVersion).toBe("1.0.0");
-  });
-
   it("returns undefined for a missing id", async () => {
     expect(await registry.get("missing")).toBeUndefined();
   });
@@ -97,13 +89,9 @@ describe("FileSystemCapabilityRegistry", () => {
     expect(await registry.list()).toEqual([]);
   });
 
-  it("removes one version or every version of an id", async () => {
+  it("removes the id directory", async () => {
     const artifact = loadLoanPayoff();
     await registry.save(artifact);
-    await registry.save({ ...artifact, capabilityVersion: "1.1.0" });
-    expect(await registry.remove("loan-payoff", "1.0.0")).toBe(true);
-    expect(await registry.get("loan-payoff", "1.0.0")).toBeUndefined();
-    expect((await registry.get("loan-payoff"))?.capabilityVersion).toBe("1.1.0");
     expect(await registry.remove("loan-payoff")).toBe(true);
     expect(await registry.get("loan-payoff")).toBeUndefined();
     expect(await registry.remove("loan-payoff")).toBe(false);
@@ -113,13 +101,13 @@ describe("FileSystemCapabilityRegistry", () => {
     await registry.save(loadLoanPayoff());
     const override = loadHeaderOnlyOverride();
     await registry.saveOverride(override);
-    const loaded = await registry.getOverride("icas-bank", "loan-payoff@1.0.0");
+    const loaded = await registry.getOverride("icas-bank", "loan-payoff");
     expect(loaded).toEqual(override);
     expect(loaded?.overrides).toEqual({});
     expect(await registry.listOverrides({ tenant: "icas-bank" })).toEqual([override]);
   });
 
-  it("rejects saveOverride when the pinned base version is missing", async () => {
+  it("rejects saveOverride when the named base is missing", async () => {
     const override = loadHeaderOnlyOverride();
     await expect(registry.saveOverride(override)).rejects.toThrow(
       /not stored/,
@@ -130,13 +118,13 @@ describe("FileSystemCapabilityRegistry", () => {
     await registry.save(loadLoanPayoff());
     await registry.saveOverride(loadHeaderOnlyOverride());
     expect(
-      await registry.removeOverride("icas-bank", "loan-payoff@1.0.0"),
+      await registry.removeOverride("icas-bank", "loan-payoff"),
     ).toBe(true);
     expect(
-      await registry.getOverride("icas-bank", "loan-payoff@1.0.0"),
+      await registry.getOverride("icas-bank", "loan-payoff"),
     ).toBeUndefined();
     expect(
-      await registry.removeOverride("icas-bank", "loan-payoff@1.0.0"),
+      await registry.removeOverride("icas-bank", "loan-payoff"),
     ).toBe(false);
   });
 });

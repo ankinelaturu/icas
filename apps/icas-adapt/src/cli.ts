@@ -70,7 +70,6 @@ export function createAdaptProgram(deps: AdaptCliDeps = {}): Command {
     .requiredOption("--url <url>", "Surface entry URL (not tenant identity)")
     .option("--vendor <vendor>", "Vendor identity", DEFAULT_ICAS_IDENTITY)
     .option("--product <product>", "Product identity", DEFAULT_ICAS_IDENTITY)
-    .option("--version <semver>", "Pin a capabilityVersion instead of latest")
     .option("--input <name=value>", "Typed capability input (repeatable)", collectInput, [])
     .option("--headless", "Launch Chromium without a window")
     .allowUnknownOption()
@@ -94,7 +93,6 @@ interface AdaptCommandOptions {
   url: string;
   vendor: string;
   product: string;
-  version?: string;
   input: string[];
   headless?: boolean;
 }
@@ -118,10 +116,7 @@ async function executeAdaptCommand(
     );
     const fromUnknown = parseCapabilityInputFlags(tokens);
     const raw = { ...fromRepeatable, ...fromUnknown };
-    const preview =
-      opts.version === undefined
-        ? await io.registry.get(id)
-        : await io.registry.get(id, opts.version);
+    const preview = await io.registry.get(id);
     if (preview === undefined) {
       throw new Error(`capability "${id}" is not in the catalog`);
     }
@@ -133,7 +128,6 @@ async function executeAdaptCommand(
       product: opts.product,
       inputs: coerceInputValues(preview.inputs, raw),
       headed: resolveHeaded(opts.headless === true, io.env),
-      ...(opts.version === undefined ? {} : { version: opts.version }),
     };
     const { report, override } = await runGuardedAdapt(request, {
       registry: io.registry,

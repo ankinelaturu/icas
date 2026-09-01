@@ -92,7 +92,7 @@ export function createPlayProgram(deps: PlayCliDeps = {}): Command {
 
   program
     .command("list")
-    .description("List the latest capability version per id")
+    .description("List stored capabilities")
     .option("--vendor <vendor>", "Filter by target.vendor")
     .option("--product <product>", "Filter by target.product")
     .action(async (opts: { vendor?: string; product?: string }) => {
@@ -106,10 +106,10 @@ export function createPlayProgram(deps: PlayCliDeps = {}): Command {
         return;
       }
       // Header so a human can scan without opening JSON.
-      write("id\tname\tvendor/product\tversion");
+      write("id\tname\tvendor/product");
       for (const row of rows) {
         write(
-          `${row.id}\t${row.name}\t${row.target.vendor}/${row.target.product}\t${row.capabilityVersion}`,
+          `${row.id}\t${row.name}\t${row.target.vendor}/${row.target.product}`,
         );
       }
     });
@@ -117,14 +117,10 @@ export function createPlayProgram(deps: PlayCliDeps = {}): Command {
   program
     .command("describe")
     .argument("<id>", "Capability id")
-    .option("--version <semver>", "Pin a capabilityVersion instead of latest")
     .description("Print inputs, outputs, steps, and success for humans")
-    .action(async (id: string, opts: { version?: string }) => {
+    .action(async (id: string) => {
       const registry = resolveRegistry();
-      const artifact =
-        opts.version === undefined
-          ? await registry.get(id)
-          : await registry.get(id, opts.version);
+      const artifact = await registry.get(id);
       if (artifact === undefined) {
         writeErr(`capability "${id}" is not in the catalog`);
         process.exitCode = 1;
@@ -143,7 +139,6 @@ export function createPlayProgram(deps: PlayCliDeps = {}): Command {
     .option("--tenant <tenant>", "Enrolled tenant id", DEFAULT_ICAS_IDENTITY)
     .option("--vendor <vendor>", "Vendor identity", DEFAULT_ICAS_IDENTITY)
     .option("--product <product>", "Product identity", DEFAULT_ICAS_IDENTITY)
-    .option("--version <semver>", "Pin a capabilityVersion instead of latest")
     .option("--input <name=value>", "Typed capability input (repeatable)", collectInput, [])
     .option("--headless", "Launch Chromium without a window")
     .option("--assist", "One bounded LLM repair at a failed step (default is model-free)")
@@ -171,7 +166,6 @@ interface RunCommandOptions {
   tenant: string;
   vendor: string;
   product: string;
-  version?: string;
   input: string[];
   headless?: boolean;
   assist?: boolean;
@@ -204,10 +198,7 @@ async function executeRunCommand(
     const fromUnknown = parseCapabilityInputFlags(tokens);
     const rawInputs = { ...fromRepeatable, ...fromUnknown };
     const registry = io.registry;
-    const preview =
-      opts.version === undefined
-        ? await registry.get(id)
-        : await registry.get(id, opts.version);
+    const preview = await registry.get(id);
     if (preview === undefined) {
       throw new CapabilityResolveError(`capability "${id}" is not in the catalog`);
     }
@@ -221,7 +212,6 @@ async function executeRunCommand(
       inputs,
       assist: opts.assist === true,
       headed: resolveHeaded(opts.headless === true, io.env),
-      ...(opts.version === undefined ? {} : { version: opts.version }),
     };
     const result = await runEnrolledReplay(request, {
       registry,

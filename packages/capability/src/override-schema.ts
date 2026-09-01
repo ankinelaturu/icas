@@ -1,8 +1,8 @@
 /**
  * @file Tenant override Zod schema — declarative patches only, never executable code.
  *
- * An override is enrollment plus an optional patch against a pinned
- * `id@version`. `strictObject` rejects unknown keys so a hand-edit cannot
+ * An override is enrollment plus an optional patch against a base catalog
+ * `id`. `strictObject` rejects unknown keys so a hand-edit cannot
  * smuggle a `handler` or extra locator field. Discriminated action/assertion
  * schemas are reused from the base artifact so a patch step is the same
  * vocabulary replay already executes.
@@ -17,7 +17,7 @@ import {
   TargetDescriptorSchema,
 } from "./artifact-schema.js";
 
-/** Same format id as the base artifact. Independent of the pinned capabilityVersion. */
+/** Same format id as the base artifact. */
 const SCHEMA_VERSION = "1.0";
 
 /** Key names that look like injectable code. Matched case-insensitively on every nested object. */
@@ -69,7 +69,7 @@ export const StepOverrideSchema = z
  * Declarative operations applied to a base capability. `{}` is header-only enrollment.
  *
  * Header-only is the edit surface for later tweaks so operators never patch
- * `1.0.0.json` when they mean one institution. Insert keys are existing step
+ * `capability.json` when they mean one institution. Insert keys are existing step
  * ids; new steps live in the arrays, not as new record keys.
  */
 export const CapabilityOverridePatchSchema = z.strictObject({
@@ -97,11 +97,10 @@ export const OverrideProvenanceSchema = z.strictObject({
 });
 
 /**
- * Tenant specialization of a pinned base capability version (`id@version`).
+ * Tenant specialization of a base capability (`id` only).
  *
- * Pin the version in `baseCapability` so a later `2.0.0` base cannot silently
- * inherit a `1.0.0` patch. `target.tenant` is enrollment identity; it is not
- * part of the reusable Vendor+Product id.
+ * `target.tenant` is enrollment identity; it is not part of the reusable
+ * Vendor+Product id. A second base file per id is future work.
  */
 export const CapabilityOverrideSchema = z
   .strictObject({
@@ -109,9 +108,8 @@ export const CapabilityOverrideSchema = z
       error: `schemaVersion must be "${SCHEMA_VERSION}"`,
     }),
     id: z.string().min(1),
-    baseCapability: z.string().regex(/^[A-Za-z0-9._-]+@\d+\.\d+\.\d+$/, {
-      error:
-        'baseCapability must pin a version, e.g. "loan-payoff@1.0.0"',
+    baseCapability: z.string().regex(/^[A-Za-z0-9._-]+$/, {
+      error: 'baseCapability must be a catalog id, e.g. "loan-payoff"',
     }),
     target: z.strictObject({
       tenant: z.string().min(1),

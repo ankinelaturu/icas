@@ -290,7 +290,7 @@ describe("CapabilityCompiler", () => {
       });
       expect(() => validateCapabilityArtifact(artifact)).not.toThrow();
       expect(artifact.schemaVersion).toBe("1.0");
-      expect(artifact.capabilityVersion).toBe("1.0.0");
+      expect(artifact.id).toBe("loan-payoff");
       expect(artifact.target).toEqual({ vendor: "icas-bank", product: "icas-bank" });
       expect(artifact.discoveredOn).toEqual({ tenant: "icas-bank" });
       expect(JSON.stringify(artifact.steps[0]?.action)).not.toContain("coordinates");
@@ -304,7 +304,7 @@ describe("CapabilityCompiler", () => {
       expect(artifact.success).toEqual([{ type: "textVisible", value: "Payoff Statement" }]);
       const stored = await registry.get("loan-payoff");
       expect(stored?.id).toBe("loan-payoff");
-      const override = await registry.getOverride("icas-bank", "loan-payoff@1.0.0");
+      const override = await registry.getOverride("icas-bank", "loan-payoff");
       expect(override?.overrides).toEqual({});
       expect(override?.provenance.createdBy).toBe("discovery");
     } finally {

@@ -76,9 +76,6 @@ export { FileSystemCapabilityRegistry } from "./filesystem-capability-registry.j
 export type { FileSystemCapabilityRegistryOptions } from "./filesystem-capability-registry.js";
 export {
   assertCatalogId,
-  assertCatalogVersion,
-  compareCapabilityVersion,
-  parseBaseCapabilityPin,
 } from "./catalog-ids.js";
 
 export { applyCapabilityOverride } from "./apply-override.js";

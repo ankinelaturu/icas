@@ -21,7 +21,6 @@ import { pageUrl } from "./fixture-pages.js";
 
 const miniLending = validateCapabilityArtifact({
   schemaVersion: "1.0",
-  capabilityVersion: "1.0.0",
   id: "open-lending",
   name: "Open Lending",
   target: { vendor: "icas-bank", product: "icas-bank" },

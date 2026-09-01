@@ -50,8 +50,6 @@ export interface CompileRequest {
   /** Append-only JSONL on disk (one event object per line). */
   tracePath?: string;
   name?: string;
-  /** Catalog version pin. Defaults to `1.0.0`; bump to persist over an existing id. */
-  capabilityVersion?: string;
   /** When set, `save` the base artifact and a header-only tenant override. */
   registry?: CapabilityRegistry;
   /** Provenance pointer stored on the tenant override as `createdFromRun`. */
@@ -100,10 +98,8 @@ export class CapabilityCompiler {
       }
       steps.push(toStep(step, path[index - 1], index, usedIds));
     }
-    const version = request.capabilityVersion ?? "1.0.0";
     const artifact: CapabilityArtifact = {
       schemaVersion: "1.0",
-      capabilityVersion: version,
       id: request.id,
       name: request.name ?? request.id,
       target: {
@@ -132,7 +128,7 @@ export class CapabilityCompiler {
 /**
  * Save the base artifact and enroll the discovering tenant with `overrides: {}`.
  *
- * Refuse an existing `id@version` so discover cannot clobber a catalog entry.
+ * Refuse an existing `id` so discover cannot clobber a catalog entry.
  * Header-only enrollment is required: `icas-play` / MCP fail if the tenant
  * is not enrolled.
  *
@@ -140,17 +136,17 @@ export class CapabilityCompiler {
  * @param artifact - Newly compiled base capability
  * @param options.tenant - When set, write a header-only override for that tenant
  * @param options.runId - Provenance pointer back to the discovery run
- * @throws {Error} When `id@version` is already stored
+ * @throws {Error} When `id` is already stored
  */
 export async function persistDiscoveredCapability(
   registry: CapabilityRegistry,
   artifact: CapabilityArtifact,
   options: { tenant?: string; runId?: string },
 ): Promise<void> {
-  const existing = await registry.get(artifact.id, artifact.capabilityVersion);
+  const existing = await registry.get(artifact.id);
   if (existing !== undefined) {
     throw new Error(
-      `capability ${artifact.id}@${artifact.capabilityVersion} already exists; bump capabilityVersion`,
+      `capability "${artifact.id}" already exists; choose a new --id`,
     );
   }
   await registry.save(artifact);
@@ -161,7 +157,7 @@ export async function persistDiscoveredCapability(
   await registry.saveOverride({
     schemaVersion: "1.0",
     id: `${artifact.id}-${options.tenant}`,
-    baseCapability: `${artifact.id}@${artifact.capabilityVersion}`,
+    baseCapability: artifact.id,
     target: { tenant: options.tenant },
     overrides: {},
     provenance: {

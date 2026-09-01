@@ -2,14 +2,13 @@
 
 ## Purpose
 
-A capability is a typed, serializable, versioned contract describing how to perform a known business operation against a Vendor+Product target. It is not a raw recording and not an LLM transcript.
+A capability is a typed, serializable contract describing how to perform a known business operation against a Vendor+Product target. It is not a raw recording and not an LLM transcript.
 
 ## Identity
 
 ```ts
 interface CapabilityArtifact {
   schemaVersion: string;
-  capabilityVersion: string;
   id: string;
   name: string;
   target: {
@@ -37,13 +36,13 @@ but a reusable capability must not bake the tenant's concrete origin into every 
 
 A normal capability remains identified by Vendor+Product. Tenant identity is not part of that reusable identity.
 
-Tenant-specific differences should be represented as a specialization artifact that references a specific base capability and version. Do not duplicate the full capability when only a few steps differ. Overrides must remain serializable, reviewable data — not arbitrary executable JavaScript.
+Tenant-specific differences should be represented as a specialization artifact that references a base capability id. Do not duplicate the full capability when only a few steps differ. Overrides must remain serializable, reviewable data — not arbitrary executable JavaScript.
 
 ```ts
 interface CapabilityOverride {
   schemaVersion: string;
   id: string;
-  baseCapability: string; // e.g. "loan-payoff@1.0.0"
+  baseCapability: string; // catalog id, e.g. "loan-payoff"
 
   target: {
     tenant: string;
@@ -74,10 +73,10 @@ interface CapabilityOverride {
 
 ### Tenant enrollment
 
-Every tenant that has been discovered or verified gets an override file for that capability version — including when the patch is empty.
+Every tenant that has been discovered or verified gets an override file for that capability — including when the patch is empty.
 
 ```text
-capabilities/loan-payoff/1.0.0.json
+capabilities/loan-payoff/capability.json
 capabilities/loan-payoff/overrides/icas-bank.json  # header only after first discover
 capabilities/loan-payoff/overrides/loki-bank.json  # header only if compatible, or a real patch
 ```
@@ -85,7 +84,7 @@ capabilities/loan-payoff/overrides/loki-bank.json  # header only if compatible, 
 Rules:
 
 - There is still **one** Vendor+Product base. Do not create a second full capability per tenant.
-- A header-only override has `overrides: {}`. That is valid. It is the edit surface for later manual tweaks so operators do not edit `1.0.0.json` when they mean one institution.
+- A header-only override has `overrides: {}`. That is valid. It is the edit surface for later manual tweaks so operators do not edit `capability.json` when they mean one institution.
 - First `icas-agent discover` writes the base **and** the discovering tenant's header-only override (`createdBy: "discovery"`).
 - `icas-adapt` that finds the base compatible still writes a header-only override (`createdBy: "verified"`). Drift writes a small declarative patch (`createdBy: "icas-adapt"`).
 - An empty override is **not** proof the UI still works. `ReplayEngine` remains the authority. Provenance should keep `createdFromRun`.
@@ -284,21 +283,14 @@ The artifact declares an overall success condition in addition to per-step postc
 
 ## Versioning
 
-Keep schema and capability versions separate:
+This prototype stores **one base file per `--id`**. Catalog identity is `id`. Tenant differences live on overrides.
 
-```json
-{
-  "schemaVersion": "1.0",
-  "capabilityVersion": "1.0.0"
-}
-```
+- `schemaVersion` is the JSON format (`"1.0"`). A schema upgrade migrates every file in place; do not keep parallel schema trees.
+- There is no operator-facing flow version: no `capabilityVersion` field, no `--capability-version`, no play/adapt `--version`.
+- An override pins `baseCapability` to the catalog id (for example `"loan-payoff"`). Header-only `overrides: {}` still enrolls.
+- Discover refuses an existing `--id`. Choose a new id rather than bumping a version.
 
-- `schemaVersion` changes when the artifact format/contracts change.
-- `capabilityVersion` changes when the learned business flow or targeting/checkpoint behavior changes.
-
-Exact semantic-version policy can remain simple, but the distinction should exist from the beginning.
-
-An override references a specific base capability version (for example `loan-payoff@1.0.0`). If the base version changes, the override must be revalidated before unattended use. Never silently apply an override authored against an incompatible base version.
+**Future:** if a base edit must not leak to every enrolled tenant, introduce a second base file and an `@version` pin. That is not in filenames or CLI now.
 
 ## Reviewability
 
@@ -363,7 +355,6 @@ Every `save*` schema-validates first. Invalid artifacts are not written. `save` 
 interface CapabilitySummary {
   id: string;
   name: string;
-  capabilityVersion: string;
   schemaVersion: string;
   target: { vendor: string; product: string };
 }
@@ -373,21 +364,20 @@ interface CapabilityRegistry {
     vendor?: string;
     product?: string;
   }): Promise<CapabilitySummary[]>;
-  // latest capabilityVersion per id (what icas-play list / MCP catalog need)
+  // one row per id (what icas-play list / MCP catalog need)
 
-  get(id: string, version?: string): Promise<CapabilityArtifact | undefined>;
-  // version omitted → latest capabilityVersion for that id
+  get(id: string): Promise<CapabilityArtifact | undefined>;
 
   save(capability: CapabilityArtifact): Promise<void>;
-  // upsert keyed by (id, capabilityVersion)
+  // upsert keyed by id (`capability.json`)
 
-  remove(id: string, version?: string): Promise<boolean>;
-  // version omitted → remove all versions of id
+  remove(id: string): Promise<boolean>;
+  // remove the id directory, including tenant overrides
   // included for a complete repository; the demo may not call it
 
   listOverrides(filter?: {
     tenant?: string;
-    baseCapability?: string; // e.g. "loan-payoff@1.0.0"
+    baseCapability?: string; // catalog id, e.g. "loan-payoff"
   }): Promise<CapabilityOverride[]>;
 
   getOverride(
@@ -397,7 +387,7 @@ interface CapabilityRegistry {
 
   saveOverride(override: CapabilityOverride): Promise<void>;
   // keyed by (tenant, baseCapability);
-  // reject if the pinned base version is not stored
+  // reject if the named base is not stored
 
   removeOverride(tenant: string, baseCapability: string): Promise<boolean>;
 }
@@ -407,7 +397,6 @@ interface CapabilityRegistry {
 interface CapabilityResolver {
   resolve(query: {
     id: string;
-    version?: string;
     tenant: string;
   }): Promise<CapabilityArtifact>;
 }
@@ -417,7 +406,7 @@ interface CapabilityResolver {
 
 1. load the base capability (fail if missing);
 2. load that tenant's override (fail if missing — not enrolled; do not fall back to the bare base);
-3. refuse an override whose `baseCapability` version does not match the loaded base (never apply silently);
+3. refuse an override whose `baseCapability` does not match the loaded base id (never apply silently);
 4. apply the declarative patch (`overrides: {}` is a no-op);
 5. schema-validate the effective artifact;
 6. return the effective capability.
@@ -443,11 +432,11 @@ Who calls what:
 ```text
 capabilities/
   loan-payoff/
-    1.0.0.json              # base CapabilityArtifact
+    capability.json          # base CapabilityArtifact
     overrides/
       icas-bank.json         # header-only after discover --id loan-payoff
       loki-bank.json         # header-only or a real patch
-                            # baseCapability: "loan-payoff@1.0.0"
+                            # baseCapability: "loan-payoff"
 ```
 
 - Base file = Vendor+Product knowledge (`target.vendor` / `target.product`, CLI default `icas-bank`).

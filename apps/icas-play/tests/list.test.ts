@@ -41,7 +41,7 @@ describe("icas-play list", () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  it("prints id, name, Vendor+Product, and version from the registry", async () => {
+  it("prints id, name, and Vendor+Product from the registry", async () => {
     await registry.save(loadLoanPayoff());
     await runPlay(["node", "icas-play", "list"], {
       registry,
@@ -49,9 +49,9 @@ describe("icas-play list", () => {
         lines.push(line);
       },
     });
-    expect(lines[0]).toBe("id\tname\tvendor/product\tversion");
+    expect(lines[0]).toBe("id\tname\tvendor/product");
     expect(lines[1]).toBe(
-      "loan-payoff\tGenerate Loan Payoff Statement\ticas-bank/icas-bank\t1.0.0",
+      "loan-payoff\tGenerate Loan Payoff Statement\ticas-bank/icas-bank",
     );
   });
 

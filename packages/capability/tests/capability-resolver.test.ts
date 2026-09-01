@@ -107,16 +107,6 @@ describe("CapabilityResolver", () => {
     expect(effective.steps[1]?.id).toBe("open-loan-search");
   });
 
-  it("refuses an override pinned to a different base version", async () => {
-    const base = loadLoanPayoff();
-    await registry.save(base);
-    await registry.save({ ...base, capabilityVersion: "1.1.0" });
-    await registry.saveOverride(headerOverride());
-    await expect(
-      resolver.resolve({ id: "loan-payoff", version: "1.1.0", tenant: "icas-bank" }),
-    ).rejects.toThrow(/incompatible/i);
-  });
-
   it("rejects an invalid resolved artifact", async () => {
     const base = loadLoanPayoff();
     const duplicate = replacementStep();

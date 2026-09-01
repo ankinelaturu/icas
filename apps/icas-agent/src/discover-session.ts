@@ -3,7 +3,8 @@
  *
  * This app always discovers. It must not silently replay a stored capability
  * or infer vendor / product / tenant from `--url`. First success writes the
- * base artifact and a header-only tenant override.
+ * base artifact and a header-only tenant override. An existing `--id` is
+ * refused; there is no version-bump path in this prototype.
  */
 
 import { randomUUID } from "node:crypto";
@@ -29,8 +30,7 @@ import { evidenceRoot } from "./evidence-root.js";
 /**
  * Parsed `icas-agent discover` invocation.
  *
- * Identity fields are never taken from `url`. `capabilityVersion` omitted
- * means `1.0.0` only when the id is new; an existing id requires an explicit bump.
+ * Identity fields are never taken from `url`. An existing `id` is refused.
  */
 export interface DiscoverRequest {
   id: string;
@@ -40,7 +40,6 @@ export interface DiscoverRequest {
   vendor: string;
   product: string;
   name?: string;
-  capabilityVersion?: string;
   headed: boolean;
 }
 
@@ -61,8 +60,7 @@ export interface DiscoverSessionDeps {
 }
 
 /**
- * Refuse an existing id unless `--capability-version` is explicit, then discover
- * and persist base + header-only override.
+ * Refuse an existing id, then discover and persist base + header-only override.
  *
  * @param request - CLI identity + goal
  * @param deps - Catalog and optional test double for the live search
@@ -72,16 +70,9 @@ export async function runDiscover(
   deps: DiscoverSessionDeps,
 ): Promise<{ artifact: CapabilityArtifact; result: DiscoveryResult }> {
   const existing = await deps.registry.get(request.id);
-  if (existing !== undefined && request.capabilityVersion === undefined) {
+  if (existing !== undefined) {
     throw new Error(
-      `capability "${request.id}" already exists at ${existing.capabilityVersion}; pass --capability-version to bump`,
-    );
-  }
-  const version = request.capabilityVersion ?? "1.0.0";
-  const sameVersion = await deps.registry.get(request.id, version);
-  if (sameVersion !== undefined) {
-    throw new Error(
-      `capability ${request.id}@${version} already exists; bump --capability-version`,
+      `capability "${request.id}" already exists; choose a new --id`,
     );
   }
 
@@ -115,7 +106,6 @@ export async function runDiscover(
     events: result.events,
     registry: deps.registry,
     runId: result.runId,
-    capabilityVersion: version,
     ...(request.name === undefined ? {} : { name: request.name }),
   });
   return { artifact, result };

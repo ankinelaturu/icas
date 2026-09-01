@@ -10,7 +10,6 @@ import { assertBoundedAdaptPatch, buildAdaptOverride } from "../src/build-overri
 
 const base = {
   schemaVersion: "1.0",
-  capabilityVersion: "1.0.0",
   id: "loan-payoff",
   name: "Generate Loan Payoff Statement",
   target: { vendor: "icas-bank", product: "icas-bank" },
@@ -47,7 +46,7 @@ describe("buildAdaptOverride", () => {
     });
     expect(override.overrides).toEqual({});
     expect(override.provenance.createdBy).toBe("verified");
-    expect(override.baseCapability).toBe("loan-payoff@1.0.0");
+    expect(override.baseCapability).toBe("loan-payoff");
   });
 
   it("patches only the divergent step with createdBy icas-adapt", async () => {
@@ -111,7 +110,7 @@ describe("assertBoundedAdaptPatch", () => {
     const oversized: CapabilityOverride = {
       schemaVersion: "1.0",
       id: "loan-payoff-loki-bank",
-      baseCapability: "loan-payoff@1.0.0",
+      baseCapability: "loan-payoff",
       target: { tenant: "loki-bank" },
       overrides: {
         insertBefore: {

@@ -8,7 +8,6 @@ import { fixturePolicy, pageUrl } from "./fixture-pages.js";
 
 const payoffReplay: CapabilityArtifact = {
   schemaVersion: "1.0",
-  capabilityVersion: "1.0.0",
   id: "loan-payoff",
   name: "Fixture payoff replay",
   target: { vendor: "icas-bank", product: "icas-bank" },

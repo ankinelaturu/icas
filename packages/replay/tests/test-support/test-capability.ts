@@ -13,7 +13,6 @@ export function testCapability(
 ): CapabilityArtifact {
   return {
     schemaVersion: "1.0",
-    capabilityVersion: "1.0.0",
     id: "loan-payoff",
     name: "Test capability",
     target: { vendor: "icas-bank", product: "icas-bank" },

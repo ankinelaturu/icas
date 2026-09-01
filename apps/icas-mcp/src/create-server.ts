@@ -1,7 +1,7 @@
 /**
  * @file Construct an MCP server from CapabilityRegistry.list/get.
  *
- * One tool per latest capability. Invoke uses {@link invokeMcpCapability}
+ * One tool per catalog id. Invoke uses {@link invokeMcpCapability}
  * (CapabilityResolver + ReplayEngine), not a second browser stack.
  */
 

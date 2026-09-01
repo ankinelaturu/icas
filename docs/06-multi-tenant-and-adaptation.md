@@ -134,7 +134,7 @@ Header-only override (compatible or first discovery):
 {
   "schemaVersion": "1.0",
   "id": "loan-payoff-icas-bank",
-  "baseCapability": "loan-payoff@1.0.0",
+  "baseCapability": "loan-payoff",
   "target": { "tenant": "icas-bank" },
   "overrides": {},
   "provenance": {
@@ -149,7 +149,7 @@ Example override:
 
 ```json
 {
-  "baseCapability": "loan-payoff@1.0.0",
+  "baseCapability": "loan-payoff",
   "target": {
     "tenant": "loki-bank"
   },
@@ -191,7 +191,7 @@ Provenance example:
 ```json
 {
   "tenant": "loki-bank",
-  "baseCapability": "loan-payoff@1.0.0",
+  "baseCapability": "loan-payoff",
   "createdBy": "icas-adapt",
   "reason": "step s3 precondition mismatch",
   "createdFromRun": "run-..."

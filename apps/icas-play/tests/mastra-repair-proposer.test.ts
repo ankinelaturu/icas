@@ -28,7 +28,6 @@ function fakeContext(): RepairContext {
     },
     capability: {
       schemaVersion: "1.0",
-      capabilityVersion: "1.0.0",
       id: "loan-payoff",
       name: "Generate Loan Payoff Statement",
       target: { vendor: "icas-bank", product: "icas-bank" },
@@ -68,6 +67,7 @@ describe("MastraRepairProposer", () => {
               path: null,
               reason: null,
               value: null,
+              proposedInputParam: null,
               target: {
                 strategies: [
                   {
