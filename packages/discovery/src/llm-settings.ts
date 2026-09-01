@@ -5,16 +5,13 @@
  * operators can point them at different hosts. Env is model transport only;
  * {@link CandidateProposer} / RepairProposer stay the SDK seam.
  *
- * Empty `BASE_URL` means the provider's public host. Do not infer the
- * provider from `OPENAI_API_KEY` vs `ANTHROPIC_API_KEY` names on the
- * preferred path; those keys remain a fallback when the new vars are empty.
+ * Empty `BASE_URL` means the provider's public host. The provider prefix on
+ * `MODEL` (`openai/…`, `anthropic/…`) selects the public host; do not infer
+ * it from any other env name.
  */
 
 /** Default `provider/model` when no explicit model id is set. Vision-capable. */
 export const DEFAULT_ICAS_LLM_MODEL = "openai/gpt-4o";
-
-/** Fallback Anthropic id when only `ANTHROPIC_API_KEY` is present. */
-const FALLBACK_ANTHROPIC_MODEL = "anthropic/claude-sonnet-4-6";
 
 /**
  * Which CLI flow to resolve.
@@ -46,8 +43,6 @@ export interface IcasLlmSettings {
  * True when a live generate can run.
  *
  * Requires a model id and either a key or a base URL (local / gateway).
- * Do not treat `OPENAI_API_KEY` as a special name in the caller; pass the
- * already-resolved settings.
  */
 export function isIcasLlmReady(settings: IcasLlmSettings): boolean {
   if (settings.model.length === 0) {
@@ -61,9 +56,7 @@ export function isIcasLlmReady(settings: IcasLlmSettings): boolean {
 /**
  * Load settings for one flow from `env`.
  *
- * Preferred: `ICAS_<FLOW>_LLM_*`. Fallback when those are empty: `ICAS_MODEL`,
- * `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` (and Anthropic's default model when
- * only that key exists). Sampling has no legacy names.
+ * Reads only `ICAS_<FLOW>_LLM_*`. Empty strings are unset.
  *
  * @param flow - Discovery or assist prefix
  * @param env - Process env; inject in tests
@@ -73,16 +66,8 @@ export function resolveIcasLlmSettings(
   env: NodeJS.ProcessEnv = process.env,
 ): IcasLlmSettings {
   const prefix = flow === "discovery" ? "ICAS_DISCOVERY_LLM" : "ICAS_ASSIST_LLM";
-  const model = firstNonEmpty(
-    env[`${prefix}_MODEL`],
-    env.ICAS_MODEL,
-    inferLegacyModel(env),
-  ) ?? DEFAULT_ICAS_LLM_MODEL;
-  const apiKey = firstNonEmpty(
-    env[`${prefix}_API_KEY`],
-    env.OPENAI_API_KEY,
-    env.ANTHROPIC_API_KEY,
-  );
+  const model = firstNonEmpty(env[`${prefix}_MODEL`]) ?? DEFAULT_ICAS_LLM_MODEL;
+  const apiKey = firstNonEmpty(env[`${prefix}_API_KEY`]);
   const baseUrl = firstNonEmpty(env[`${prefix}_BASE_URL`]);
   const temperature = parseOptionalNumber(`${prefix}_TEMPERATURE`, env[`${prefix}_TEMPERATURE`], {
     allowZero: true,
@@ -112,8 +97,8 @@ export function resolveIcasLlmSettings(
 /**
  * Mastra `OpenAICompatibleConfig` (or a plain id when there is nothing extra).
  *
- * Passing `apiKey` / `url` here keeps Mastra from looking up `OPENAI_API_KEY`
- * by name when the operator used `ICAS_*_LLM_API_KEY`.
+ * Passing `apiKey` / `url` here is how the operator key and local base URL
+ * reach the SDK. Do not rely on the SDK reading a different env name.
  *
  * @param settings - Resolved transport
  */
@@ -165,25 +150,6 @@ function firstNonEmpty(...values: Array<string | undefined>): string | undefined
     if (value !== undefined && value.length > 0) {
       return value;
     }
-  }
-  return undefined;
-}
-
-/**
- * Legacy model id when `ICAS_*_LLM_MODEL` and `ICAS_MODEL` are empty.
- *
- * Anthropic only when its key is set and OpenAI's is not, matching the old
- * resolver so existing shells keep working.
- */
-function inferLegacyModel(env: NodeJS.ProcessEnv): string | undefined {
-  const anthropic = env.ANTHROPIC_API_KEY;
-  const openai = env.OPENAI_API_KEY;
-  if (
-    anthropic !== undefined &&
-    anthropic.length > 0 &&
-    (openai === undefined || openai.length === 0)
-  ) {
-    return FALLBACK_ANTHROPIC_MODEL;
   }
   return undefined;
 }

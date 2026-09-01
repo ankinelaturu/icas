@@ -241,7 +241,7 @@ ICAS still owns: search state, visited-state handling, branch ranking, backtrack
 
 ## Model configuration
 
-Discover reads **`ICAS_DISCOVERY_LLM_*`** from the process env (repo-root `.env` fills empty keys). Do not infer the provider from `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` names.
+Discover reads **`ICAS_DISCOVERY_LLM_*`** from the process env (repo-root `.env` fills empty keys). The provider is the prefix on `MODEL` (`openai/…`, `anthropic/…`). Do not infer it from any other env name.
 
 | Variable | Role |
 |---|---|
@@ -251,7 +251,5 @@ Discover reads **`ICAS_DISCOVERY_LLM_*`** from the process env (repo-root `.env`
 | `ICAS_DISCOVERY_LLM_TEMPERATURE` / `TOP_K` / `TOP_P` / `MAX_OUTPUT_TOKENS` | Optional sampling. Empty means the provider default. |
 
 Ready to run: `MODEL` is set and either `API_KEY` or `BASE_URL` is set. `ICAS_DISCOVERY_SMOKE=1` opts into the live smoke test; leave it unset in CI.
-
-When the new vars are empty, CLIs still accept `ICAS_MODEL` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` as a fallback.
 
 Env is **model transport**. The SDK seam remains `CandidateProposer`: production injects one implementation; tests inject a fake. A second SDK is a new class on that interface, not extra env vars.

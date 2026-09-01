@@ -1,9 +1,8 @@
 /**
  * @file Discovery model helpers — thin wrappers over {@link resolveIcasLlmSettings}.
  *
- * Prefer `ICAS_DISCOVERY_LLM_*`. Legacy `ICAS_MODEL` / `OPENAI_API_KEY` /
- * `ANTHROPIC_API_KEY` still fill empty new vars. These helpers never call
- * the network; {@link MastraCandidateProposer} does.
+ * Reads `ICAS_DISCOVERY_LLM_*` only. These helpers never call the network;
+ * {@link MastraCandidateProposer} does.
  */
 
 import {
@@ -29,8 +28,7 @@ export function resolveDiscoveryModel(
 /**
  * True when discovery can call a live model.
  *
- * Uses resolved settings (new names plus legacy fallback), not a hardcoded
- * `OPENAI_API_KEY` check.
+ * Uses resolved `ICAS_DISCOVERY_LLM_*` settings.
  *
  * @param env - Process env
  */

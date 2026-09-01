@@ -148,24 +148,16 @@ describe("MastraRepairProposer", () => {
 });
 
 describe("repair helpers", () => {
-  it("prefers ICAS_ASSIST_LLM_MODEL over ICAS_MODEL", () => {
+  it("honors ICAS_ASSIST_LLM_MODEL", () => {
     expect(
       resolveRepairModel({
         ICAS_ASSIST_LLM_MODEL: "openai/gpt-4o-mini",
-        ICAS_MODEL: "anthropic/claude-sonnet-4-6",
       }),
     ).toBe("openai/gpt-4o-mini");
   });
 
-  it("prefers ICAS_MODEL over the default", () => {
-    expect(resolveRepairModel({ ICAS_MODEL: "anthropic/claude-sonnet-4-6" })).toBe(
-      "anthropic/claude-sonnet-4-6",
-    );
-  });
-
-  it("detects provider keys", () => {
+  it("detects ICAS_ASSIST_LLM_*", () => {
     expect(hasRepairApiKey({})).toBe(false);
-    expect(hasRepairApiKey({ OPENAI_API_KEY: "sk-test" })).toBe(true);
     expect(hasRepairApiKey({ ICAS_ASSIST_LLM_API_KEY: "sk-test" })).toBe(true);
     expect(
       hasRepairApiKey({ ICAS_ASSIST_LLM_BASE_URL: "http://127.0.0.1:1234/v1" }),

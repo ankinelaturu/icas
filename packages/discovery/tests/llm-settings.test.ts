@@ -58,35 +58,6 @@ describe("resolveIcasLlmSettings", () => {
     expect(isIcasLlmReady(resolveIcasLlmSettings("assist", {}))).toBe(false);
   });
 
-  it("falls back to ICAS_MODEL and OPENAI_API_KEY when new vars are empty", () => {
-    const settings = resolveIcasLlmSettings("discovery", {
-      ICAS_MODEL: "openai/gpt-4o-mini",
-      OPENAI_API_KEY: "legacy-sk",
-    });
-    expect(settings.model).toBe("openai/gpt-4o-mini");
-    expect(settings.apiKey).toBe("legacy-sk");
-    expect(isIcasLlmReady(settings)).toBe(true);
-  });
-
-  it("prefers ICAS_DISCOVERY_LLM_MODEL over ICAS_MODEL", () => {
-    expect(
-      resolveIcasLlmSettings("discovery", {
-        ICAS_DISCOVERY_LLM_MODEL: "openai/gpt-4o",
-        ICAS_MODEL: "openai/gpt-4o-mini",
-        ICAS_DISCOVERY_LLM_API_KEY: "sk",
-      }).model,
-    ).toBe("openai/gpt-4o");
-  });
-
-  it("prefers ICAS_DISCOVERY_LLM_API_KEY over OPENAI_API_KEY", () => {
-    expect(
-      resolveIcasLlmSettings("discovery", {
-        ICAS_DISCOVERY_LLM_API_KEY: "new-key",
-        OPENAI_API_KEY: "old-key",
-      }).apiKey,
-    ).toBe("new-key");
-  });
-
   it("keeps temperature 0 and omits empty sampling", () => {
     const settings = resolveIcasLlmSettings("assist", {
       ICAS_ASSIST_LLM_API_KEY: "sk",

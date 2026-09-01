@@ -15,7 +15,7 @@ Write straightforward, readable code. Prefer small modules and composition over 
 - Classes, types, interfaces: PascalCase
 - Variables, functions, methods: camelCase; functions are verb + noun (`getCapability`, `saveOverride`)
 - Files and directories: kebab-case (`capability-resolver.ts`)
-- Constants and env names: UPPER_SNAKE_CASE (`ICAS_MODEL`)
+- Constants and env names: UPPER_SNAKE_CASE (`ICAS_DISCOVERY_LLM_MODEL`)
 
 ## Types
 

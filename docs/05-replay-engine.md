@@ -190,7 +190,7 @@ If the repaired state does not rejoin the known path, stop. Assisted fallback is
 
 `--assist` reads **`ICAS_ASSIST_LLM_*`** (independent of discovery). Same shape: `MODEL` (`provider/model`), `API_KEY`, optional `BASE_URL` (`/v1` for OpenAI-compatible local servers; empty means the provider's public host), and optional sampling (`TEMPERATURE`, `TOP_K`, `TOP_P`, `MAX_OUTPUT_TOKENS`). Ready when `MODEL` is set and either `API_KEY` or `BASE_URL` is set. Strict replay without `--assist` ignores this env entirely.
 
-Env is model transport. The SDK seam is `RepairProposer` (injected in `icas-play`; `@icas/replay` stays model-free). Empty `ICAS_ASSIST_LLM_*` still falls back to `ICAS_MODEL` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`.
+Env is model transport. The SDK seam is `RepairProposer` (injected in `icas-play`; `@icas/replay` stays model-free). `--assist` reads only `ICAS_ASSIST_LLM_*`.
 
 ## Effective capability resolution
 

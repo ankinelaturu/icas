@@ -411,7 +411,7 @@ ICAS owns search state, budget, trace, and compiler. Mastra is the LLM/tool laye
 ### Pass 5.5 — Model / vision provider
 
 - [x] Choose and document default provider/model (image-capable if observations are screenshots)
-- [x] Env: `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `ICAS_MODEL`
+- [x] Env: `ICAS_DISCOVERY_LLM_*` / `ICAS_ASSIST_LLM_*`
 - [x] Inject prompt policy from Pass 3.1
 - [x] Smoke test behind a flag or recorded fixture if CI has no keys
 
@@ -515,7 +515,7 @@ Depends on Pass 1.10. Prompt already describes the field; structured output and 
 
 Do not reopen Pass 5.5. Operator surface is already in `.env.example` (`ICAS_DISCOVERY_LLM_*` / `ICAS_ASSIST_LLM_*`). This pass is docs only.
 
-- [x] `docs/03`: discover reads `ICAS_DISCOVERY_LLM_*`; do not infer provider from `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` names; empty `BASE_URL` means the provider's public host
+- [x] `docs/03`: discover reads `ICAS_DISCOVERY_LLM_*`; provider is the `MODEL` prefix; empty `BASE_URL` means the provider's public host
 - [x] `docs/05` (assist): `--assist` reads `ICAS_ASSIST_LLM_*`; strict replay stays model-free
 - [x] Agent / play READMEs: load-repo-env still applies; operator-facing names are the `*_LLM_*` vars (no Mastra in those READMEs)
 - [x] Keep `CandidateProposer` / `RepairProposer` as the SDK seam; env is model transport, not a second proposer interface
@@ -527,9 +527,8 @@ Depends on Pass 5.20. Do not reopen Pass 5.5.
 
 - [x] One settings object per flow: `MODEL`, `API_KEY`, `BASE_URL`, `TEMPERATURE`, `TOP_K`, `TOP_P`, `MAX_OUTPUT_TOKENS`
 - [x] Discover uses discovery settings; `--assist` uses assist settings. Do not share one inferred model
-- [x] Ready check: `MODEL` set and (`API_KEY` or `BASE_URL`). Do not require `OPENAI_API_KEY` by name
+- [x] Ready check: `MODEL` set and (`API_KEY` or `BASE_URL`)
 - [x] Pass key / base URL / sampling into the existing proposer adapters (not only a `provider/model` string)
-- [x] Optional fallback: empty `ICAS_*_LLM_*` may still read `ICAS_MODEL` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` so current shells keep working; prefer the new names
 - [x] Tests: resolve discovery vs assist independently; empty BASE_URL; local BASE_URL without a cloud key; fail closed when neither key nor BASE_URL is set
 
 ---

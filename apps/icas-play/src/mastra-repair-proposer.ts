@@ -86,8 +86,7 @@ export function resolveRepairModel(env: NodeJS.ProcessEnv = process.env): string
 /**
  * True when `--assist` can call a live model.
  *
- * Uses resolved `ICAS_ASSIST_LLM_*` (plus legacy fallback), not a hardcoded
- * `OPENAI_API_KEY` check.
+ * Uses resolved `ICAS_ASSIST_LLM_*`.
  *
  * @param env - Process env
  */

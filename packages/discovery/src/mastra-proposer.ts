@@ -116,9 +116,8 @@ Do not execute actions. The runtime will policy-check and run them.`;
  * Build the Mastra Agent used as the discovery proposer.
  *
  * `model` is Mastra model-router form (`openai/gpt-4o`) or an
- * `{ id, apiKey, url }` object so a custom key / local base URL is not
- * looked up via `OPENAI_API_KEY`. No tools are registered: the model ranks;
- * ICAS executes.
+ * `{ id, apiKey, url }` object so a custom key / local base URL is passed
+ * through. No tools are registered: the model ranks; ICAS executes.
  *
  * @param args.instructions - Prompt-policy markdown plus {@link DISCOVERY_PROPOSER_INSTRUCTIONS}
  * @param args.model - From {@link toMastraModelConfig}

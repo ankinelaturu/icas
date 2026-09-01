@@ -16,35 +16,18 @@ describe("resolveDiscoveryModel", () => {
     expect(resolveDiscoveryModel({})).toBe(DEFAULT_DISCOVERY_MODEL);
   });
 
-  it("prefers ICAS_DISCOVERY_LLM_MODEL over ICAS_MODEL", () => {
+  it("honors ICAS_DISCOVERY_LLM_MODEL", () => {
     expect(
       resolveDiscoveryModel({
-        ICAS_DISCOVERY_LLM_MODEL: "openai/gpt-4o",
-        ICAS_MODEL: "anthropic/claude-haiku-4-5",
-      }),
-    ).toBe("openai/gpt-4o");
-  });
-
-  it("honors ICAS_MODEL over inferred provider", () => {
-    expect(
-      resolveDiscoveryModel({
-        ICAS_MODEL: "anthropic/claude-haiku-4-5",
-        OPENAI_API_KEY: "sk-test",
+        ICAS_DISCOVERY_LLM_MODEL: "anthropic/claude-haiku-4-5",
       }),
     ).toBe("anthropic/claude-haiku-4-5");
-  });
-
-  it("uses Anthropic when only ANTHROPIC_API_KEY is set", () => {
-    expect(resolveDiscoveryModel({ ANTHROPIC_API_KEY: "ak-test" })).toBe(
-      "anthropic/claude-sonnet-4-6",
-    );
   });
 });
 
 describe("hasDiscoveryApiKey / discoverySmokeEnabled", () => {
-  it("detects keys and keeps CI smoke off by default", () => {
+  it("detects ICAS_DISCOVERY_LLM_* and keeps CI smoke off by default", () => {
     expect(hasDiscoveryApiKey({})).toBe(false);
-    expect(hasDiscoveryApiKey({ OPENAI_API_KEY: "sk" })).toBe(true);
     expect(hasDiscoveryApiKey({ ICAS_DISCOVERY_LLM_API_KEY: "sk" })).toBe(true);
     expect(
       hasDiscoveryApiKey({
