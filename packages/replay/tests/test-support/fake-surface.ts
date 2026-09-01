@@ -45,8 +45,12 @@ export class FakeSurface implements Surface {
   }
 
   async locate(_target: TargetDescriptor): Promise<unknown> {
-    return { ok: true };
+    return await this.locateHandler(_target);
   }
+
+  locateHandler: (target: TargetDescriptor) => unknown | Promise<unknown> = () => ({
+    ok: true,
+  });
 
   async peekDestination(_target: TargetDescriptor): Promise<string | undefined> {
     return undefined;

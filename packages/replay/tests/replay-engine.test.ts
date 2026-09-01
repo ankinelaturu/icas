@@ -280,9 +280,39 @@ describe("ReplayEngine success and outputs", () => {
   });
 });
 
-describe("ReplayEngine business outcomes", () => {
-  it("returns LOAN_NOT_FOUND as business_outcome when the page says the loan is missing", async () => {
+describe("ReplayEngine possibleOutcomes", () => {
+  const loanNotFound = {
+    kind: "error" as const,
+    match: { phrases: ["Loan not found"] },
+    heading: "Loan not found",
+    summary: "No loan matches the requested account id.",
+  };
+
+  function targetMiss(): Error {
+    const error = new Error("no matching control");
+    (error as Error & { code: string }).code = "TARGET_NOT_FOUND";
+    return error;
+  }
+
+  function payoffStep() {
+    return clickStep("open-payoff", {
+      action: {
+        type: "click" as const,
+        target: { strategies: [{ type: "visibleText" as const, text: "Payoff" }] },
+        risk: "safe" as const,
+      },
+    });
+  }
+
+  it("returns business_outcome when the next locator is missing and a phrase is visible", async () => {
     const surface = new FakeSurface();
+    surface.locateHandler = (target) => {
+      const first = target.strategies[0];
+      if (first !== undefined && "text" in first && first.text === "Payoff") {
+        throw targetMiss();
+      }
+      return { ok: true };
+    };
     surface.assertHandler = (assertion) =>
       assertion.type === "textVisible" && assertion.value === "Loan not found";
     const { events, summaries, signals, evidence } = memoryEvidence();
@@ -290,9 +320,8 @@ describe("ReplayEngine business outcomes", () => {
     const result = await engine.run(
       testCapability({
         steps: [
-          clickStep("search", {
-            postconditions: [{ type: "textVisible", value: "Payoff Statement" }],
-          }),
+          clickStep("inquire-loan", { possibleOutcomes: [loanNotFound] }),
+          payoffStep(),
         ],
       }),
       {},
@@ -301,22 +330,145 @@ describe("ReplayEngine business outcomes", () => {
     expect(result).toEqual({
       status: "business_outcome",
       capabilityId: "loan-payoff",
-      outcome: "LOAN_NOT_FOUND",
-      details: { text: "Loan not found" },
+      outcome: "loan_not_found",
+      details: {
+        heading: "Loan not found",
+        summary: "No loan matches the requested account id.",
+        match: { phrases: ["Loan not found"] },
+        phrase: "Loan not found",
+      },
       runId: "run-loan-missing",
     });
+    expect(surface.executed).toHaveLength(1);
     expect(events.map((event) => event.type)).toEqual(
-      expect.arrayContaining(["postcondition", "business_outcome"]),
+      expect.arrayContaining(["business_outcome"]),
     );
-    expect(events.find((event) => event.type === "postcondition")?.payload).toMatchObject({
-      stepId: "search",
-      status: "failed",
-    });
     expect(summaries[0]).toMatchObject({
       status: "business_outcome",
       runId: "run-loan-missing",
     });
     expect(signals.some((signal) => signal.kind === "screenshot")).toBe(true);
+  });
+
+  it("does not scan possibleOutcomes when the next locator is present", async () => {
+    const surface = new FakeSurface();
+    surface.assertHandler = () => true;
+    const engine = new ReplayEngine(surface);
+    const result = await engine.run(
+      testCapability({
+        steps: [
+          clickStep("inquire-loan", { possibleOutcomes: [loanNotFound] }),
+          payoffStep(),
+        ],
+      }),
+      {},
+      { runId: "run-next-found" },
+    );
+    expect(result.status).toBe("success");
+    expect(surface.executed).toHaveLength(2);
+  });
+
+  it("fails when the next locator is missing and no outcome matches", async () => {
+    const surface = new FakeSurface();
+    surface.locateHandler = () => {
+      throw targetMiss();
+    };
+    surface.assertHandler = () => false;
+    const engine = new ReplayEngine(surface);
+    const result = await engine.run(
+      testCapability({
+        steps: [
+          clickStep("inquire-loan", { possibleOutcomes: [loanNotFound] }),
+          payoffStep(),
+        ],
+      }),
+      {},
+      { runId: "run-no-match" },
+    );
+    expect(result).toMatchObject({
+      status: "failure",
+      code: "UNEXPECTED_STATE",
+      stepId: "inquire-loan",
+      runId: "run-no-match",
+    });
+    expect(surface.executed).toHaveLength(1);
+  });
+
+  it("pauses for HITL when a hitl outcome matches", async () => {
+    const surface = new FakeSurface();
+    surface.locateHandler = () => {
+      throw targetMiss();
+    };
+    surface.assertHandler = (assertion) =>
+      assertion.type === "textVisible" && assertion.value === "Call member services";
+    const handoff = new SessionHandoffController();
+    const engine = new ReplayEngine(surface, { handoff });
+    const run = engine.run(
+      testCapability({
+        steps: [
+          clickStep("inquire-loan", {
+            possibleOutcomes: [
+              {
+                kind: "hitl",
+                match: { phrases: ["Call member services"] },
+                heading: "Need assistance",
+                summary: "A person must continue this session.",
+              },
+            ],
+          }),
+          payoffStep(),
+        ],
+      }),
+      {},
+      { runId: "run-hitl-outcome" },
+    );
+    await vi.waitFor(() => {
+      expect(handoff.owner()).toBe("human");
+    });
+    expect(surface.humanTakes).toBe(1);
+    handoff.signalResume();
+    const result = await run;
+    expect(result.status).toBe("failure");
+    expect(surface.automationResumes).toBe(1);
+  });
+
+  it("does not classify this step's possibleOutcomes when this step's target is missing", async () => {
+    const surface = new FakeSurface();
+    surface.executeHandler = () => {
+      throw targetMiss();
+    };
+    const engine = new ReplayEngine(surface);
+    const result = await engine.run(
+      testCapability({
+        steps: [
+          clickStep("inquire-loan", { possibleOutcomes: [loanNotFound] }),
+          payoffStep(),
+        ],
+      }),
+      {},
+      { runId: "run-this-target" },
+    );
+    expect(result).toMatchObject({
+      status: "failure",
+      code: "TARGET_NOT_FOUND",
+      stepId: "inquire-loan",
+    });
+  });
+
+  it("does not ship a hardcoded loan-message table", async () => {
+    const { readdirSync, readFileSync } = await import("node:fs");
+    const { dirname, join } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const srcDir = join(dirname(fileURLToPath(import.meta.url)), "../src");
+    for (const name of readdirSync(srcDir)) {
+      if (!name.endsWith(".ts")) {
+        continue;
+      }
+      const text = readFileSync(join(srcDir, name), "utf8");
+      expect(text, name).not.toMatch(
+        /LOAN_NOT_FOUND|PAYOFF_NOT_AVAILABLE|INVALID_PAYOFF_DATE|LOAN_ALREADY_PAID/,
+      );
+    }
   });
 });
 

@@ -9,8 +9,8 @@
  * Terminal result of one {@link ReplayEngine.run}.
  *
  * `success` carries typed outputs. `business_outcome` is an expected domain
- * stop (loan not found). `failure` is a classified hard stop with enough
- * expected/observed context to debug without a stack dump.
+ * stop from a matched `possibleOutcomes` entry. `failure` is a classified
+ * hard stop with enough expected/observed context to debug without a stack dump.
  */
 export type ExecutionResult =
   | {

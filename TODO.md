@@ -349,15 +349,15 @@ Callers resolve with `CapabilityResolver` first. `ReplayEngine` never branches o
 
 Depends on Pass 1.10. Replaces Pass 4.6’s hardcoded product table (`LOAN_NOT_FOUND`, …). See `docs/05-replay-engine.md`.
 
-- [ ] After execute (not last step): resolve the **next** step’s action locator first; if found, continue (do not scan outcomes)
-- [ ] If that locator is missing, walk the **just-executed** step’s `possibleOutcomes` in order; skip `kind: "success"`; an outcome hits when any `match.phrases` entry is visible (OR); first hit wins
-- [ ] `error` → `business_outcome` with that entry’s `heading`, `summary`, and `match` in details — not an engine loan-message enum
-- [ ] `hitl` → intervention message + same-session handoff
-- [ ] None hit → `failure`
-- [ ] Last step: overall `success` assertions miss, then scan that last step’s list the same way
-- [ ] This step’s own target miss is locator/script failure, not this step’s `possibleOutcomes`
-- [ ] Remove `ReplayEngine` product copy table (`packages/replay/src/business-outcomes.ts` or equivalent)
-- [ ] Tests: next locator missing + phrase visible → `business_outcome`; `hitl` kind pauses; no match → `failure`; engine has no loan-copy strings
+- [x] After execute (not last step): resolve the **next** step’s action locator first; if found, continue (do not scan outcomes)
+- [x] If that locator is missing, walk the **just-executed** step’s `possibleOutcomes` in order; skip `kind: "success"`; an outcome hits when any `match.phrases` entry is visible (OR); first hit wins
+- [x] `error` → `business_outcome` with that entry’s `heading`, `summary`, and `match` in details — not an engine loan-message enum
+- [x] `hitl` → intervention message + same-session handoff
+- [x] None hit → `failure`
+- [x] Last step: overall `success` assertions miss, then scan that last step’s list the same way
+- [x] This step’s own target miss is locator/script failure, not this step’s `possibleOutcomes`
+- [x] Remove `ReplayEngine` product copy table (`packages/replay/src/business-outcomes.ts` or equivalent)
+- [x] Tests: next locator missing + phrase visible → `business_outcome`; `hitl` kind pauses; no match → `failure`; engine has no loan-copy strings
 
 ### Pass 4.15 — Phrase embeddings (deferred)
 

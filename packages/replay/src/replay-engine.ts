@@ -19,13 +19,17 @@ import type { HandoffController } from "@icas/handoff";
 import type { PolicyGuard } from "@icas/policy";
 import type { Observation, Surface } from "@icas/surface";
 
-import { KNOWN_BUSINESS_OUTCOMES } from "./business-outcomes.js";
 import {
   ReplayFailureCode,
   type ExecutionResult,
 } from "./execution-result.js";
 import { extractOutputs, isExecutionResult } from "./extract-outputs.js";
 import { hydrateAction, hydrateAssertion } from "./hydrate.js";
+import {
+  matchPossibleOutcomes,
+  outcomeSlug,
+  type MatchedPossibleOutcome,
+} from "./match-possible-outcomes.js";
 import { INTERSTITIAL_CONTINUE, INTERSTITIAL_TEXTS } from "./recoverable.js";
 import type { RepairProposer } from "./repair-proposer.js";
 import type { ReplayOptions } from "./replay-options.js";
@@ -91,8 +95,8 @@ export class ReplayEngine {
   /**
    * Iterate capability steps and return a structured result.
    *
-   * Preconditions → policy-gated execute → postconditions, then overall
-   * success assertions and output extraction. LLM repair runs only when
+   * Preconditions → policy-gated execute → next-locator / possibleOutcomes
+   * (or last-step success), then output extraction. LLM repair runs only when
    * `options.assist` is true and a {@link RepairProposer} is injected.
    *
    * @param capability - Effective artifact from {@link CapabilityResolver}, or missing
@@ -181,6 +185,19 @@ export class ReplayEngine {
           status: "failed",
           expected,
         });
+        const last = capability.steps[capability.steps.length - 1];
+        if (last !== undefined) {
+          // Last-step success miss uses this step's outcomes, not a product table.
+          const classified = await this.resultFromPossibleOutcomes(
+            last,
+            undefined,
+            runId,
+            capability.id,
+          );
+          if (classified !== undefined) {
+            return classified;
+          }
+        }
         return {
           status: "failure",
           capabilityId: capability.id,
@@ -374,12 +391,165 @@ export class ReplayEngine {
       }
       throw error;
     }
+    const after = await this.afterSuccessfulExecute(
+      step,
+      nextStep,
+      inputs,
+      runId,
+      capabilityId,
+    );
+    if (after !== undefined && after.status === "failure") {
+      return await this.maybeAssist(step, nextStep, inputs, runId, capabilityId, after);
+    }
+    return after;
+  }
+
+  /**
+   * After this step's action ran, decide happy-path vs exceptional state.
+   *
+   * This step's own target miss is handled before this method. When a next
+   * step exists, its locator is the happy-path gate: found → postconditions;
+   * missing → this step's `possibleOutcomes`. Last step uses postconditions
+   * then overall success (caller).
+   *
+   * @returns `undefined` to continue the step loop; otherwise a structured stop
+   */
+  private async afterSuccessfulExecute(
+    step: CapabilityStep,
+    nextStep: CapabilityStep | undefined,
+    inputs: Record<string, unknown>,
+    runId: string,
+    capabilityId: string,
+  ): Promise<ExecutionResult | undefined> {
+    if (nextStep !== undefined) {
+      if (await this.nextActionTargetPresent(nextStep)) {
+        return await this.evaluatePostconditions(step, inputs, runId, capabilityId);
+      }
+      const classified = await this.resultFromPossibleOutcomes(
+        step,
+        nextStep,
+        runId,
+        capabilityId,
+      );
+      if (classified !== undefined) {
+        return classified;
+      }
+      return {
+        status: "failure",
+        capabilityId,
+        code: ReplayFailureCode.unexpectedState,
+        stepId: step.id,
+        expected: nextStep.action,
+        observed: "next action target missing; no possibleOutcomes matched",
+        runId,
+      };
+    }
     const post = await this.evaluatePostconditions(step, inputs, runId, capabilityId);
-    if (post !== undefined) {
-      // The click happened but the expected screen did not; assist may recover.
-      return await this.maybeAssist(step, nextStep, inputs, runId, capabilityId, post);
+    if (post === undefined) {
+      return undefined;
+    }
+    const classified = await this.resultFromPossibleOutcomes(
+      step,
+      undefined,
+      runId,
+      capabilityId,
+    );
+    return classified ?? post;
+  }
+
+  /**
+   * Whether the next step's action target is on the page.
+   *
+   * Actions without a target (navigate / handoff) cannot be probed; treat them
+   * as present so we do not classify the previous step's outcomes.
+   */
+  private async nextActionTargetPresent(step: CapabilityStep): Promise<boolean> {
+    const action = step.action;
+    if (!("target" in action)) {
+      return true;
+    }
+    try {
+      await this.surface.locate(action.target);
+      return true;
+    } catch (error) {
+      if (hasSurfaceCode(error, ReplayFailureCode.targetNotFound)) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Map a matched catalog outcome to `business_outcome` or same-session HITL.
+   *
+   * @returns A stop result, or `undefined` after a successful HITL resume
+   */
+  private async resultFromPossibleOutcomes(
+    step: CapabilityStep,
+    nextStep: CapabilityStep | undefined,
+    runId: string,
+    capabilityId: string,
+  ): Promise<ExecutionResult | undefined> {
+    const hit = await matchPossibleOutcomes(this.surface, step.possibleOutcomes);
+    if (hit === undefined) {
+      return undefined;
+    }
+    if (hit.outcome.kind === "error") {
+      return this.businessOutcomeResult(capabilityId, runId, hit);
+    }
+    const message = hitlMessage(hit);
+    const paused = await this.pauseForHuman({
+      runId,
+      capabilityId,
+      stepId: step.id,
+      reason: "unexpected_state",
+      message,
+    });
+    if (!paused) {
+      return {
+        status: "failure",
+        capabilityId,
+        code: ReplayFailureCode.unexpectedState,
+        stepId: step.id,
+        expected: hit.outcome,
+        observed: message,
+        runId,
+      };
+    }
+    if (nextStep !== undefined && !(await this.nextActionTargetPresent(nextStep))) {
+      return {
+        status: "failure",
+        capabilityId,
+        code: ReplayFailureCode.unexpectedState,
+        stepId: step.id,
+        expected: nextStep.action,
+        observed: "next action target still missing after HITL",
+        runId,
+      };
     }
     return undefined;
+  }
+
+  /**
+   * Structured domain stop from a matched `error` outcome.
+   */
+  private businessOutcomeResult(
+    capabilityId: string,
+    runId: string,
+    hit: MatchedPossibleOutcome,
+  ): ExecutionResult {
+    return {
+      status: "business_outcome",
+      capabilityId,
+      outcome: outcomeSlug(hit.outcome.heading, hit.phrase),
+      details: {
+        heading: hit.outcome.heading,
+        summary: hit.outcome.summary,
+        match: hit.outcome.match,
+        phrase: hit.phrase,
+      },
+      runId,
+    };
   }
 
   /**
@@ -474,9 +644,11 @@ export class ReplayEngine {
   }
 
   /**
-   * Assert every postcondition; classify a known domain message before a hard fail.
+   * Assert every postcondition. Domain classification is not this method:
+   * {@link afterSuccessfulExecute} walks `possibleOutcomes` when the next
+   * locator is missing (or last-step success misses).
    *
-   * @returns `undefined` when postconditions hold; otherwise business_outcome or failure
+   * @returns `undefined` when postconditions hold; otherwise POSTCONDITION_FAILED
    */
   private async evaluatePostconditions(
     step: CapabilityStep,
@@ -499,16 +671,6 @@ export class ReplayEngine {
           status: "ok",
         });
         return undefined;
-      }
-      const outcome = await this.classifyBusinessOutcome(capabilityId, runId);
-      if (outcome !== undefined) {
-        await this.record(runId, "postcondition", {
-          stepId: step.id,
-          status: "failed",
-          expected: failed,
-        });
-        // Domain messages (loan not found) are not Playwright crashes.
-        return outcome;
       }
       if (attempt < this.maxAttempts && (await this.recoverInterstitial(runId, attempt))) {
         continue;
@@ -557,31 +719,6 @@ export class ReplayEngine {
       return true;
     }
     return false;
-  }
-
-  /**
-   * Map a visible fixture message to `business_outcome` instead of a crash code.
-   */
-  private async classifyBusinessOutcome(
-    capabilityId: string,
-    runId: string,
-  ): Promise<ExecutionResult | undefined> {
-    for (const known of KNOWN_BUSINESS_OUTCOMES) {
-      const visible = await this.surface.assert({
-        type: "textVisible",
-        value: known.text,
-      });
-      if (visible) {
-        return {
-          status: "business_outcome",
-          capabilityId,
-          outcome: known.outcome,
-          details: { text: known.text },
-          runId,
-        };
-      }
-    }
-    return undefined;
   }
 
   /**
@@ -795,4 +932,17 @@ export class ReplayEngine {
       ...(payload === undefined ? {} : { payload }),
     });
   }
+}
+
+/**
+ * HITL copy from the matched catalog entry. Heading is tool copy, not a locator.
+ */
+function hitlMessage(hit: MatchedPossibleOutcome): string {
+  const parts = [hit.outcome.heading, hit.outcome.summary].filter(
+    (part): part is string => typeof part === "string" && part.length > 0,
+  );
+  if (parts.length > 0) {
+    return parts.join(" — ");
+  }
+  return hit.phrase;
 }

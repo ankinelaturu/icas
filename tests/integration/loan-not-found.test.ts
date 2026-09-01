@@ -22,7 +22,25 @@ const missingLoan: CapabilityArtifact = {
         target: { strategies: [{ type: "visibleText", text: "Back" }] },
         risk: "safe",
       },
-      postconditions: [{ type: "textVisible", value: "Payoff Statement" }],
+      postconditions: [],
+      possibleOutcomes: [
+        {
+          kind: "error",
+          match: { phrases: ["Loan not found"] },
+          heading: "Loan not found",
+          summary: "No loan matches the requested account id.",
+        },
+      ],
+    },
+    {
+      id: "open-payoff",
+      preconditions: [],
+      action: {
+        type: "click",
+        target: { strategies: [{ type: "visibleText", text: "Payoff" }] },
+        risk: "safe",
+      },
+      postconditions: [],
     },
   ],
   success: [{ type: "textVisible", value: "Payoff Statement" }],
@@ -35,15 +53,20 @@ describe("loan not found integration", () => {
     await surface.close();
   });
 
-  it("returns LOAN_NOT_FOUND as a business_outcome on the fixture results page", async () => {
+  it("returns business_outcome from possibleOutcomes when the next locator is missing", async () => {
     await surface.open(pageUrl("loan-not-found.html"));
     const engine = new ReplayEngine(surface, { policy: fixturePolicy() });
     const result = await engine.run(missingLoan, {}, { runId: "int-missing" });
     expect(result).toEqual({
       status: "business_outcome",
       capabilityId: "loan-payoff",
-      outcome: "LOAN_NOT_FOUND",
-      details: { text: "Loan not found" },
+      outcome: "loan_not_found",
+      details: {
+        heading: "Loan not found",
+        summary: "No loan matches the requested account id.",
+        match: { phrases: ["Loan not found"] },
+        phrase: "Loan not found",
+      },
       runId: "int-missing",
     });
   });
