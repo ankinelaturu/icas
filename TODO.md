@@ -511,6 +511,27 @@ Depends on Pass 1.10. Prompt already describes the field; structured output and 
 - [ ] Empty list is valid; do not invent outcomes from failed DFS branches
 - [ ] Tests: compile copies error/hitl; success entries stripped; missing field → empty array
 
+### Pass 5.20 — Docs: separate discovery / assist LLM env
+
+Do not reopen Pass 5.5. Operator surface is already in `.env.example` (`ICAS_DISCOVERY_LLM_*` / `ICAS_ASSIST_LLM_*`). This pass is docs only.
+
+- [ ] `docs/03`: discover reads `ICAS_DISCOVERY_LLM_*`; do not infer provider from `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` names; empty `BASE_URL` means the provider's public host
+- [ ] `docs/05` (assist): `--assist` reads `ICAS_ASSIST_LLM_*`; strict replay stays model-free
+- [ ] Agent / play READMEs: load-repo-env still applies; operator-facing names are the `*_LLM_*` vars (no Mastra in those READMEs)
+- [ ] Keep `CandidateProposer` / `RepairProposer` as the SDK seam; env is model transport, not a second proposer interface
+- [ ] Note hosted vs local: `provider/model` + optional `BASE_URL` (`/v1` for OpenAI-compatible servers)
+
+### Pass 5.21 — Code: wire `ICAS_DISCOVERY_LLM_*` / `ICAS_ASSIST_LLM_*`
+
+Depends on Pass 5.20. Do not reopen Pass 5.5.
+
+- [ ] One settings object per flow: `MODEL`, `API_KEY`, `BASE_URL`, `TEMPERATURE`, `TOP_K`, `TOP_P`, `MAX_OUTPUT_TOKENS`
+- [ ] Discover uses discovery settings; `--assist` uses assist settings. Do not share one inferred model
+- [ ] Ready check: `MODEL` set and (`API_KEY` or `BASE_URL`). Do not require `OPENAI_API_KEY` by name
+- [ ] Pass key / base URL / sampling into the existing proposer adapters (not only a `provider/model` string)
+- [ ] Optional fallback: empty `ICAS_*_LLM_*` may still read `ICAS_MODEL` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` so current shells keep working; prefer the new names
+- [ ] Tests: resolve discovery vs assist independently; empty BASE_URL; local BASE_URL without a cloud key; fail closed when neither key nor BASE_URL is set
+
 ---
 
 ## Phase 6 — Apps / CLIs
