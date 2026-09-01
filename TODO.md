@@ -371,11 +371,11 @@ Same artifact field. Do not store vectors on the capability. Strict replay still
 
 Depends on Pass 4.14 and Pass 2.10. Do not put this catalog on the capability or in discover instructions. See `docs/05-replay-engine.md`.
 
-- [ ] When the next locator misses: if the surface reported document HTTP 403 / 404, stop as `failure` before scanning phrases; 5xx uses existing recoverable wait then `failure`
-- [ ] After step `possibleOutcomes` miss, walk a tiny runtime list of distinctive visible chrome (same `PossibleOutcome` shape; not stored on the artifact)
-- [ ] Step-specific phrases win over generic 500 / access-denied copy
-- [ ] Missing HTTP status is normal (200 error banners, XHR); continue to phrases
-- [ ] Tests: document 404 fails without needing artifact phrases; generic visible “Internal Server Error” hits fallback; compiled step phrase wins when both could match
+- [x] When the next locator misses: if the surface reported document HTTP 403 / 404, stop as `failure` before scanning phrases; 5xx uses existing recoverable wait then `failure`
+- [x] After step `possibleOutcomes` miss, walk a tiny runtime list of distinctive visible chrome (same `PossibleOutcome` shape; not stored on the artifact)
+- [x] Step-specific phrases win over generic 500 / access-denied copy
+- [x] Missing HTTP status is normal (200 error banners, XHR); continue to phrases
+- [x] Tests: document 404 fails without needing artifact phrases; generic visible “Internal Server Error” hits fallback; compiled step phrase wins when both could match
 
 ---
 

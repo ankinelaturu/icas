@@ -24,6 +24,7 @@ import {
   type ExecutionResult,
 } from "./execution-result.js";
 import { extractOutputs, isExecutionResult } from "./extract-outputs.js";
+import { GENERIC_CHROME_OUTCOMES } from "./generic-chrome.js";
 import { hydrateAction, hydrateAssertion } from "./hydrate.js";
 import {
   matchPossibleOutcomes,
@@ -187,10 +188,10 @@ export class ReplayEngine {
         });
         const last = capability.steps[capability.steps.length - 1];
         if (last !== undefined) {
-          // Last-step success miss uses this step's outcomes, not a product table.
-          const classified = await this.resultFromPossibleOutcomes(
+          const classified = await this.classifyExceptionalState(
             last,
             undefined,
+            inputs,
             runId,
             capability.id,
           );
@@ -425,9 +426,10 @@ export class ReplayEngine {
       if (await this.nextActionTargetPresent(nextStep)) {
         return await this.evaluatePostconditions(step, inputs, runId, capabilityId);
       }
-      const classified = await this.resultFromPossibleOutcomes(
+      const classified = await this.classifyExceptionalState(
         step,
         nextStep,
+        inputs,
         runId,
         capabilityId,
       );
@@ -440,7 +442,7 @@ export class ReplayEngine {
         code: ReplayFailureCode.unexpectedState,
         stepId: step.id,
         expected: nextStep.action,
-        observed: "next action target missing; no possibleOutcomes matched",
+        observed: "next action target missing; no possibleOutcomes or generic chrome matched",
         runId,
       };
     }
@@ -448,13 +450,80 @@ export class ReplayEngine {
     if (post === undefined) {
       return undefined;
     }
-    const classified = await this.resultFromPossibleOutcomes(
+    const classified = await this.classifyExceptionalState(
       step,
       undefined,
+      inputs,
       runId,
       capabilityId,
     );
     return classified ?? post;
+  }
+
+  /**
+   * HTTP status, then this step's possibleOutcomes, then runtime generic chrome.
+   *
+   * Call only after the next locator missed (or last-step success/post missed).
+   * Missing `httpStatus` is normal and continues to phrases. 403/404 fail
+   * before phrases. 5xx retries a known interstitial then fails if still stuck.
+   *
+   * @returns A structured stop, or `undefined` when nothing matched
+   */
+  private async classifyExceptionalState(
+    step: CapabilityStep,
+    nextStep: CapabilityStep | undefined,
+    inputs: Record<string, unknown>,
+    runId: string,
+    capabilityId: string,
+  ): Promise<ExecutionResult | undefined> {
+    const observation = await this.surface.observe();
+    const httpStatus = observation.httpStatus;
+    if (httpStatus === 403 || httpStatus === 404) {
+      return {
+        status: "failure",
+        capabilityId,
+        code: ReplayFailureCode.unexpectedState,
+        stepId: step.id,
+        expected: nextStep?.action ?? "document ok",
+        observed: { httpStatus },
+        runId,
+      };
+    }
+    if (httpStatus !== undefined && httpStatus >= 500 && httpStatus <= 599) {
+      await this.recoverInterstitial(runId, 1);
+      if (nextStep !== undefined && (await this.nextActionTargetPresent(nextStep))) {
+        return await this.evaluatePostconditions(step, inputs, runId, capabilityId);
+      }
+      return {
+        status: "failure",
+        capabilityId,
+        code: ReplayFailureCode.unexpectedState,
+        stepId: step.id,
+        expected: nextStep?.action ?? "document ok",
+        observed: { httpStatus },
+        runId,
+      };
+    }
+    const fromStep = await this.resultFromPossibleOutcomes(
+      step,
+      nextStep,
+      runId,
+      capabilityId,
+    );
+    if (fromStep !== undefined) {
+      return fromStep;
+    }
+    const genericHit = await matchPossibleOutcomes(this.surface, GENERIC_CHROME_OUTCOMES);
+    if (genericHit === undefined) {
+      return undefined;
+    }
+    return await this.applyMatchedOutcome(
+      genericHit,
+      step,
+      nextStep,
+      runId,
+      capabilityId,
+    );
   }
 
   /**
@@ -494,6 +563,19 @@ export class ReplayEngine {
     if (hit === undefined) {
       return undefined;
     }
+    return await this.applyMatchedOutcome(hit, step, nextStep, runId, capabilityId);
+  }
+
+  /**
+   * Map a matched catalog or runtime outcome to `business_outcome` or HITL.
+   */
+  private async applyMatchedOutcome(
+    hit: MatchedPossibleOutcome,
+    step: CapabilityStep,
+    nextStep: CapabilityStep | undefined,
+    runId: string,
+    capabilityId: string,
+  ): Promise<ExecutionResult | undefined> {
     if (hit.outcome.kind === "error") {
       return this.businessOutcomeResult(capabilityId, runId, hit);
     }

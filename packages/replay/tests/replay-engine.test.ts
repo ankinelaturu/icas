@@ -472,6 +472,126 @@ describe("ReplayEngine possibleOutcomes", () => {
   });
 });
 
+describe("ReplayEngine HTTP status and generic chrome", () => {
+  function targetMiss(): Error {
+    const error = new Error("no matching control");
+    (error as Error & { code: string }).code = "TARGET_NOT_FOUND";
+    return error;
+  }
+
+  function payoffStep() {
+    return clickStep("open-payoff", {
+      action: {
+        type: "click" as const,
+        target: { strategies: [{ type: "visibleText" as const, text: "Payoff" }] },
+        risk: "safe" as const,
+      },
+    });
+  }
+
+  it("fails on document 404 without scanning artifact phrases", async () => {
+    const surface = new FakeSurface();
+    surface.observation = { id: "obs-404", httpStatus: 404 };
+    surface.locateHandler = () => {
+      throw targetMiss();
+    };
+    let phraseChecks = 0;
+    surface.assertHandler = () => {
+      phraseChecks += 1;
+      return false;
+    };
+    const engine = new ReplayEngine(surface);
+    const result = await engine.run(
+      testCapability({
+        steps: [
+          clickStep("inquire-loan", {
+            possibleOutcomes: [
+              {
+                kind: "error",
+                match: { phrases: ["Loan not found"] },
+                heading: "Loan not found",
+                summary: "No loan matches the requested account id.",
+              },
+            ],
+          }),
+          payoffStep(),
+        ],
+      }),
+      {},
+      { runId: "run-http-404" },
+    );
+    expect(result).toMatchObject({
+      status: "failure",
+      code: "UNEXPECTED_STATE",
+      observed: { httpStatus: 404 },
+      runId: "run-http-404",
+    });
+    expect(phraseChecks).toBe(0);
+  });
+
+  it("matches generic Internal Server Error chrome after possibleOutcomes miss", async () => {
+    const surface = new FakeSurface();
+    surface.locateHandler = () => {
+      throw targetMiss();
+    };
+    surface.assertHandler = (assertion) =>
+      assertion.type === "textVisible" && assertion.value === "Internal Server Error";
+    const engine = new ReplayEngine(surface);
+    const result = await engine.run(
+      testCapability({
+        steps: [clickStep("inquire-loan"), payoffStep()],
+      }),
+      {},
+      { runId: "run-generic-500" },
+    );
+    expect(result).toMatchObject({
+      status: "business_outcome",
+      outcome: "internal_server_error",
+      details: {
+        heading: "Internal Server Error",
+        phrase: "Internal Server Error",
+      },
+      runId: "run-generic-500",
+    });
+  });
+
+  it("prefers a compiled step phrase over generic chrome", async () => {
+    const surface = new FakeSurface();
+    surface.locateHandler = () => {
+      throw targetMiss();
+    };
+    surface.assertHandler = (assertion) =>
+      assertion.type === "textVisible" &&
+      (assertion.value === "Loan not found" || assertion.value === "Internal Server Error");
+    const engine = new ReplayEngine(surface);
+    const result = await engine.run(
+      testCapability({
+        steps: [
+          clickStep("inquire-loan", {
+            possibleOutcomes: [
+              {
+                kind: "error",
+                match: { phrases: ["Loan not found"] },
+                heading: "Loan not found",
+                summary: "No loan matches the requested account id.",
+              },
+            ],
+          }),
+          payoffStep(),
+        ],
+      }),
+      {},
+      { runId: "run-step-wins" },
+    );
+    expect(result).toMatchObject({
+      status: "business_outcome",
+      outcome: "loan_not_found",
+      details: { phrase: "Loan not found" },
+      runId: "run-step-wins",
+    });
+  });
+});
+
 function memoryEvidence(): {
   events: EvidenceEvent[];
   summaries: RunSummary[];
@@ -574,8 +694,7 @@ describe("ReplayEngine recoverable retries", () => {
 describe("ReplayEngine hard failures and evidence", () => {
   it("fails UNEXPECTED_STATE when overall success assertions do not hold", async () => {
     const surface = new FakeSurface();
-    surface.assertHandler = (assertion) =>
-      !(assertion.type === "textVisible" && assertion.value === "Payoff Statement");
+    surface.assertHandler = () => false;
     const engine = new ReplayEngine(surface);
     const result = await engine.run(
       testCapability({ steps: [clickStep("open-lending")] }),
@@ -666,8 +785,7 @@ describe("ReplayEngine hard failures and evidence", () => {
       {
         code: "UNEXPECTED_STATE",
         run: async (surface, engine) => {
-          surface.assertHandler = (assertion) =>
-            !(assertion.type === "textVisible" && assertion.value === "Payoff Statement");
+          surface.assertHandler = () => false;
           return engine.run(
             testCapability({ steps: [clickStep("open-lending")] }),
             {},

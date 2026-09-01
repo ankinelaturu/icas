@@ -303,9 +303,9 @@ flowchart TB
   exec[execute via Surface]
   last{last step?}
   nextLoc{next step locator found?}
-  http["TODO 4.16: document HTTP 403/404/5xx"]
+  http["document HTTP 403/404/5xx"]
   outcomes["possibleOutcomes on this step"]
-  generic["TODO 4.16: runtime generic chrome"]
+  generic["runtime generic chrome"]
   success[overall success + extract outputs]
   resultSuccess["success"]
   resultBiz["business_outcome"]
@@ -665,7 +665,7 @@ flowchart TB
 
   subgraph remaining["Designed, not done"]
     r1["possibleOutcomes compile + classify"]
-    r2["2.10 / 4.16 HTTP + generic chrome"]
+    r2["HTTP + generic chrome"]
     r3["4.15 phrase embeddings — deferred"]
     r4["5.22 screenshot pixels in generate"]
     r5["6.13 MCP heading/summary"]
@@ -679,7 +679,7 @@ flowchart TB
 | Must | Discover → artifact → enroll → replay + errors → HITL → evidence | [`01`](01-system-overview.md), Phases 1–5 and 6.1–6.5 |
 | Stretch | `--assist`, `icas-adapt`, MCP, browser takeover | Built in-repo; draw dashed. MCP `business_outcome` copy still open (6.13) |
 | Out | Co-browsing console, queues, real PII, desktop driver, REST/DB registry, URL inference | Keep the `Surface` and `CapabilityRegistry` seams; do not implement the extras |
-| Remaining | HTTP status, vision pixels, Phase 8 evidence, `REPORT.md` | See [`TODO.md`](../TODO.md). Pass 4.15 is deferred on purpose |
+| Remaining | vision pixels, Phase 8 evidence, `REPORT.md` | See [`TODO.md`](../TODO.md). Pass 4.15 is deferred on purpose |
 
 Synthetic tenants `icas-bank` and `loki-bank` are in (Phase 7). The first concrete capability remains: generate a loan payoff statement for `loanAccountId` + `payoffDate`, extracting `totalPayoffAmount`, `principalBalance`, and `perDiemInterest`. Discovery must learn that path from the live UI; it must not hard-code it.
 
