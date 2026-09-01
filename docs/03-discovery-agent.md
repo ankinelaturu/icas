@@ -120,7 +120,7 @@ The model may include a happy-path entry (`kind: "success"`). Compile **drops** 
 
 A later replay matcher may compare embeddings of page text to these phrases. Do not put vectors in the proposal or the compiled artifact. See [`05-replay-engine.md`](05-replay-engine.md).
 
-Do not put sample error sentences, loan-specific codes, or a closed enum of domain results in the proposer **instructions**. Instructions set environment (bank and credit union **staff** back-office, often legacy, no API) and the JSON contract. The **user** message supplies `--goal` and the current observation.
+Do not put sample error sentences, loan-specific codes, HTTP status codes, or a closed enum of domain results in the proposer **instructions**. Instructions set environment (bank and credit union **staff** back-office, often legacy, no API) and the JSON contract. The **user** message supplies `--goal` and the current observation. Replay unions HTTP status and generic chrome itself.
 
 Optional `expectation` is not this catalog. It must not narrate success or embed invocation values. See [`04-capability-artifact.md`](04-capability-artifact.md) and [`05-replay-engine.md`](05-replay-engine.md) for how compile and replay use `possibleOutcomes`.
 

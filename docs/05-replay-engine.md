@@ -17,14 +17,18 @@ execute action through PolicyGuard + Surface
     ↓ fail → this step’s target missing: not a previous-step outcome
     ↓        recover interstitial / assist / stop
 resolve the *next* step’s action locator
-    ↓ found → continue to that step (do not scan possibleOutcomes)
-    ↓ missing → walk the *just-executed* step’s possibleOutcomes in order
+    ↓ found → continue to that step (do not scan outcomes)
+    ↓ missing → if the surface reported a document HTTP 403 / 404 / 5xx
+                 for this navigation, stop as failure (5xx may retry first;
+                 see recoverable waits). Do not scan phrases yet.
+    ↓         → walk the *just-executed* step’s possibleOutcomes in order
                  skip kind "success"
                  an outcome hits when *any* match.phrases entry is visible (OR)
                  first hitting outcome wins:
                    error → business_outcome (heading, summary, match in details)
                    hitl  → same message + handoff on this session
-                 none hit → failure (or HITL only if this run already treats unknown as stuck)
+    ↓ none    → walk the runtime generic phrase list (same shape, not on the artifact)
+    ↓ none    → failure (or HITL only if this run already treats unknown as stuck)
 ```
 
 This step’s target missing (cannot click Inquire) is a locator/script miss. It is **not** classified from this step’s `possibleOutcomes`. Those hints explain why the **following** control (e.g. Payoff) is absent after this action ran.
@@ -33,13 +37,14 @@ After the last step:
 
 ```text
 verify overall success assertions
-    ↓ fail → scan that last step’s possibleOutcomes the same way
+    ↓ fail → HTTP status (if known), then that last step’s possibleOutcomes,
+             then the runtime generic phrase list, same as above
 extract declared outputs
 validate output types
 return structured success
 ```
 
-Per-step postconditions remain in the schema. They are not the exceptional-state catalog. `possibleOutcomes` are. Empty `preconditions` / `postconditions` are valid.
+Per-step postconditions remain in the schema. They are not the exceptional-state catalog. Step `possibleOutcomes` plus ICAS-level HTTP/generic chrome are. Empty `preconditions` / `postconditions` are valid. The union happens in **replay**, not in the proposal or the capability schema.
 
 ## Structured result contract
 
@@ -81,6 +86,21 @@ Replay does **not** own a product-specific message table. It walks `possibleOutc
 
 Behavior: stop normally and return `business_outcome`.
 
+### ICAS-level HTTP and generic chrome
+
+Step `possibleOutcomes` are goal-specific guesses. Infrastructure failures are a **runtime** catalog. Replay applies them around the step list; it does not merge them into the artifact or the discover prompt.
+
+Walk order when the next locator is missing (or last-step `success` misses):
+
+1. **Document HTTP status** (when the surface actually observed it): 403 / 404 → `failure`; 5xx → recoverable wait first, then `failure` if it persists. Staff UIs often return **200** with an error banner; a missing status is not a miss of this step — continue to phrases.
+2. **This step’s `possibleOutcomes`** (skip `success`). First phrase hit wins.
+3. **Runtime generic phrase list** — a tiny fixed set of distinctive *visible* chrome (`Internal Server Error`, `Access Denied`, `404 Not Found` as page text). Same `PossibleOutcome` shape (`kind` `error` or `hitl`). Not stored on the capability. Not a closed enum of domain results.
+4. **None** → `failure`.
+
+Specific step guesses always beat generic 500 copy. Do not put status codes or this generic list in proposer **instructions**. Do not add HTTP fields to `CapabilityStep`.
+
+Many legacy screens never expose a document status (XHR, frames, `200` error pages). Phrase matching remains the main classifier for application copy.
+
 ### Matching `match.phrases`
 
 The first implementation uses exact/substring visible-text search (same family as `textVisible`). A single generic token is too weak; phrases should be distinctive multi-word copy.
@@ -114,6 +134,7 @@ Examples:
 - `POLICY_BLOCKED`
 - `UNEXPECTED_STATE`
 - `OUTPUT_EXTRACTION_FAILED`
+- document HTTP 403 / 404 / persistent 5xx when the surface reported them (Pass 4.16)
 
 Behavior: stop, capture rich evidence, and return a debuggable failure unless explicit HITL or assisted fallback is enabled.
 
@@ -185,7 +206,7 @@ effective capability
 ReplayEngine
 ```
 
-This avoids tenant-specific branching inside replay. Exceptional copy lives on the artifact (`possibleOutcomes`). Normal policy, HITL, error, and evidence handling remain unchanged.
+This avoids tenant-specific branching inside replay. Goal-specific exceptional copy lives on the artifact (`possibleOutcomes`). HTTP status and generic error chrome live in the engine. Normal policy, HITL, error, and evidence handling remain unchanged.
 
 Registry CRUD, on-disk layout, tenant enrollment, and `FileSystemCapabilityRegistry({ root })` are specified in [`04-capability-artifact.md`](04-capability-artifact.md). Replay depends on the `CapabilityRegistry` interface and the resolved effective artifact only. `icas-play` / `icas-mcp` resolve with a tenant (CLI default `icas-bank`) and require that tenant to already be enrolled.
 
@@ -211,7 +232,7 @@ Replay can emit an intervention request when:
 
 - a `possibleOutcomes` hit has `kind: "hitl"` (message plus the same session);
 - a risky encoded action requires approval;
-- an unexpected state cannot be recovered (no `match.phrases` hit);
+- an unexpected state cannot be recovered (no step or generic `match.phrases` hit);
 - policy requires human control;
 - assisted fallback is disabled/exhausted.
 
