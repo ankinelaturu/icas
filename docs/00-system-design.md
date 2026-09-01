@@ -482,7 +482,7 @@ flowchart TB
 
 `icas-play` is the human CLI. `icas-mcp` is the agent-facing adapter over the **same** registry, resolver, and `ReplayEngine`. Stdio transport for the local demo. One tool per saved capability; typed args from compiled `inputs`. Tenant must already be enrolled (default `icas-bank`).
 
-No separate MCP diagram: it is the dashed `icas-mcp` node on [§3](#3-high-level-architecture). Pass 6.13 still needs to surface `heading` / `summary` from a matched `possibleOutcomes` entry on `business_outcome`. Details: [`11-agent-facing-mcp.md`](11-agent-facing-mcp.md).
+No separate MCP diagram: it is the dashed `icas-mcp` node on [§3](#3-high-level-architecture). On `business_outcome`, MCP surfaces `heading` / `summary` / the phrase that hit from replay `details` (Pass 6.13). Details: [`11-agent-facing-mcp.md`](11-agent-facing-mcp.md).
 
 ---
 
@@ -668,7 +668,7 @@ flowchart TB
     r2["HTTP + generic chrome"]
     r3["4.15 phrase embeddings — deferred"]
     r4["5.22 screenshot pixels in generate"]
-    r5["6.13 MCP heading/summary"]
+    r5["MCP heading/summary"]
     r6["Phase 8 real run artifacts"]
     r7["Phase 9 distill REPORT.md"]
   end
@@ -677,7 +677,7 @@ flowchart TB
 | Bucket | What | Notes |
 |---|---|---|
 | Must | Discover → artifact → enroll → replay + errors → HITL → evidence | [`01`](01-system-overview.md), Phases 1–5 and 6.1–6.5 |
-| Stretch | `--assist`, `icas-adapt`, MCP, browser takeover | Built in-repo; draw dashed. MCP `business_outcome` copy still open (6.13) |
+| Stretch | `--assist`, `icas-adapt`, MCP, browser takeover | Built in-repo; draw dashed. |
 | Out | Co-browsing console, queues, real PII, desktop driver, REST/DB registry, URL inference | Keep the `Surface` and `CapabilityRegistry` seams; do not implement the extras |
 | Remaining | vision pixels, Phase 8 evidence, `REPORT.md` | See [`TODO.md`](../TODO.md). Pass 4.15 is deferred on purpose |
 

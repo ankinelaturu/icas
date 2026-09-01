@@ -7,9 +7,9 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CapabilityRegistry } from "@icas/capability";
-import type { ExecutionResult } from "@icas/replay";
 
 import { DEFAULT_ICAS_IDENTITY } from "./defaults.js";
+import { formatMcpToolResult } from "./format-tool-result.js";
 import {
   invokeMcpCapability,
   type McpInvokeDeps,
@@ -115,7 +115,7 @@ export async function createIcasMcpServer(
                 : { executeReplay: deps.executeReplay }),
             },
           );
-          return formatToolResult(result);
+          return formatMcpToolResult(result);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           return {
@@ -127,15 +127,4 @@ export async function createIcasMcpServer(
     );
   }
   return server;
-}
-
-function formatToolResult(result: ExecutionResult): {
-  isError?: boolean;
-  content: Array<{ type: "text"; text: string }>;
-} {
-  const text = JSON.stringify(result);
-  if (result.status === "success") {
-    return { content: [{ type: "text", text }] };
-  }
-  return { isError: true, content: [{ type: "text", text }] };
 }
