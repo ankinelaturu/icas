@@ -11,13 +11,18 @@ import { Agent } from "@mastra/core/agent";
 import { Mastra } from "@mastra/core";
 import { loadPromptPolicy } from "@icas/policy";
 
+import type { CandidateProposal } from "./candidate-action.js";
+import type { CandidateProposer, ProposeContext } from "./candidate-proposer.js";
+import {
+  resolveIcasLlmSettings,
+  toMastraModelConfig,
+  toMastraModelSettings,
+  type IcasLlmSettings,
+} from "./llm-settings.js";
 import {
   LlmCandidateProposalSchema,
   llmProposalToCandidateProposal,
 } from "./llm-proposal-schema.js";
-import type { CandidateProposal } from "./candidate-action.js";
-import type { CandidateProposer, ProposeContext } from "./candidate-proposer.js";
-import { resolveDiscoveryModel } from "./model-provider.js";
 
 /** Stable Mastra agent id. Search identity lives on {@link DiscoveryAgent}, not here. */
 export const DISCOVERY_PROPOSER_AGENT_ID = "icas-discovery-proposer";
@@ -32,6 +37,12 @@ export interface StructuredGenerateAgent {
     messages: string,
     options: {
       structuredOutput: { schema: typeof LlmCandidateProposalSchema };
+      modelSettings?: {
+        temperature?: number;
+        topK?: number;
+        topP?: number;
+        maxOutputTokens?: number;
+      };
     },
   ): Promise<{ object: unknown }>;
 }
@@ -104,15 +115,17 @@ Do not execute actions. The runtime will policy-check and run them.`;
 /**
  * Build the Mastra Agent used as the discovery proposer.
  *
- * `model` is Mastra model-router form (`openai/gpt-4o`), not an AI SDK object.
- * No tools are registered: the model ranks; ICAS executes.
+ * `model` is Mastra model-router form (`openai/gpt-4o`) or an
+ * `{ id, apiKey, url }` object so a custom key / local base URL is not
+ * looked up via `OPENAI_API_KEY`. No tools are registered: the model ranks;
+ * ICAS executes.
  *
  * @param args.instructions - Prompt-policy markdown plus {@link DISCOVERY_PROPOSER_INSTRUCTIONS}
- * @param args.model - `provider/model` from {@link resolveDiscoveryModel}
+ * @param args.model - From {@link toMastraModelConfig}
  */
 export function createDiscoveryProposerAgent(args: {
   instructions: string;
-  model: string;
+  model: string | { id: `${string}/${string}`; apiKey?: string; url?: string };
 }): Agent {
   return new Agent({
     id: DISCOVERY_PROPOSER_AGENT_ID,
@@ -144,6 +157,7 @@ export function createDiscoveryMastra(agent: Agent): Mastra {
 export class MastraCandidateProposer implements CandidateProposer {
   private readonly log: ((line: string) => void) | undefined;
   private readonly instructions: string | undefined;
+  private readonly modelSettings: ReturnType<typeof toMastraModelSettings>;
   /** Instructions are identical on every generate; print them only once. */
   private loggedInstructions = false;
 
@@ -151,13 +165,20 @@ export class MastraCandidateProposer implements CandidateProposer {
    * @param agent - Mastra `generate` (or a test fake)
    * @param options.log - Optional stderr sink for prompt and response
    * @param options.instructions - Agent system text; logged once when `log` is set
+   * @param options.settings - Sampling passed through as `modelSettings`
    */
   constructor(
     private readonly agent: StructuredGenerateAgent,
-    options: { log?: (line: string) => void; instructions?: string } = {},
+    options: {
+      log?: (line: string) => void;
+      instructions?: string;
+      settings?: IcasLlmSettings;
+    } = {},
   ) {
     this.log = options.log;
     this.instructions = options.instructions;
+    this.modelSettings =
+      options.settings === undefined ? {} : toMastraModelSettings(options.settings);
   }
 
   /**
@@ -174,6 +195,9 @@ export class MastraCandidateProposer implements CandidateProposer {
     try {
       result = await this.agent.generate(userPrompt, {
         structuredOutput: { schema: LlmCandidateProposalSchema },
+        ...(Object.keys(this.modelSettings).length === 0
+          ? {}
+          : { modelSettings: this.modelSettings }),
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -278,13 +302,15 @@ function truncateSnapshot(snapshot: unknown): string {
  *
  * @param args.promptPolicy - Inline markdown; skips {@link loadPromptPolicy} when set
  * @param args.promptPolicyPath - Optional path for {@link loadPromptPolicy}
- * @param args.model - Override {@link resolveDiscoveryModel}
+ * @param args.model - Override model id (tests); otherwise `ICAS_DISCOVERY_LLM_*`
+ * @param args.env - Process env for settings; tests inject a stub
  * @param args.log - Optional stderr sink for raw LLM JSON
  */
 export async function createConfiguredDiscoveryProposer(args: {
   promptPolicy?: string;
   promptPolicyPath?: string;
   model?: string;
+  env?: NodeJS.ProcessEnv;
   log?: (line: string) => void;
 } = {}): Promise<{
   proposer: MastraCandidateProposer;
@@ -292,16 +318,22 @@ export async function createConfiguredDiscoveryProposer(args: {
   instructions: string;
 }> {
   const policyText = args.promptPolicy ?? (await loadPromptPolicy(args.promptPolicyPath));
-  const model = args.model ?? resolveDiscoveryModel();
+  const settings = resolveIcasLlmSettings("discovery", args.env ?? process.env);
+  const modelId = args.model ?? settings.model;
+  const effective: IcasLlmSettings = { ...settings, model: modelId };
   // Safety text lives on the Agent so every generate sees it, not only the user message.
   const instructions = `${policyText}\n\n${DISCOVERY_PROPOSER_INSTRUCTIONS}`;
-  const agent = createDiscoveryProposerAgent({ instructions, model });
+  const agent = createDiscoveryProposerAgent({
+    instructions,
+    model: toMastraModelConfig(effective),
+  });
   return {
     proposer: new MastraCandidateProposer(agent, {
       ...(args.log === undefined ? {} : { log: args.log }),
       instructions,
+      settings: effective,
     }),
-    model,
+    model: modelId,
     instructions,
   };
 }

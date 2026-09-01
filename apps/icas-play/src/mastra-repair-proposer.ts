@@ -12,12 +12,20 @@ import {
   llmActionToCapabilityAction,
   LlmCapabilityActionSchema,
 } from "@icas/capability";
+import {
+  DEFAULT_ICAS_LLM_MODEL,
+  isIcasLlmReady,
+  resolveIcasLlmSettings,
+  toMastraModelConfig,
+  toMastraModelSettings,
+  type IcasLlmSettings,
+} from "@icas/discovery";
 import { loadPromptPolicy } from "@icas/policy";
 import type { RepairContext, RepairProposal, RepairProposer } from "@icas/replay";
 import { z } from "zod";
 
-/** Default Mastra model-router id (image-capable). Override with `ICAS_MODEL`. */
-export const DEFAULT_REPAIR_MODEL = "openai/gpt-4o";
+/** Default model id. Override with `ICAS_ASSIST_LLM_MODEL`. */
+export const DEFAULT_REPAIR_MODEL = DEFAULT_ICAS_LLM_MODEL;
 
 /** Stable Mastra agent id. Repair is not discovery DFS. */
 export const REPAIR_PROPOSER_AGENT_ID = "icas-repair-proposer";
@@ -56,42 +64,35 @@ export interface StructuredRepairAgent {
     messages: string,
     options: {
       structuredOutput: { schema: typeof LlmRepairProposalSchema };
+      modelSettings?: {
+        temperature?: number;
+        topK?: number;
+        topP?: number;
+        maxOutputTokens?: number;
+      };
     },
   ): Promise<{ object: unknown }>;
 }
 
 /**
- * Resolve the Mastra model id. Does not call the network.
+ * Resolve the assist `provider/model` id.
  *
  * @param env - Process env; inject in tests
  */
 export function resolveRepairModel(env: NodeJS.ProcessEnv = process.env): string {
-  const fromEnv = env.ICAS_MODEL;
-  if (fromEnv !== undefined && fromEnv.length > 0) {
-    return fromEnv;
-  }
-  if (
-    env.ANTHROPIC_API_KEY !== undefined &&
-    env.ANTHROPIC_API_KEY.length > 0 &&
-    (env.OPENAI_API_KEY === undefined || env.OPENAI_API_KEY.length === 0)
-  ) {
-    return "anthropic/claude-sonnet-4-6";
-  }
-  return DEFAULT_REPAIR_MODEL;
+  return resolveIcasLlmSettings("assist", env).model;
 }
 
 /**
- * True when a provider key exists so a live generate could run.
+ * True when `--assist` can call a live model.
+ *
+ * Uses resolved `ICAS_ASSIST_LLM_*` (plus legacy fallback), not a hardcoded
+ * `OPENAI_API_KEY` check.
  *
  * @param env - Process env
  */
 export function hasRepairApiKey(env: NodeJS.ProcessEnv = process.env): boolean {
-  const openai = env.OPENAI_API_KEY;
-  const anthropic = env.ANTHROPIC_API_KEY;
-  return (
-    (openai !== undefined && openai.length > 0) ||
-    (anthropic !== undefined && anthropic.length > 0)
-  );
+  return isIcasLlmReady(resolveIcasLlmSettings("assist", env));
 }
 
 /**
@@ -100,11 +101,11 @@ export function hasRepairApiKey(env: NodeJS.ProcessEnv = process.env): boolean {
  * No tools are registered: the model ranks replacements; ReplayEngine executes.
  *
  * @param args.instructions - Prompt-policy markdown plus {@link REPAIR_PROPOSER_INSTRUCTIONS}
- * @param args.model - `provider/model` from {@link resolveRepairModel}
+ * @param args.model - From {@link toMastraModelConfig}
  */
 export function createRepairProposerAgent(args: {
   instructions: string;
-  model: string;
+  model: string | { id: `${string}/${string}`; apiKey?: string; url?: string };
 }): Agent {
   return new Agent({
     id: REPAIR_PROPOSER_AGENT_ID,
@@ -118,7 +119,15 @@ export function createRepairProposerAgent(args: {
  * One `generate` per failed step. Validates {@link RepairProposal} before return.
  */
 export class MastraRepairProposer implements RepairProposer {
-  constructor(private readonly agent: StructuredRepairAgent) {}
+  private readonly modelSettings: ReturnType<typeof toMastraModelSettings>;
+
+  constructor(
+    private readonly agent: StructuredRepairAgent,
+    options: { settings?: IcasLlmSettings } = {},
+  ) {
+    this.modelSettings =
+      options.settings === undefined ? {} : toMastraModelSettings(options.settings);
+  }
 
   /**
    * Ask Mastra once for replacement actions for `context.step` only.
@@ -130,6 +139,9 @@ export class MastraRepairProposer implements RepairProposer {
   async propose(context: RepairContext): Promise<RepairProposal> {
     const result = await this.agent.generate(formatRepairPrompt(context), {
       structuredOutput: { schema: LlmRepairProposalSchema },
+      ...(Object.keys(this.modelSettings).length === 0
+        ? {}
+        : { modelSettings: this.modelSettings }),
     });
     const parsed = LlmRepairProposalSchema.safeParse(result.object);
     if (!parsed.success) {
@@ -169,21 +181,28 @@ Respond with a RepairProposal object.`;
  * Does not call the network until {@link MastraRepairProposer.propose}.
  *
  * @param args.promptPolicy - Inline markdown; skips {@link loadPromptPolicy} when set
- * @param args.model - Override {@link resolveRepairModel}
+ * @param args.model - Override model id (tests)
+ * @param args.env - Process env for `ICAS_ASSIST_LLM_*`
  */
 export async function createConfiguredRepairProposer(args: {
   promptPolicy?: string;
   model?: string;
+  env?: NodeJS.ProcessEnv;
 } = {}): Promise<{
   proposer: MastraRepairProposer;
   model: string;
 }> {
   const policyText = args.promptPolicy ?? (await loadPromptPolicy());
-  const model = args.model ?? resolveRepairModel();
+  const settings = resolveIcasLlmSettings("assist", args.env ?? process.env);
+  const modelId = args.model ?? settings.model;
+  const effective: IcasLlmSettings = { ...settings, model: modelId };
   const instructions = `${policyText}\n\n${REPAIR_PROPOSER_INSTRUCTIONS}`;
-  const agent = createRepairProposerAgent({ instructions, model });
+  const agent = createRepairProposerAgent({
+    instructions,
+    model: toMastraModelConfig(effective),
+  });
   return {
-    proposer: new MastraRepairProposer(agent),
-    model,
+    proposer: new MastraRepairProposer(agent, { settings: effective }),
+    model: modelId,
   };
 }

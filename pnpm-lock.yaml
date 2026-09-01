@@ -164,6 +164,9 @@ importers:
       '@icas/capability':
         specifier: workspace:*
         version: link:../../packages/capability
+      '@icas/discovery':
+        specifier: workspace:*
+        version: link:../../packages/discovery
       '@icas/evidence':
         specifier: workspace:*
         version: link:../../packages/evidence

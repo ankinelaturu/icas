@@ -1,7 +1,7 @@
 /**
  * @file load-repo-env — fill empty process.env keys from a repo-root `.env`.
  *
- * `pnpm --filter … exec` does not forward `OPENAI_API_KEY` into Node. The CLI
+ * `pnpm --filter … exec` does not forward `ICAS_*_LLM_API_KEY` into Node. The CLI
  * still has to work. This loader never overrides a non-empty env var, so a
  * real export wins. Tests pass `startDir` and never search the real repo.
  */

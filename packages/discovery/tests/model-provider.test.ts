@@ -16,6 +16,15 @@ describe("resolveDiscoveryModel", () => {
     expect(resolveDiscoveryModel({})).toBe(DEFAULT_DISCOVERY_MODEL);
   });
 
+  it("prefers ICAS_DISCOVERY_LLM_MODEL over ICAS_MODEL", () => {
+    expect(
+      resolveDiscoveryModel({
+        ICAS_DISCOVERY_LLM_MODEL: "openai/gpt-4o",
+        ICAS_MODEL: "anthropic/claude-haiku-4-5",
+      }),
+    ).toBe("openai/gpt-4o");
+  });
+
   it("honors ICAS_MODEL over inferred provider", () => {
     expect(
       resolveDiscoveryModel({
@@ -36,6 +45,12 @@ describe("hasDiscoveryApiKey / discoverySmokeEnabled", () => {
   it("detects keys and keeps CI smoke off by default", () => {
     expect(hasDiscoveryApiKey({})).toBe(false);
     expect(hasDiscoveryApiKey({ OPENAI_API_KEY: "sk" })).toBe(true);
+    expect(hasDiscoveryApiKey({ ICAS_DISCOVERY_LLM_API_KEY: "sk" })).toBe(true);
+    expect(
+      hasDiscoveryApiKey({
+        ICAS_DISCOVERY_LLM_BASE_URL: "http://127.0.0.1:11434/v1",
+      }),
+    ).toBe(true);
     expect(discoverySmokeEnabled({})).toBe(false);
     expect(discoverySmokeEnabled({ ICAS_DISCOVERY_SMOKE: "1" })).toBe(true);
   });

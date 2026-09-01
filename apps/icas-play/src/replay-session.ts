@@ -135,10 +135,13 @@ async function resolveRepairProposer(
   }
   const env = deps.env ?? process.env;
   if (!hasRepairApiKey(env)) {
-    throw new Error("--assist requires OPENAI_API_KEY or ANTHROPIC_API_KEY");
+    throw new Error(
+      "--assist requires ICAS_ASSIST_LLM_API_KEY or ICAS_ASSIST_LLM_BASE_URL",
+    );
   }
   const configured = await createConfiguredRepairProposer({
     model: resolveRepairModel(env),
+    env,
   });
   return configured.proposer;
 }

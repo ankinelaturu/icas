@@ -68,6 +68,30 @@ describe("MastraCandidateProposer", () => {
     expect(proposal.candidates[0]?.rank).toBe(1);
   });
 
+  it("passes sampling as generate modelSettings", async () => {
+    let seen: unknown;
+    const agent: StructuredGenerateAgent = {
+      generate: async (_messages, options) => {
+        seen = options.modelSettings;
+        return { object: validContinue };
+      },
+    };
+    const proposer = new MastraCandidateProposer(agent, {
+      settings: {
+        model: "openai/gpt-4o",
+        apiKey: "sk",
+        temperature: 0,
+        maxOutputTokens: 1024,
+      },
+    });
+    await proposer.propose({
+      goal: "Generate a payoff statement",
+      observation: { id: "home" },
+      history: [],
+    });
+    expect(seen).toEqual({ temperature: 0, maxOutputTokens: 1024 });
+  });
+
   it("rejects malformed model JSON", async () => {
     const proposer = new MastraCandidateProposer(mockAgent("just click lending"));
     await expect(

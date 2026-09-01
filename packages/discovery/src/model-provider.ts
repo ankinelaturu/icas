@@ -1,48 +1,41 @@
 /**
- * @file Discovery model router — Mastra `provider/model` strings from env.
+ * @file Discovery model helpers — thin wrappers over {@link resolveIcasLlmSettings}.
  *
- * Default is `openai/gpt-4o` (image-capable for observation screenshots).
- * Override with `ICAS_MODEL`. Keys: `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`.
- * These helpers never call the network; {@link MastraCandidateProposer} does.
+ * Prefer `ICAS_DISCOVERY_LLM_*`. Legacy `ICAS_MODEL` / `OPENAI_API_KEY` /
+ * `ANTHROPIC_API_KEY` still fill empty new vars. These helpers never call
+ * the network; {@link MastraCandidateProposer} does.
  */
 
-export const DEFAULT_DISCOVERY_MODEL = "openai/gpt-4o";
+import {
+  DEFAULT_ICAS_LLM_MODEL,
+  isIcasLlmReady,
+  resolveIcasLlmSettings,
+} from "./llm-settings.js";
+
+/** @deprecated Use {@link DEFAULT_ICAS_LLM_MODEL}. Kept for existing imports. */
+export const DEFAULT_DISCOVERY_MODEL = DEFAULT_ICAS_LLM_MODEL;
 
 /**
- * Resolve the Mastra model id. Does not call the network.
- *
- * `ICAS_MODEL` always wins. Anthropic is chosen only when its key is set and
- * OpenAI's is not, so a dual-key environment still defaults to gpt-4o.
+ * Resolve the discovery `provider/model` id.
  *
  * @param env - Process env; inject in tests
- * @returns A `provider/model` string for Mastra's model router
  */
 export function resolveDiscoveryModel(
   env: NodeJS.ProcessEnv = process.env,
 ): string {
-  const fromEnv = env.ICAS_MODEL;
-  if (fromEnv !== undefined && fromEnv.length > 0) {
-    return fromEnv;
-  }
-  if (env.ANTHROPIC_API_KEY !== undefined && env.ANTHROPIC_API_KEY.length > 0
-    && (env.OPENAI_API_KEY === undefined || env.OPENAI_API_KEY.length === 0)) {
-    return "anthropic/claude-sonnet-4-6";
-  }
-  return DEFAULT_DISCOVERY_MODEL;
+  return resolveIcasLlmSettings("discovery", env).model;
 }
 
 /**
- * True when a provider key exists so a live generate could run.
+ * True when discovery can call a live model.
  *
- * Used to skip optional smoke tests, not to pick a model.
+ * Uses resolved settings (new names plus legacy fallback), not a hardcoded
+ * `OPENAI_API_KEY` check.
+ *
+ * @param env - Process env
  */
 export function hasDiscoveryApiKey(env: NodeJS.ProcessEnv = process.env): boolean {
-  const openai = env.OPENAI_API_KEY;
-  const anthropic = env.ANTHROPIC_API_KEY;
-  return (
-    (openai !== undefined && openai.length > 0)
-    || (anthropic !== undefined && anthropic.length > 0)
-  );
+  return isIcasLlmReady(resolveIcasLlmSettings("discovery", env));
 }
 
 /**

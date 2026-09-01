@@ -252,6 +252,6 @@ Discover reads **`ICAS_DISCOVERY_LLM_*`** from the process env (repo-root `.env`
 
 Ready to run: `MODEL` is set and either `API_KEY` or `BASE_URL` is set. `ICAS_DISCOVERY_SMOKE=1` opts into the live smoke test; leave it unset in CI.
 
-Until the code pass lands, CLIs still accept `ICAS_MODEL` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` as a fallback.
+When the new vars are empty, CLIs still accept `ICAS_MODEL` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` as a fallback.
 
 Env is **model transport**. The SDK seam remains `CandidateProposer`: production injects one implementation; tests inject a fake. A second SDK is a new class on that interface, not extra env vars.

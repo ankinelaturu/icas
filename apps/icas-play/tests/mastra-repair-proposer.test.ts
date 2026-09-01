@@ -94,6 +94,51 @@ describe("MastraRepairProposer", () => {
     expect(proposal.rationale).toMatch(/retry/);
   });
 
+  it("passes sampling as generate modelSettings", async () => {
+    let seen: unknown;
+    const proposer = new MastraRepairProposer(
+      {
+        generate: async (_messages, options) => {
+          seen = options.modelSettings;
+          return {
+            object: {
+              actions: [
+                {
+                  type: "click",
+                  intent: null,
+                  risk: null,
+                  path: null,
+                  reason: null,
+                  value: null,
+                  proposedInputParam: null,
+                  target: {
+                    strategies: [
+                      {
+                        type: "visibleText",
+                        role: null,
+                        text: "Retry",
+                        label: null,
+                        selector: null,
+                        xpath: null,
+                        x: null,
+                        y: null,
+                        confidence: null,
+                      },
+                    ],
+                  },
+                },
+              ],
+              rationale: "retry the visible control",
+            },
+          };
+        },
+      },
+      { settings: { model: "openai/gpt-4o", apiKey: "sk", temperature: 0 } },
+    );
+    await proposer.propose(fakeContext());
+    expect(seen).toEqual({ temperature: 0 });
+  });
+
   it("rejects prose-shaped output", async () => {
     const proposer = new MastraRepairProposer({
       generate: async () => ({ object: { text: "just click around" } }),
@@ -103,6 +148,15 @@ describe("MastraRepairProposer", () => {
 });
 
 describe("repair helpers", () => {
+  it("prefers ICAS_ASSIST_LLM_MODEL over ICAS_MODEL", () => {
+    expect(
+      resolveRepairModel({
+        ICAS_ASSIST_LLM_MODEL: "openai/gpt-4o-mini",
+        ICAS_MODEL: "anthropic/claude-sonnet-4-6",
+      }),
+    ).toBe("openai/gpt-4o-mini");
+  });
+
   it("prefers ICAS_MODEL over the default", () => {
     expect(resolveRepairModel({ ICAS_MODEL: "anthropic/claude-sonnet-4-6" })).toBe(
       "anthropic/claude-sonnet-4-6",
@@ -112,6 +166,10 @@ describe("repair helpers", () => {
   it("detects provider keys", () => {
     expect(hasRepairApiKey({})).toBe(false);
     expect(hasRepairApiKey({ OPENAI_API_KEY: "sk-test" })).toBe(true);
+    expect(hasRepairApiKey({ ICAS_ASSIST_LLM_API_KEY: "sk-test" })).toBe(true);
+    expect(
+      hasRepairApiKey({ ICAS_ASSIST_LLM_BASE_URL: "http://127.0.0.1:1234/v1" }),
+    ).toBe(true);
   });
 
   it("includes the failed step id in the prompt", () => {

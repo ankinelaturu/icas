@@ -282,7 +282,7 @@ const isMain =
   (process.argv[1].endsWith("cli.ts") || process.argv[1].endsWith("cli.js"));
 
 if (isMain) {
-  // pnpm --filter exec strips OPENAI_API_KEY; `--assist` still needs a key.
+  // pnpm --filter exec strips ICAS_*_LLM_API_KEY; `--assist` still needs a key.
   loadRepoEnv();
   void runPlay().catch((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);

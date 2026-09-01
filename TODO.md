@@ -525,12 +525,12 @@ Do not reopen Pass 5.5. Operator surface is already in `.env.example` (`ICAS_DIS
 
 Depends on Pass 5.20. Do not reopen Pass 5.5.
 
-- [ ] One settings object per flow: `MODEL`, `API_KEY`, `BASE_URL`, `TEMPERATURE`, `TOP_K`, `TOP_P`, `MAX_OUTPUT_TOKENS`
-- [ ] Discover uses discovery settings; `--assist` uses assist settings. Do not share one inferred model
-- [ ] Ready check: `MODEL` set and (`API_KEY` or `BASE_URL`). Do not require `OPENAI_API_KEY` by name
-- [ ] Pass key / base URL / sampling into the existing proposer adapters (not only a `provider/model` string)
-- [ ] Optional fallback: empty `ICAS_*_LLM_*` may still read `ICAS_MODEL` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` so current shells keep working; prefer the new names
-- [ ] Tests: resolve discovery vs assist independently; empty BASE_URL; local BASE_URL without a cloud key; fail closed when neither key nor BASE_URL is set
+- [x] One settings object per flow: `MODEL`, `API_KEY`, `BASE_URL`, `TEMPERATURE`, `TOP_K`, `TOP_P`, `MAX_OUTPUT_TOKENS`
+- [x] Discover uses discovery settings; `--assist` uses assist settings. Do not share one inferred model
+- [x] Ready check: `MODEL` set and (`API_KEY` or `BASE_URL`). Do not require `OPENAI_API_KEY` by name
+- [x] Pass key / base URL / sampling into the existing proposer adapters (not only a `provider/model` string)
+- [x] Optional fallback: empty `ICAS_*_LLM_*` may still read `ICAS_MODEL` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` so current shells keep working; prefer the new names
+- [x] Tests: resolve discovery vs assist independently; empty BASE_URL; local BASE_URL without a cloud key; fail closed when neither key nor BASE_URL is set
 
 ---
 

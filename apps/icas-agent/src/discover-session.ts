@@ -168,10 +168,13 @@ async function createLiveProposer(
   log?: (line: string) => void,
 ): Promise<CandidateProposer> {
   if (!hasDiscoveryApiKey(env)) {
-    throw new Error("icas-agent discover requires OPENAI_API_KEY or ANTHROPIC_API_KEY");
+    throw new Error(
+      "icas-agent discover requires ICAS_DISCOVERY_LLM_API_KEY or ICAS_DISCOVERY_LLM_BASE_URL",
+    );
   }
-  const configured = await createConfiguredDiscoveryProposer(
-    log === undefined ? {} : { log },
-  );
+  const configured = await createConfiguredDiscoveryProposer({
+    env,
+    ...(log === undefined ? {} : { log }),
+  });
   return configured.proposer;
 }

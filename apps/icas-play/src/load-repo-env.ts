@@ -1,7 +1,7 @@
 /**
  * @file load-repo-env — fill empty process.env keys from a repo-root `.env`.
  *
- * Same helper as icas-agent. `pnpm --filter … exec` drops `OPENAI_API_KEY`;
+ * Same helper as icas-agent. `pnpm --filter … exec` drops `ICAS_*_LLM_API_KEY`;
  * `--assist` still needs a key. Non-empty exports are left alone. Tests pass
  * `startDir` and never search the real repo.
  */

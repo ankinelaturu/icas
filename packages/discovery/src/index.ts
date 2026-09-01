@@ -49,6 +49,14 @@ export {
   hasDiscoveryApiKey,
   resolveDiscoveryModel,
 } from "./model-provider.js";
+export {
+  DEFAULT_ICAS_LLM_MODEL,
+  isIcasLlmReady,
+  resolveIcasLlmSettings,
+  toMastraModelConfig,
+  toMastraModelSettings,
+} from "./llm-settings.js";
+export type { IcasLlmFlow, IcasLlmSettings } from "./llm-settings.js";
 export type {
   DiscoveryRequest,
   DiscoveryResult,
