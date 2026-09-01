@@ -71,6 +71,126 @@ describe("validateCapabilityArtifact", () => {
     }
   });
 
+  it("accepts possibleOutcomes on the inquire-loan fixture step", () => {
+    const artifact = validateCapabilityArtifact(
+      loadFixture("loan-payoff.capability.json"),
+    );
+    const inquire = artifact.steps.find((step) => step.id === "inquire-loan");
+    expect(inquire?.possibleOutcomes).toEqual([
+      {
+        kind: "error",
+        match: { phrases: ["Loan not found"] },
+        heading: "Loan not found",
+        summary: "No loan matches the requested account id.",
+      },
+    ]);
+  });
+
+  it("accepts an empty possibleOutcomes array", () => {
+    const valid = loadFixture("loan-payoff.capability.json") as {
+      steps: Array<Record<string, unknown> & { id: string }>;
+    };
+    const steps = valid.steps.map((step) =>
+      step.id === "open-lending" ? { ...step, possibleOutcomes: [] } : step,
+    );
+    const artifact = validateCapabilityArtifact({ ...valid, steps });
+    expect(artifact.steps[0]?.possibleOutcomes).toEqual([]);
+  });
+
+  it("rejects an unknown possibleOutcomes kind", () => {
+    const valid = loadFixture("loan-payoff.capability.json") as {
+      steps: Array<Record<string, unknown> & { id: string }>;
+    };
+    const steps = valid.steps.map((step) => {
+      if (step.id !== "inquire-loan") {
+        return step;
+      }
+      return {
+        ...step,
+        possibleOutcomes: [
+          {
+            kind: "timeout",
+            match: { phrases: ["Loan not found"] },
+            heading: "Loan not found",
+            summary: "No loan matches the requested account id.",
+          },
+        ],
+      };
+    });
+    try {
+      validateCapabilityArtifact({ ...valid, steps });
+      expect.unreachable("expected validation to fail");
+    } catch (error) {
+      expect(error).toBeInstanceOf(CapabilityValidationError);
+      expect((error as CapabilityValidationError).message).toMatch(/kind|success|error|hitl/i);
+    }
+  });
+
+  it("rejects empty match.phrases", () => {
+    const valid = loadFixture("loan-payoff.capability.json") as {
+      steps: Array<Record<string, unknown> & { id: string }>;
+    };
+    const steps = valid.steps.map((step) => {
+      if (step.id !== "inquire-loan") {
+        return step;
+      }
+      return {
+        ...step,
+        possibleOutcomes: [
+          {
+            kind: "error",
+            match: { phrases: [] },
+            heading: "Loan not found",
+            summary: "No loan matches the requested account id.",
+          },
+        ],
+      };
+    });
+    try {
+      validateCapabilityArtifact({ ...valid, steps });
+      expect.unreachable("expected validation to fail");
+    } catch (error) {
+      expect(error).toBeInstanceOf(CapabilityValidationError);
+      expect((error as CapabilityValidationError).message).toMatch(/phrases/i);
+    }
+  });
+
+  it("rejects more than three match.phrases", () => {
+    const valid = loadFixture("loan-payoff.capability.json") as {
+      steps: Array<Record<string, unknown> & { id: string }>;
+    };
+    const steps = valid.steps.map((step) => {
+      if (step.id !== "inquire-loan") {
+        return step;
+      }
+      return {
+        ...step,
+        possibleOutcomes: [
+          {
+            kind: "error",
+            match: {
+              phrases: [
+                "Loan not found",
+                "No matching loan",
+                "Account is not on file",
+                "Unknown loan number",
+              ],
+            },
+            heading: "Loan not found",
+            summary: "No loan matches the requested account id.",
+          },
+        ],
+      };
+    });
+    try {
+      validateCapabilityArtifact({ ...valid, steps });
+      expect.unreachable("expected validation to fail");
+    } catch (error) {
+      expect(error).toBeInstanceOf(CapabilityValidationError);
+      expect((error as CapabilityValidationError).message).toMatch(/phrases/i);
+    }
+  });
+
   it("rejects leftover capabilityVersion as an unknown key", () => {
     const valid = loadFixture("loan-payoff.capability.json") as Record<
       string,

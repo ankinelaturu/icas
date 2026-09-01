@@ -198,6 +198,35 @@ describe("CapabilityResolver", () => {
     expect(step?.postconditions).toEqual(original?.postconditions);
   });
 
+  it("replaces only possibleOutcomes and preserves the action", async () => {
+    const base = loadLoanPayoff();
+    const original = base.steps.find((step) => step.id === "inquire-loan");
+    await registry.save(base);
+    const possibleOutcomes = [
+      {
+        kind: "hitl" as const,
+        match: { phrases: ["Call member services"] },
+        heading: "Need assistance",
+        summary: "The portal asked a human to continue.",
+      },
+    ];
+    await registry.saveOverride({
+      ...headerOverride(),
+      overrides: {
+        steps: { "inquire-loan": { possibleOutcomes } },
+      },
+    });
+    const effective = await resolver.resolve({
+      id: "loan-payoff",
+      tenant: "icas-bank",
+    });
+    const step = effective.steps.find((item) => item.id === "inquire-loan");
+    expect(step?.possibleOutcomes).toEqual(possibleOutcomes);
+    expect(step?.action).toEqual(original?.action);
+    expect(step?.preconditions).toEqual(original?.preconditions);
+    expect(step?.postconditions).toEqual(original?.postconditions);
+  });
+
   it("replaces only postconditions and preserves the action", async () => {
     const base = loadLoanPayoff();
     const original = base.steps[0];

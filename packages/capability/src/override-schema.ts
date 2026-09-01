@@ -14,6 +14,7 @@ import {
   AssertionSchema,
   CapabilityActionSchema,
   CapabilityStepSchema,
+  PossibleOutcomeSchema,
   TargetDescriptorSchema,
 } from "./artifact-schema.js";
 
@@ -32,7 +33,7 @@ const EXECUTABLE_KEY = /javascript|customjs|^eval$|^handler$|^fn$/i;
  * XOR exists because a whole-step replace already carries target/action; merging
  * both would leave apply order undefined (which wins?). Empty patches are also
  * invalid — enrollment with no step change uses `overrides: {}`, not a no-op
- * StepOverride.
+ * StepOverride. `possibleOutcomes` may be replaced on its own (including `[]`).
  */
 export const StepOverrideSchema = z
   .strictObject({
@@ -41,6 +42,7 @@ export const StepOverrideSchema = z
     action: CapabilityActionSchema.optional(),
     preconditions: z.array(AssertionSchema).optional(),
     postconditions: z.array(AssertionSchema).optional(),
+    possibleOutcomes: z.array(PossibleOutcomeSchema).optional(),
   })
   .superRefine((patch, ctx) => {
     const hasWhole = patch.step !== undefined;
@@ -48,7 +50,8 @@ export const StepOverrideSchema = z
       patch.target !== undefined ||
       patch.action !== undefined ||
       patch.preconditions !== undefined ||
-      patch.postconditions !== undefined;
+      patch.postconditions !== undefined ||
+      patch.possibleOutcomes !== undefined;
     if (hasWhole && hasFields) {
       ctx.addIssue({
         code: "custom",
@@ -60,7 +63,7 @@ export const StepOverrideSchema = z
       ctx.addIssue({
         code: "custom",
         message:
-          "StepOverride must replace the whole step or at least one of target, action, preconditions, postconditions",
+          "StepOverride must replace the whole step or at least one of target, action, preconditions, postconditions, possibleOutcomes",
       });
     }
   });

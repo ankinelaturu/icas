@@ -40,6 +40,37 @@ describe("validateCapabilityOverride", () => {
     }
   });
 
+  it("accepts a StepOverride that only replaces possibleOutcomes", () => {
+    const valid = loadFixture("loan-payoff.override.icas-bank.json") as {
+      overrides: Record<string, unknown>;
+    };
+    const override = validateCapabilityOverride({
+      ...valid,
+      overrides: {
+        steps: {
+          "inquire-loan": {
+            possibleOutcomes: [
+              {
+                kind: "error",
+                match: { phrases: ["Account not on file"] },
+                heading: "Account not on file",
+                summary: "Tenant wording for a missing loan.",
+              },
+            ],
+          },
+        },
+      },
+    });
+    expect(override.overrides.steps?.["inquire-loan"]?.possibleOutcomes).toEqual([
+      {
+        kind: "error",
+        match: { phrases: ["Account not on file"] },
+        heading: "Account not on file",
+        summary: "Tenant wording for a missing loan.",
+      },
+    ]);
+  });
+
   it("rejects a baseCapability that still uses an @version pin", () => {
     const valid = loadFixture("loan-payoff.override.icas-bank.json") as {
       baseCapability: string;

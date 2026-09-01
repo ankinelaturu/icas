@@ -115,7 +115,8 @@ function insertSteps(
  * Whole-step `patch.step` returns immediately. Schema forbids combining it with
  * field patches; this early return is the runtime counterpart. `target` is
  * applied after `action` so a locator-only override still wins when both are
- * present (schema allows action+target together).
+ * present (schema allows action+target together). `possibleOutcomes` replaces
+ * the whole list when present, including `[]`.
  */
 function applyStepPatch(step: CapabilityStep, patch: StepOverride): CapabilityStep {
   if (patch.step !== undefined) {
@@ -133,6 +134,10 @@ function applyStepPatch(step: CapabilityStep, patch: StepOverride): CapabilitySt
   }
   if (patch.postconditions !== undefined) {
     next.postconditions = structuredClone(patch.postconditions);
+  }
+  if (patch.possibleOutcomes !== undefined) {
+    // Empty array is a real replace: clear tenant-specific guesses.
+    next.possibleOutcomes = structuredClone(patch.possibleOutcomes);
   }
   return next;
 }

@@ -181,6 +181,16 @@
       "postconditions": [
         { "type": "textVisible", "value": "Loan Details" },
         { "type": "urlMatches", "pattern": "account.htm" }
+      ],
+      "possibleOutcomes": [
+        {
+          "kind": "error",
+          "match": {
+            "phrases": ["Loan not found"]
+          },
+          "heading": "Loan not found",
+          "summary": "No loan matches the requested account id."
+        }
       ]
     },
     {

@@ -189,10 +189,38 @@ const outputParamSchema = z.strictObject({
 });
 
 /**
+ * Page phrases that identify one exceptional outcome.
+ *
+ * Replay treats the list as OR: any one visible phrase is a hit. Keep 1–3
+ * distinctive strings. `heading` / `summary` on the parent outcome are never
+ * searched on the page.
+ */
+export const OutcomeMatchSchema = z.strictObject({
+  phrases: z.array(z.string().min(1)).min(1).max(3),
+});
+
+/**
+ * Guessed matcher for when the happy path cannot continue after this step.
+ *
+ * `kind` is who can finish the run (`error` stops, `hitl` needs the same
+ * session). Compile drops `success` later; the schema still accepts it so a
+ * raw candidate can be validated before that strip. `heading` and `summary`
+ * are tool / HITL copy only — not locators.
+ */
+export const PossibleOutcomeSchema = z.strictObject({
+  kind: z.enum(["success", "error", "hitl"]),
+  match: OutcomeMatchSchema,
+  heading: z.string().min(1).nullable(),
+  summary: z.string().min(1).nullable(),
+});
+
+/**
  * One ordered step with preconditions, action, and postconditions.
  *
  * `id` is the stable patch key for tenant overrides. Keep it unique across the
  * artifact so `applyCapabilityOverride` can address a step without indexes.
+ * `possibleOutcomes` is optional; omit or use `[]` when the step has no
+ * exceptional-state guesses.
  */
 export const CapabilityStepSchema = z.strictObject({
   id: z.string().min(1),
@@ -200,6 +228,7 @@ export const CapabilityStepSchema = z.strictObject({
   preconditions: z.array(AssertionSchema),
   action: CapabilityActionSchema,
   postconditions: z.array(AssertionSchema),
+  possibleOutcomes: z.array(PossibleOutcomeSchema).optional(),
   timeoutMs: z.number().positive().optional(),
 });
 
@@ -253,6 +282,8 @@ export type ValueRef = z.infer<typeof ValueRefSchema>;
 export type TargetDescriptor = z.infer<typeof TargetDescriptorSchema>;
 export type Assertion = z.infer<typeof AssertionSchema>;
 export type CapabilityAction = z.infer<typeof CapabilityActionSchema>;
+export type OutcomeMatch = z.infer<typeof OutcomeMatchSchema>;
+export type PossibleOutcome = z.infer<typeof PossibleOutcomeSchema>;
 export type CapabilityStep = z.infer<typeof CapabilityStepSchema>;
 export type CapabilityArtifact = z.infer<typeof CapabilityArtifactSchema>;
 export type PrimitiveType = z.infer<typeof inputParamSchema>["type"];

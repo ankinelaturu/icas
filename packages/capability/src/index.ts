@@ -11,6 +11,8 @@ export type {
   CapabilityAction,
   CapabilityArtifact,
   CapabilityStep,
+  OutcomeMatch,
+  PossibleOutcome,
   PrimitiveType,
   TargetDescriptor,
   ValueRef,
@@ -21,6 +23,8 @@ export {
   CapabilityActionSchema,
   CapabilityArtifactSchema,
   CapabilityStepSchema,
+  OutcomeMatchSchema,
+  PossibleOutcomeSchema,
   TargetDescriptorSchema,
   ValueRefSchema,
 } from "./artifact-schema.js";

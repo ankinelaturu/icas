@@ -156,7 +156,7 @@ interface CapabilityStep {
 }
 
 interface OutcomeMatch {
-  phrases: string[]; // any one visible → this outcome hits (OR)
+  phrases: string[]; // 1–3; any one visible → this outcome hits (OR)
 }
 
 interface PossibleOutcome {

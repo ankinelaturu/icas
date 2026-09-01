@@ -12,6 +12,8 @@ export type {
   CapabilityAction,
   CapabilityArtifact,
   CapabilityStep,
+  OutcomeMatch,
+  PossibleOutcome,
   PrimitiveType,
   TargetDescriptor,
   ValueRef,

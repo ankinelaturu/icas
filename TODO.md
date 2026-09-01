@@ -96,11 +96,11 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 Exceptional-state catalog on the artifact; see `docs/04-capability-artifact.md`.
 
-- [ ] `PossibleOutcome` / `OutcomeMatch` on capability steps (`kind`: `success` | `error` | `hitl`; `match.phrases`; `heading` / `summary` nullable)
-- [ ] Optional array; empty is valid; 1–3 phrases per outcome
-- [ ] `heading` is tool/HITL copy only, never a locator
-- [ ] `StepOverride` may replace `possibleOutcomes`
-- [ ] Tests: valid fixture with outcomes; unknown kind / empty phrases fail; resolver replace
+- [x] `PossibleOutcome` / `OutcomeMatch` on capability steps (`kind`: `success` | `error` | `hitl`; `match.phrases`; `heading` / `summary` nullable)
+- [x] Optional array; empty is valid; 1–3 phrases per outcome
+- [x] `heading` is tool/HITL copy only, never a locator
+- [x] `StepOverride` may replace `possibleOutcomes`
+- [x] Tests: valid fixture with outcomes; unknown kind / empty phrases fail; resolver replace
 
 ### Pass 1.11 — One base per id
 
