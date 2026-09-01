@@ -14,7 +14,6 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 - Tenant specialization is a declarative `CapabilityOverride` resolved by `CapabilityResolver`. `ReplayEngine` stays tenant-agnostic.
 - Every discovered or verified tenant gets an override file (empty patch allowed). `icas-play` / MCP require enrollment.
 - CLI: `--id` is the unique catalog name. `--vendor` / `--product` / `--tenant` default to `icas-bank`. Do not infer them from `--url`.
-- Do not commit `docs/brief.pdf` (gitignored).
 
 **Out of scope**
 
