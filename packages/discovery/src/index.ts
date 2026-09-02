@@ -30,12 +30,15 @@ export { extractSuccessfulPath } from "./extract-successful-path.js";
 export type { DiscoveryAgentDependencies } from "./discovery-agent.js";
 export { DiscoveryAgent } from "./discovery-agent.js";
 export {
+  composeDiscoveryProposerInstructions,
+  DISCOVERY_PROPOSER_INSTRUCTIONS,
+  formatProposePrompt,
+} from "./proposer-prompt.js";
+export {
   createConfiguredDiscoveryProposer,
   createDiscoveryMastra,
   createDiscoveryProposerAgent,
   DISCOVERY_PROPOSER_AGENT_ID,
-  DISCOVERY_PROPOSER_INSTRUCTIONS,
-  formatProposePrompt,
   MastraCandidateProposer,
 } from "./mastra-proposer.js";
 export type { StructuredGenerateAgent } from "./mastra-proposer.js";

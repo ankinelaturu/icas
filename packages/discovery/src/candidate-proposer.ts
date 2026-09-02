@@ -2,7 +2,8 @@
  * @file CandidateProposer — ICAS calls this once per search node.
  *
  * {@link MastraCandidateProposer} implements this in production. Tests inject
- * a fake. The search controller never stores graph state inside the proposer's
+ * a fake. Prompt text lives in `proposer-prompt.ts`, not in the adapter.
+ * The search controller never stores graph state inside the proposer's
  * conversation memory.
  */
 

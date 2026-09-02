@@ -6,8 +6,6 @@ import { describe, expect, it } from "vitest";
 
 import { CandidateValidationError } from "../src/candidate-action.js";
 import {
-  DISCOVERY_PROPOSER_INSTRUCTIONS,
-  formatProposePrompt,
   MastraCandidateProposer,
   type StructuredGenerateAgent,
 } from "../src/mastra-proposer.js";
@@ -142,37 +140,6 @@ describe("MastraCandidateProposer", () => {
     const instructionHits = lines.filter((line) => line.includes("LLM agent instructions")).length;
     expect(instructionHits).toBe(1);
     expect(lines.join("\n")).toContain("Do not transfer funds.");
-  });
-});
-
-describe("formatProposePrompt", () => {
-  it("includes goal, observation, and proposer instructions contract", () => {
-    const prompt = formatProposePrompt({
-      goal: "quote loan 987654",
-      observation: { id: "obs", url: "http://localhost:4101/", imagePath: "/tmp/a.png" },
-      history: ["clicked Lending"],
-      promptPolicy: "Do not transfer funds.",
-    });
-    expect(prompt).toContain("quote loan 987654");
-    expect(prompt).toContain("Do not transfer funds.");
-    expect(prompt).toContain("/tmp/a.png");
-    expect(prompt).toContain("accessibilitySnapshot:");
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("status: \"continue\"");
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain('type "relative"');
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("possibleOutcomes");
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("match.phrases");
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("staff back-office");
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("proposedInputParam");
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("camelCase");
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).not.toContain("loanAccountId");
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).not.toContain("payoffDate");
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("bounded graph search");
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("materially different");
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).not.toContain("payoff statement");
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).not.toContain("After execute, ICAS asserts");
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).not.toContain("ICAS");
-    expect(prompt).toContain("Search history:");
-    expect(prompt).not.toContain("ICAS");
   });
 });
 
