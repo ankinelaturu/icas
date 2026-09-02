@@ -64,4 +64,14 @@ describe("icas-play list", () => {
     });
     expect(lines).toEqual(["No capabilities in the catalog."]);
   });
+
+  it("still parses list after the -- pnpm inserts before the subcommand", async () => {
+    await runPlay(["node", "icas-play", "--", "list"], {
+      registry,
+      stdout: (line) => {
+        lines.push(line);
+      },
+    });
+    expect(lines).toEqual(["No capabilities in the catalog."]);
+  });
 });

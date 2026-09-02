@@ -96,6 +96,28 @@ describe("icas-agent discover", () => {
     expect(discoveryCalls).toBe(0);
   });
 
+  it("still parses --id after the -- pnpm inserts before discover", async () => {
+    await runAgent(
+      [
+        "node",
+        "icas-agent",
+        "--",
+        "discover",
+        "--id",
+        "loan-payoff",
+        "--url",
+        "https://bank.example/home",
+        "--goal",
+        "Generate a payoff statement",
+      ],
+      deps(),
+    );
+    expect(errors).toEqual([]);
+    expect(process.exitCode).toBe(0);
+    expect(discoveryCalls).toBe(1);
+    expect(await registry.get("loan-payoff")).toMatchObject({ id: "loan-payoff" });
+  });
+
   it("refuses an existing id", async () => {
     await registry.save(loadLoanPayoff());
     await runAgent(

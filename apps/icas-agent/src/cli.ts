@@ -156,6 +156,26 @@ function resolveHeaded(headlessFlag: boolean, env: NodeJS.ProcessEnv): boolean {
 }
 
 /**
+ * Drop the `--` pnpm inserts between the script path and forwarded CLI args.
+ *
+ * Root scripts run `pnpm --filter @icas/agent start --`. pnpm then invokes
+ * `tsx src/cli.ts -- discover --id …`. Node argv is
+ * `[node, cli.ts, '--', 'discover', '--id', …]`. Commander treats `--` as
+ * end-of-options, so `--id` is no longer a flag. Tests pass argv without
+ * this token; leave those slices unchanged.
+ *
+ * @param argv - Process argv including node and script
+ * @returns Argv Commander can parse as flags
+ */
+export function argvWithoutPnpmTerminator(argv: string[]): string[] {
+  // Only the pnpm-injected terminator sits immediately after the script path.
+  if (argv[2] === "--") {
+    return [argv[0]!, argv[1]!, ...argv.slice(3)];
+  }
+  return argv;
+}
+
+/**
  * Parse argv and run the selected subcommand.
  *
  * @param argv - Process argv including node and script, or a test slice
@@ -168,7 +188,7 @@ export async function runAgent(
     console.error(line);
   });
   try {
-    await createAgentProgram(deps).parseAsync(argv);
+    await createAgentProgram(deps).parseAsync(argvWithoutPnpmTerminator(argv));
   } catch (error) {
     if (error instanceof CommanderError) {
       if (error.code !== "commander.helpDisplayed") {

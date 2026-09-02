@@ -246,6 +246,26 @@ function resolveHeaded(headlessFlag: boolean, env: NodeJS.ProcessEnv): boolean {
 }
 
 /**
+ * Drop the `--` pnpm inserts between the script path and forwarded CLI args.
+ *
+ * Root scripts run `pnpm --filter @icas/play start --`. pnpm then invokes
+ * `tsx src/cli.ts -- list`. Node argv is `[node, cli.ts, '--', 'list']`.
+ * Commander treats `--` as end-of-options, so later `--url` flags are no
+ * longer options. Tests pass argv without this token; leave those slices
+ * unchanged.
+ *
+ * @param argv - Process argv including node and script
+ * @returns Argv Commander can parse as flags
+ */
+export function argvWithoutPnpmTerminator(argv: string[]): string[] {
+  // Only the pnpm-injected terminator sits immediately after the script path.
+  if (argv[2] === "--") {
+    return [argv[0]!, argv[1]!, ...argv.slice(3)];
+  }
+  return argv;
+}
+
+/**
  * Parse argv and run the selected subcommand.
  *
  * @param argv - Process argv including node and script, or a test slice
@@ -258,7 +278,7 @@ export async function runPlay(
     console.error(line);
   });
   try {
-    await createPlayProgram(deps).parseAsync(argv);
+    await createPlayProgram(deps).parseAsync(argvWithoutPnpmTerminator(argv));
   } catch (error) {
     // exitOverride turns `--help` and missing `--url` into thrown CommanderError.
     if (error instanceof CommanderError) {

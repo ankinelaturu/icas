@@ -112,6 +112,31 @@ describe("icas-adapt override generation", () => {
     expect(invocations).toHaveLength(0);
   });
 
+  it("still parses --tenant after the -- pnpm inserts before the id", async () => {
+    await registry.save(loadLoanPayoff());
+    await runAdapt(
+      [
+        "node",
+        "icas-adapt",
+        "--",
+        "loan-payoff",
+        "--tenant",
+        "loki-bank",
+        "--url",
+        "https://icas.example/home",
+        "--loanAccountId",
+        "987654",
+        "--payoffDate",
+        "2026-09-30",
+      ],
+      deps("compatible"),
+    );
+    expect(process.exitCode).toBe(0);
+    expect(errors).toEqual([]);
+    expect(invocations[0]?.request.tenant).toBe("loki-bank");
+    expect(await registry.listOverrides({ tenant: "loki-bank" })).toHaveLength(1);
+  });
+
   it("writes a one-step icas-adapt override around the divergent step", async () => {
     await registry.save(loadLoanPayoff());
     await runAdapt(

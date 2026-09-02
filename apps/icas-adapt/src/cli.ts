@@ -184,6 +184,31 @@ function resolveHeaded(headlessFlag: boolean, env: NodeJS.ProcessEnv): boolean {
   return true;
 }
 
+/**
+ * Drop the `--` pnpm inserts between the script path and forwarded CLI args.
+ *
+ * Root scripts run `pnpm --filter @icas/adapt start --`. pnpm then invokes
+ * `tsx src/cli.ts -- loan-payoff --tenant …`. Node argv is
+ * `[node, cli.ts, '--', 'loan-payoff', '--tenant', …]`. Commander treats
+ * `--` as end-of-options, so `--tenant` is no longer a flag. Tests pass
+ * argv without this token; leave those slices unchanged.
+ *
+ * @param argv - Process argv including node and script
+ * @returns Argv Commander can parse as flags
+ */
+export function argvWithoutPnpmTerminator(argv: string[]): string[] {
+  // Only the pnpm-injected terminator sits immediately after the script path.
+  if (argv[2] === "--") {
+    return [argv[0]!, argv[1]!, ...argv.slice(3)];
+  }
+  return argv;
+}
+
+/**
+ * Parse argv and run guarded adapt.
+ *
+ * @param argv - Process argv including node and script, or a test slice
+ */
 export async function runAdapt(
   argv: string[] = process.argv,
   deps: AdaptCliDeps = {},
@@ -192,7 +217,7 @@ export async function runAdapt(
     console.error(line);
   });
   try {
-    await createAdaptProgram(deps).parseAsync(argv);
+    await createAdaptProgram(deps).parseAsync(argvWithoutPnpmTerminator(argv));
   } catch (error) {
     if (error instanceof CommanderError) {
       if (error.code !== "commander.helpDisplayed") {
