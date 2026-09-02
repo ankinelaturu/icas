@@ -10,3 +10,5 @@ test-results/
 *.log
 docs/brief.pdf
 docs/brief.md
+apps/icas-agent/capabilities/
+apps/icas-agent/evidence/
