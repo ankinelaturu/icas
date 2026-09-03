@@ -1,9 +1,11 @@
 /**
  * @file CapabilityCompiler — trace → base artifact plus optional catalog persist.
  *
- * Failed exploration stays in the JSONL evidence. Checkpoints, outputs, and
- * Vendor+Product identity are derived from the success path. The compiler
- * reconstructs that path as a stack: ok `chosen_action` pushes, `backtrack` pops.
+ * Failed exploration stays in the JSONL evidence. Checkpoints and
+ * Vendor+Product identity come from the success-path stack. Outputs and
+ * `success` prefer the proposer’s success-event `result`; older traces fall
+ * back to `read` steps and last-step URL. The compiler reconstructs the path
+ * as a stack: ok `chosen_action` pushes, `backtrack` pops.
  */
 
 import { readFile } from "node:fs/promises";
@@ -19,11 +21,13 @@ import {
   deriveCheckpoints,
   deriveOutputs,
   deriveSuccess,
+  artifactOutputsFromResult,
   semanticAction,
   uniqueStepId,
 } from "./derive-artifact.js";
 import type { DiscoveryTraceEvent } from "./discovery-types.js";
 import {
+  extractDiscoverySuccessResult,
   extractSuccessfulPath,
   type SuccessfulPathStep,
 } from "./extract-successful-path.js";
@@ -99,6 +103,9 @@ export class CapabilityCompiler {
       }
       steps.push(toStep(step, path[index - 1], index, usedIds));
     }
+    // Prefer the success-turn contract. Missing/invalid payload is an old
+    // trace: harvest from `read` steps and last-step chrome instead.
+    const declared = extractDiscoverySuccessResult(events);
     const artifact: CapabilityArtifact = {
       schemaVersion: "1.0",
       id: request.id,
@@ -112,9 +119,12 @@ export class CapabilityCompiler {
         ? {}
         : { discoveredOn: { tenant: request.target.tenant } }),
       inputs,
-      outputs: deriveOutputs(steps),
+      outputs:
+        declared === undefined
+          ? deriveOutputs(steps)
+          : artifactOutputsFromResult(declared.outputs),
       steps,
-      success: deriveSuccess(path),
+      success: declared === undefined ? deriveSuccess(path) : [...declared.successSignals],
     };
     if (request.registry !== undefined) {
       await persistDiscoveredCapability(request.registry, artifact, {

@@ -9,6 +9,7 @@ import type { EvidenceEvent, EvidenceWriter, RunSummary } from "@icas/evidence";
 import { DiscoveryAgent } from "../src/discovery-agent.js";
 import { DISCOVERY_TRACE_TYPES } from "../src/discovery-trace.js";
 import { FakeProposer } from "./test-support/fake-proposer.js";
+import { MINIMAL_SUCCESS_RESULT } from "./test-support/success-result.js";
 import { FakeSurface } from "./test-support/fake-surface.js";
 
 class CapturingEvidence implements EvidenceWriter {
@@ -65,7 +66,7 @@ describe("DiscoveryTrace", () => {
             },
           ],
         },
-        { status: "success", candidates: [] },
+        { status: "success", candidates: [], result: MINIMAL_SUCCESS_RESULT },
       ]),
     });
     const result = await agent.run({

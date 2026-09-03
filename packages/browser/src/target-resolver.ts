@@ -79,8 +79,9 @@ function locatorFor(page: Page, strategy: TargetStrategy): Locator | undefined {
 /**
  * Locate a control relative to visible anchor text.
  *
- * Prefer an explicit xpath, then a role under following siblings, then the
- * first following input — the bank fixture's unlabeled fields sit after a label.
+ * Prefer an explicit xpath, then a role under following siblings. Default is
+ * the nearest following input/textarea/select or table cell so fill and
+ * statement `read` share one strategy.
  */
 function relativeLocator(
   page: Page,
@@ -95,7 +96,11 @@ function relativeLocator(
       strategy.role as Parameters<Page["getByRole"]>[0],
     );
   }
-  return anchor.locator("xpath=following::input[1]");
+  // Nearest following form control or table cell. Unlabeled fills use input;
+  // statement rows use the value td beside the caption. Explicit xpath/role above win.
+  return anchor.locator(
+    "xpath=following::*[self::input or self::textarea or self::select or self::td][1]",
+  );
 }
 
 /**

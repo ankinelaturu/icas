@@ -140,6 +140,8 @@ Outputs declare the calling contract and extraction target:
 
 The replay engine validates extracted values against declared output types before returning success.
 
+Discovery compiles `outputs` from the proposer’s success `result` (extract locators on the completed observation). `read` steps on the success path remain a fallback for traces that predate `result`. Replay does not infer fields from the goal; empty `outputs` yields `outputs: (none)` on `icas-play run`.
+
 ## Step model
 
 Each step is roughly:
@@ -256,7 +258,7 @@ interface TargetDescriptor {
 }
 ```
 
-`relative` anchors on visible `text`, then optionally a `role` or `xpath` from that node. `coordinates` is last-resort only.
+`relative` anchors on visible `text`, then optionally a `role` or `xpath` from that node. With neither, it takes the nearest following `input` / `textarea` / `select` **or** `td` so unlabeled fills and caption|value table rows share one strategy. `coordinates` is last-resort only.
 
 Potential strategies:
 

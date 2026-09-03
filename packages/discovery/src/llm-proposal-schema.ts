@@ -9,7 +9,9 @@
 
 import {
   llmActionToCapabilityAction,
+  llmTargetToDescriptor,
   LlmCapabilityActionSchema,
+  LlmTargetDescriptorSchema,
   PossibleOutcomeSchema,
 } from "@icas/capability";
 import * as z from "zod";
@@ -18,6 +20,7 @@ import {
   CandidateValidationError,
   validateCandidateProposal,
   type CandidateProposal,
+  type DiscoverySuccessResult,
 } from "./candidate-action.js";
 
 /**
@@ -38,12 +41,42 @@ export const LlmCandidateActionSchema = z.strictObject({
 });
 
 /**
+ * One success signal without assertion `oneOf`. Unused field is null.
+ */
+export const LlmSuccessSignalSchema = z.strictObject({
+  type: z.enum(["textVisible", "urlMatches"]),
+  value: z.string().nullable(),
+  pattern: z.string().nullable(),
+});
+
+/**
+ * One declared output. `source` is the same target shape as a read action.
+ */
+export const LlmDeclaredOutputSchema = z.strictObject({
+  name: z.string().min(1),
+  type: z.enum(["string", "number", "boolean", "date", "money"]),
+  description: z.string().nullable(),
+  source: LlmTargetDescriptorSchema,
+});
+
+/**
+ * Success-turn contract. Null when status is continue or stuck.
+ */
+export const LlmDiscoveryResultSchema = z
+  .strictObject({
+    successSignals: z.array(LlmSuccessSignalSchema),
+    outputs: z.array(LlmDeclaredOutputSchema),
+  })
+  .nullable();
+
+/**
  * Structured output schema passed to Mastra `generate`.
  */
 export const LlmCandidateProposalSchema = z.strictObject({
   status: z.enum(["continue", "success", "stuck"]),
   candidates: z.array(LlmCandidateActionSchema),
   rationale: z.string().nullable(),
+  result: LlmDiscoveryResultSchema,
 });
 
 export type LlmCandidateProposal = z.infer<typeof LlmCandidateProposalSchema>;
@@ -61,6 +94,7 @@ export function llmProposalToCandidateProposal(value: unknown): CandidateProposa
     throw new CandidateValidationError(parsed.error);
   }
   const llm = parsed.data;
+  const result = mapLlmDiscoveryResult(llm.result);
   const mapped = {
     status: llm.status,
     candidates: llm.candidates.map((candidate) => {
@@ -83,6 +117,76 @@ export function llmProposalToCandidateProposal(value: unknown): CandidateProposa
     ...(llm.rationale === null || llm.rationale.length === 0
       ? {}
       : { rationale: llm.rationale }),
+    ...(result === undefined ? {} : { result }),
   };
   return validateCandidateProposal(mapped);
+}
+
+/**
+ * Map nullable flat `result` onto catalog {@link DiscoverySuccessResult}.
+ *
+ * @param raw - LLM result or null
+ * @returns Catalog result, or undefined when the model sent null
+ * @throws {CandidateValidationError} When a signal is missing its required field
+ */
+function mapLlmDiscoveryResult(
+  raw: z.infer<typeof LlmDiscoveryResultSchema>,
+): DiscoverySuccessResult | undefined {
+  if (raw === null) {
+    return undefined;
+  }
+  return {
+    successSignals: raw.successSignals.map((signal, index) => mapLlmSuccessSignal(signal, index)),
+    outputs: raw.outputs.map((output) => ({
+      name: output.name,
+      type: output.type,
+      ...(output.description === null || output.description.length === 0
+        ? {}
+        : { description: output.description }),
+      extract: { target: llmTargetToDescriptor(output.source, "read") },
+    })),
+  };
+}
+
+/**
+ * Require `value` for textVisible and `pattern` for urlMatches.
+ *
+ * @param signal - Flat signal
+ * @param index - Array index for the Zod path
+ */
+function mapLlmSuccessSignal(
+  signal: z.infer<typeof LlmSuccessSignalSchema>,
+  index: number,
+): DiscoverySuccessResult["successSignals"][number] {
+  if (signal.type === "textVisible") {
+    if (signal.value === null || signal.value.length === 0) {
+      throw new CandidateValidationError(
+        issue("successSignals", index, "textVisible requires value"),
+      );
+    }
+    return { type: "textVisible", value: signal.value };
+  }
+  if (signal.pattern === null || signal.pattern.length === 0) {
+    throw new CandidateValidationError(
+      issue("successSignals", index, "urlMatches requires pattern"),
+    );
+  }
+  return { type: "urlMatches", pattern: signal.pattern };
+}
+
+/**
+ * Build a ZodError so mapping failures share {@link CandidateValidationError}.
+ *
+ * @param key - Field name
+ * @param index - Array index
+ * @param message - Why mapping failed
+ */
+function issue(key: string, index: number, message: string): z.ZodError {
+  return new z.ZodError([
+    {
+      code: "custom",
+      path: ["result", key, index],
+      message,
+    },
+  ]);
 }

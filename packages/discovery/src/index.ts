@@ -11,13 +11,19 @@ export type {
   CandidateAction,
   CandidateProposal,
   CapabilityAction,
+  DiscoverySuccessOutput,
+  DiscoverySuccessResult,
+  SuccessSignal,
 } from "./candidate-action.js";
 export {
   assignCandidateIds,
   CandidateActionSchema,
   CandidateProposalSchema,
   CandidateValidationError,
+  DiscoverySuccessOutputSchema,
+  DiscoverySuccessResultSchema,
   sortCandidatesByRank,
+  SuccessSignalSchema,
   validateCandidateProposal,
 } from "./candidate-action.js";
 export type { CandidateProposer, ProposeContext } from "./candidate-proposer.js";
@@ -26,7 +32,7 @@ export { CapabilityCompiler, loadTraceEvents, persistDiscoveredCapability } from
 export { ParameterizeError } from "./parameterize-inputs.js";
 export { classifyHumanIntervention } from "./classify-intervention.js";
 export type { SuccessfulPathStep } from "./extract-successful-path.js";
-export { extractSuccessfulPath } from "./extract-successful-path.js";
+export { extractDiscoverySuccessResult, extractSuccessfulPath } from "./extract-successful-path.js";
 export type { DiscoveryAgentDependencies } from "./discovery-agent.js";
 export { DiscoveryAgent } from "./discovery-agent.js";
 export {

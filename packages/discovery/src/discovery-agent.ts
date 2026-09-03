@@ -455,7 +455,12 @@ export class DiscoveryAgent {
       },
     });
     if (proposal.status === "success") {
-      await trace.record({ type: "success" });
+      // Compiler reads `payload.result`. Empty object is only for traces that
+      // omitted the field before this contract existed.
+      await trace.record({
+        type: "success",
+        payload: proposal.result === undefined ? {} : { result: proposal.result },
+      });
       return { status: "success" };
     }
     if (proposal.status === "stuck") {

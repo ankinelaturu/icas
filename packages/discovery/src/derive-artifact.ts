@@ -2,8 +2,8 @@
  * @file Derive semantic locators, checkpoints, and outputs from a success path.
  *
  * Replay prefers labels and visible text over screenshot coordinates.
- * Checkpoints come from the model's expectation and observed URLs, not from
- * re-running the LLM.
+ * Checkpoints come from the model's expectation and observed URLs.
+ * `artifactOutputsFromResult` maps the proposer’s success `result.outputs`.
  */
 
 import type {
@@ -14,6 +14,7 @@ import type {
 } from "@icas/capability";
 
 import type { SuccessfulPathStep } from "./extract-successful-path.js";
+import type { DiscoverySuccessOutput } from "./candidate-action.js";
 
 /**
  * Drop coordinate locators when a semantic strategy exists.
@@ -111,6 +112,32 @@ export function deriveOutputs(
         ? "money"
         : "string",
       extract: { target: step.action.target },
+    };
+  }
+  return outputs;
+}
+
+/**
+ * Map proposer success outputs onto the artifact `outputs` record.
+ *
+ * Duplicate names fail closed so replay does not silently drop a field.
+ *
+ * @param declared - `result.outputs` from the success event
+ * @returns Catalog outputs map
+ * @throws {Error} When two declarations share a name
+ */
+export function artifactOutputsFromResult(
+  declared: readonly DiscoverySuccessOutput[],
+): CapabilityArtifactOutputs {
+  const outputs: CapabilityArtifactOutputs = {};
+  for (const item of declared) {
+    if (outputs[item.name] !== undefined) {
+      throw new Error(`CapabilityCompiler: duplicate output name "${item.name}"`);
+    }
+    outputs[item.name] = {
+      type: item.type,
+      ...(item.description === undefined ? {} : { description: item.description }),
+      extract: item.extract,
     };
   }
   return outputs;

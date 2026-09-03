@@ -18,6 +18,10 @@ import { z } from "zod";
 
 import { classifyHumanIntervention } from "./classify-intervention.js";
 import type { DiscoveryTraceEvent } from "./discovery-types.js";
+import {
+  DiscoverySuccessResultSchema,
+  type DiscoverySuccessResult,
+} from "./candidate-action.js";
 
 /**
  * Compact observation used as checkpoint context. `url` is optional because
@@ -204,4 +208,32 @@ function actionSucceeded(payload: unknown): boolean {
     return false;
   }
   return (payload as { status?: unknown }).status === "ok";
+}
+
+/**
+ * Read the proposer’s success `result` from the last `success` trace event.
+ *
+ * Older traces omit the payload; the compiler then falls back to `read` steps
+ * and last-step URL checkpoints.
+ *
+ * @param events - Full discovery trace
+ * @returns Catalog-shaped result, or undefined when absent or invalid
+ */
+export function extractDiscoverySuccessResult(
+  events: readonly DiscoveryTraceEvent[],
+): DiscoverySuccessResult | undefined {
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    const event = events[index];
+    if (event?.type !== "success") {
+      continue;
+    }
+    const payload = event.payload;
+    if (payload === null || typeof payload !== "object") {
+      return undefined;
+    }
+    const raw = (payload as { result?: unknown }).result;
+    const parsed = DiscoverySuccessResultSchema.safeParse(raw);
+    return parsed.success ? parsed.data : undefined;
+  }
+  return undefined;
 }

@@ -31,6 +31,7 @@ export {
 
 export {
   llmActionToCapabilityAction,
+  llmTargetToDescriptor,
   LlmCapabilityActionSchema,
   LlmTargetDescriptorSchema,
   LlmTargetStrategySchema,

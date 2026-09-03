@@ -16,6 +16,7 @@ import {
 import { CapabilityCompiler } from "../../packages/discovery/src/capability-compiler.js";
 import { DiscoveryAgent } from "../../packages/discovery/src/discovery-agent.js";
 import { FakeProposer } from "../../packages/discovery/tests/test-support/fake-proposer.js";
+import { MINIMAL_SUCCESS_RESULT } from "../../packages/discovery/tests/test-support/success-result.js";
 
 import { fixturePolicy, pageUrl } from "./fixture-pages.js";
 
@@ -57,7 +58,7 @@ describe("discovery-to-capability integration", () => {
             ],
           },
           continueClick("button", "Search", "Payoff Statement"),
-          { status: "success", candidates: [] },
+          { status: "success", candidates: [], result: MINIMAL_SUCCESS_RESULT },
         ]),
       });
       const result = await agent.run({
@@ -86,7 +87,8 @@ describe("discovery-to-capability integration", () => {
       expect(fill?.action).toMatchObject({ value: { input: "loanAccountId" } });
       expect(JSON.stringify(artifact.steps)).not.toContain("987654");
       expect(artifact.inputs.loanAccountId).toEqual({ type: "string", required: true });
-      expect(artifact.success).toEqual([{ type: "textVisible", value: "Payoff Statement" }]);
+      // Compiler prefers the success-event `result`, not last-step expectation.
+      expect(artifact.success).toEqual(MINIMAL_SUCCESS_RESULT.successSignals);
       const stored = await registry.get("loan-payoff");
       expect(stored?.id).toBe("loan-payoff");
       const override = await registry.getOverride("icas-bank", "loan-payoff");

@@ -146,8 +146,9 @@ export function llmActionToCapabilityAction(raw: LlmCapabilityAction): Capabilit
  *
  * @param raw - Non-null LLM target
  * @param actionType - Semantic action; relative fallback is fill/select/read only
+ * @returns Catalog target with optional relative caption fallback
  */
-function llmTargetToDescriptor(
+export function llmTargetToDescriptor(
   raw: z.infer<typeof LlmTargetDescriptorSchema>,
   actionType: LlmCapabilityAction["type"],
 ): TargetDescriptor {

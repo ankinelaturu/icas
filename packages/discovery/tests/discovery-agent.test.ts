@@ -8,6 +8,7 @@ import { PolicyGuard } from "@icas/policy";
 
 import { DiscoveryAgent } from "../src/discovery-agent.js";
 import { FakeProposer } from "./test-support/fake-proposer.js";
+import { MINIMAL_SUCCESS_RESULT } from "./test-support/success-result.js";
 import { FakeSurface } from "./test-support/fake-surface.js";
 
 const clickLending = {
@@ -47,7 +48,7 @@ describe("DiscoveryAgent.run", () => {
       return { status: "ok" };
     };
     const agent = new DiscoveryAgent(surface, {
-      proposer: new FakeProposer([clickLending, { status: "success", candidates: [] }]),
+      proposer: new FakeProposer([clickLending, { status: "success", candidates: [], result: MINIMAL_SUCCESS_RESULT }]),
       policy: new PolicyGuard({
         allowedOrigins: ["http://localhost:4101"],
         allowedActionTypes: ["click", "fill", "select", "navigate", "read"],
@@ -67,6 +68,9 @@ describe("DiscoveryAgent.run", () => {
       "candidates",
       "success",
     ]);
+    expect(result.events.find((event) => event.type === "success")?.payload).toEqual({
+      result: MINIMAL_SUCCESS_RESULT,
+    });
   });
 
   it("stops on timeout without treating the run as catalog replay", async () => {
@@ -95,7 +99,7 @@ describe("DiscoveryAgent.run", () => {
       proposer: {
         async propose(context) {
           seenPolicy = context.promptPolicy;
-          return { status: "success", candidates: [] };
+          return { status: "success", candidates: [], result: MINIMAL_SUCCESS_RESULT };
         },
       },
     });
@@ -119,7 +123,7 @@ describe("DiscoveryAgent.run", () => {
             clickOn("Lending", 1),
           ],
         },
-        { status: "success", candidates: [] },
+        { status: "success", candidates: [], result: MINIMAL_SUCCESS_RESULT },
       ]),
     });
     const result = await agent.run(request);
@@ -166,7 +170,7 @@ describe("DiscoveryAgent.run", () => {
           candidates: [clickOn("Documents", 1), clickOn("Lending", 2)],
         },
         { status: "stuck", candidates: [], rationale: "grayed out" },
-        { status: "success", candidates: [] },
+        { status: "success", candidates: [], result: MINIMAL_SUCCESS_RESULT },
       ]),
     });
     const result = await agent.run(request);
@@ -196,7 +200,7 @@ describe("DiscoveryAgent.run", () => {
           status: "continue",
           candidates: [clickOn("Loans", 1), clickOn("Lending", 2)],
         },
-        { status: "success", candidates: [] },
+        { status: "success", candidates: [], result: MINIMAL_SUCCESS_RESULT },
       ]),
     });
     const result = await agent.run({ ...request, maxSteps: 5 });
@@ -228,7 +232,7 @@ describe("DiscoveryAgent.run", () => {
           candidates: [clickOn("Search", 1), clickOn("Payoff", 2)],
         },
         { status: "stuck", candidates: [], rationale: "empty results" },
-        { status: "success", candidates: [] },
+        { status: "success", candidates: [], result: MINIMAL_SUCCESS_RESULT },
       ]),
     });
     const result = await agent.run(request);
@@ -266,7 +270,7 @@ describe("DiscoveryAgent.run", () => {
           status: "continue",
           candidates: [clickOn("Make a payment", 1), clickOn("Lending", 2)],
         },
-        { status: "success", candidates: [] },
+        { status: "success", candidates: [], result: MINIMAL_SUCCESS_RESULT },
       ]),
     });
     const running = agent.run(request);
@@ -296,7 +300,7 @@ describe("DiscoveryAgent.run", () => {
       return { status: "ok" };
     };
     const agent = new DiscoveryAgent(surface, {
-      proposer: new FakeProposer([clickLending, { status: "success", candidates: [] }]),
+      proposer: new FakeProposer([clickLending, { status: "success", candidates: [], result: MINIMAL_SUCCESS_RESULT }]),
       log: (line) => {
         lines.push(line);
       },

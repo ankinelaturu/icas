@@ -39,7 +39,7 @@ After the last step:
 verify overall success assertions
     ↓ fail → HTTP status (if known), then that last step’s possibleOutcomes,
              then the runtime generic phrase list, same as above
-extract declared outputs
+extract declared outputs (each `extract.target`; `relative` must resolve the value node, not the caption)
 validate output types
 return structured success
 ```

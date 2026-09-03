@@ -135,6 +135,22 @@ describe("PlaywrightSurface locate (fallbacks)", () => {
     await expect(control.inputValue()).resolves.toBe("34.56");
   });
 
+  it("defaults relative to the nearest following input when xpath is omitted", async () => {
+    await surface.open(pageUrl("labeled-fields.html"));
+    const control = await surface.locate({
+      strategies: [{ type: "relative", text: "Amount due" }],
+    });
+    await expect(control.inputValue()).resolves.toBe("34.56");
+  });
+
+  it("defaults relative to the following table cell for a caption|value row", async () => {
+    await surface.open(pageUrl("labeled-fields.html"));
+    const control = await surface.locate({
+      strategies: [{ type: "relative", text: "Statement total" }],
+    });
+    await expect(control.innerText()).resolves.toBe("113544.40");
+  });
+
   it("uses coordinates only as a last resort", async () => {
     await surface.open(pageUrl("labeled-fields.html"));
     const control = await surface.locate({
@@ -197,6 +213,29 @@ describe("PlaywrightSurface execute", () => {
       target: { strategies: [{ type: "label", label: "Account Status" }] },
     });
     expect(read.details).toEqual({ value: "Active" });
+  });
+
+  it("fills an unlabeled field via default relative", async () => {
+    await surface.open(pageUrl("labeled-fields.html"));
+    await surface.execute({
+      type: "fill",
+      target: { strategies: [{ type: "relative", text: "Amount due" }] },
+      value: { literal: "99.00" },
+    });
+    const read = await surface.execute({
+      type: "read",
+      target: { strategies: [{ type: "relative", text: "Amount due" }] },
+    });
+    expect(read).toEqual({ status: "ok", details: { value: "99.00" } });
+  });
+
+  it("reads a statement table cell via default relative", async () => {
+    await surface.open(pageUrl("labeled-fields.html"));
+    const read = await surface.execute({
+      type: "read",
+      target: { strategies: [{ type: "relative", text: "Statement total" }] },
+    });
+    expect(read).toEqual({ status: "ok", details: { value: "113544.40" } });
   });
 
   it("navigates a relative path", async () => {

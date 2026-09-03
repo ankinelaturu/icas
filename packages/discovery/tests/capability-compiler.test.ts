@@ -2,7 +2,7 @@
  * @file Compiler keeps only the success-path stack; failed branches stay evidence.
  */
 
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -320,6 +320,7 @@ describe("CapabilityCompiler", () => {
           },
           { type: "action_result", payload: { status: "ok" } },
           { type: "observation", payload: { id: "statement", url: "http://localhost/statement.html" } },
+          // No `result` payload: outputs come from the `read` step; success from last expectation.
           { type: "success" },
         ],
       });
@@ -402,5 +403,152 @@ describe("CapabilityCompiler", () => {
         summary: "A person must continue this session.",
       },
     ]);
+  });
+
+  it("prefers success-event result over read steps and last-step expectation", async () => {
+    const compiler = new CapabilityCompiler();
+    const declared = {
+      successSignals: [
+        { type: "textVisible" as const, value: "Statement is ready" },
+        { type: "urlMatches" as const, pattern: "/lending/payoff.htm" },
+      ],
+      outputs: [
+        {
+          name: "statementTotal",
+          type: "money" as const,
+          description: "Quoted total",
+          extract: {
+            target: { strategies: [{ type: "relative" as const, text: "Statement total" }] },
+          },
+        },
+      ],
+    };
+    const artifact = await compiler.compile({
+      id: "loan-payoff",
+      target: { vendor: "icas-bank", product: "icas-bank" },
+      events: [
+        {
+          type: "chosen_action",
+          payload: {
+            rank: 1,
+            action: {
+              type: "click",
+              target: { strategies: [{ type: "visibleText", text: "Inquire" }] },
+              risk: "safe",
+            },
+            expectation: "Would be ignored",
+          },
+        },
+        { type: "action_result", payload: { status: "ok" } },
+        {
+          type: "chosen_action",
+          payload: {
+            rank: 1,
+            action: {
+              type: "read",
+              target: { strategies: [{ type: "label", label: "Total Payoff Amount" }] },
+              intent: "totalPayoffAmount",
+            },
+          },
+        },
+        { type: "action_result", payload: { status: "ok" } },
+        { type: "success", payload: { result: declared } },
+      ],
+    });
+    expect(artifact.success).toEqual(declared.successSignals);
+    expect(artifact.outputs.statementTotal).toEqual({
+      type: "money",
+      description: "Quoted total",
+      extract: { target: { strategies: [{ type: "relative", text: "Statement total" }] } },
+    });
+    // Declared contract wins; do not also harvest the read step.
+    expect(artifact.outputs.totalPayoffAmount).toBeUndefined();
+  });
+
+  it("round-trips success result through JSONL", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "icas-result-trace-"));
+    const tracePath = join(dir, "trace.jsonl");
+    const declared = {
+      successSignals: [{ type: "textVisible", value: "Statement is ready" }],
+      outputs: [
+        {
+          name: "statementTotal",
+          type: "money",
+          extract: {
+            target: { strategies: [{ type: "relative", text: "Statement total" }] },
+          },
+        },
+      ],
+    };
+    const events = [
+      {
+        type: "chosen_action",
+        payload: {
+          rank: 1,
+          action: {
+            type: "click",
+            target: { strategies: [{ type: "visibleText", text: "Lending" }] },
+            risk: "safe",
+          },
+        },
+      },
+      { type: "action_result", payload: { status: "ok" } },
+      { type: "success", payload: { result: declared } },
+    ];
+    try {
+      await writeFile(
+        tracePath,
+        `${events.map((event) => JSON.stringify(event)).join("\n")}\n`,
+      );
+      const artifact = await new CapabilityCompiler().compile({
+        id: "loan-payoff",
+        target: { vendor: "icas-bank", product: "icas-bank" },
+        tracePath,
+      });
+      expect(artifact.success).toEqual(declared.successSignals);
+      expect(artifact.outputs.statementTotal?.type).toBe("money");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("fails compile when result declares duplicate output names", async () => {
+    const compiler = new CapabilityCompiler();
+    const output = {
+      name: "statementTotal",
+      type: "money" as const,
+      extract: {
+        target: { strategies: [{ type: "relative" as const, text: "Statement total" }] },
+      },
+    };
+    await expect(
+      compiler.compile({
+        id: "loan-payoff",
+        target: { vendor: "icas-bank", product: "icas-bank" },
+        events: [
+          {
+            type: "chosen_action",
+            payload: {
+              rank: 1,
+              action: {
+                type: "click",
+                target: { strategies: [{ type: "visibleText", text: "Lending" }] },
+                risk: "safe",
+              },
+            },
+          },
+          { type: "action_result", payload: { status: "ok" } },
+          {
+            type: "success",
+            payload: {
+              result: {
+                successSignals: [{ type: "textVisible", value: "done" }],
+                outputs: [output, output],
+              },
+            },
+          },
+        ],
+      }),
+    ).rejects.toThrow(/duplicate output name/);
   });
 });

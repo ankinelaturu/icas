@@ -13,6 +13,7 @@ import {
 const validContinue = {
   status: "continue" as const,
   rationale: null,
+  result: null,
   candidates: [
     {
       id: null,

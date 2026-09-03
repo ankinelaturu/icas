@@ -179,6 +179,14 @@ Replay Pass 4.16 needs this. Do not classify business outcomes here.
 - [x] XHR, frames, and `200` error banners may omit status — that is not a miss of this pass
 - [x] Tests: a fixture 404 reports `404`; a normal page may omit status or report `200`
 
+### Pass 2.11 — Relative locates associated value
+
+Default `relative` was `following::input[1]` (unlabeled fill). Statement-style rows are caption `td` + value `td`, so `read` missed the amount.
+
+- [x] Default `relative` (no `xpath` / `role`) locates the nearest following `input` / `textarea` / `select` **or** `td`
+- [x] Explicit `xpath` / `role` on the strategy still win
+- [x] Tests: unlabeled input after a caption still fills; caption|value table row `read` returns the cell text, not the caption
+
 ---
 
 ## Phase 3 — Policy, redaction, evidence, handoff
@@ -540,6 +548,24 @@ Today `generate` is one string; `imagePath` is a filesystem path in that text, n
 - [ ] Keep a vision-capable default (`openai/gpt-4o`); a text-only local model must still work if the operator sets one
 - [ ] Same pass: `--assist` either attaches the image or documents that repair stays path-only
 - [ ] Tests: request includes image parts when a path exists; ARIA snapshot remains in the user text
+
+### Pass 5.23 — Proposal `result` schema
+
+Discover must not invent `read` steps to harvest values. On `status: "success"` the model returns a `result` contract (prompt already describes it). Structured output and catalog validation must accept that object.
+
+- [x] Flat LLM proposal schema includes nullable `result` (`successSignals`, `outputs[].source` as `LlmTargetDescriptorSchema`). No `oneOf`
+- [x] Mapper copies onto `CandidateProposal.result`. `success` requires non-null `result` with ≥1 `textVisible` | `urlMatches` signal. `continue` / `stuck` require `result: null`
+- [x] Output `source` maps through the same target mapper as `read` (relative fallback for captions)
+- [x] Tests: success maps signals + extract targets; continue with a result fails; success without result fails
+
+### Pass 5.24 — Trace + compiler consume `result`
+
+Depends on Pass 5.23.
+
+- [x] `DiscoveryAgent` records `result` on the `success` trace event
+- [x] Compiler prefers that payload: `artifact.success` from `successSignals`, `artifact.outputs` from declared extract targets
+- [x] Missing `result` on an old trace still uses `read` steps + last-step URL (`deriveOutputs` / `deriveSuccess`)
+- [x] Tests: compile from a success event with `result`; JSONL round-trip; fallback when payload omitted
 
 ---
 

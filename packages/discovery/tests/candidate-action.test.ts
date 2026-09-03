@@ -10,6 +10,7 @@ import {
   sortCandidatesByRank,
   validateCandidateProposal,
 } from "../src/candidate-action.js";
+import { MINIMAL_SUCCESS_RESULT } from "./test-support/success-result.js";
 
 const clickLending = {
   action: {
@@ -116,13 +117,24 @@ describe("validateCandidateProposal", () => {
     expect(proposal.candidates[0]?.possibleOutcomes?.[0]?.kind).toBe("error");
   });
 
-  it("accepts success with no further candidates", () => {
+  it("accepts success with a result contract and no further candidates", () => {
     const proposal = validateCandidateProposal({
       status: "success",
       candidates: [],
       rationale: "Payoff Statement is visible",
+      result: MINIMAL_SUCCESS_RESULT,
     });
     expect(proposal.status).toBe("success");
+    expect(proposal.result?.successSignals).toHaveLength(1);
+  });
+
+  it("rejects success without result", () => {
+    expect(() =>
+      validateCandidateProposal({
+        status: "success",
+        candidates: [],
+      }),
+    ).toThrow(/result/);
   });
 
   it("rejects free-form prose", () => {
@@ -153,6 +165,16 @@ describe("validateCandidateProposal", () => {
     expect(() =>
       validateCandidateProposal({ status: "continue", candidates: [] }),
     ).toThrow(/at least one candidate/);
+  });
+
+  it("rejects continue when result is present", () => {
+    expect(() =>
+      validateCandidateProposal({
+        status: "continue",
+        candidates: [clickLending],
+        result: MINIMAL_SUCCESS_RESULT,
+      }),
+    ).toThrow(/result is only valid/);
   });
 });
 

@@ -10,6 +10,7 @@ import {
   CapabilityActionSchema,
   PossibleOutcomeSchema,
   ProposedInputParamSchema,
+  TargetDescriptorSchema,
   type CapabilityAction,
 } from "@icas/capability";
 import { z } from "zod";
@@ -58,10 +59,47 @@ export const CandidateActionSchema = z.strictObject({
   });
 
 /**
+ * Observed completion chrome. Compile copies these onto artifact `success`.
+ * Only `textVisible` and `urlMatches` — not locators and not possibleOutcomes.
+ */
+export const SuccessSignalSchema = z.discriminatedUnion("type", [
+  z.strictObject({
+    type: z.literal("textVisible"),
+    value: z.string().min(1),
+  }),
+  z.strictObject({
+    type: z.literal("urlMatches"),
+    pattern: z.string().min(1),
+  }),
+]);
+
+/**
+ * One caller-visible value to extract on later replay.
+ */
+export const DiscoverySuccessOutputSchema = z.strictObject({
+  name: z.string().regex(/^[a-z][a-zA-Z0-9]*$/, {
+    error: "output name must be camelCase",
+  }),
+  type: z.enum(["string", "number", "boolean", "date", "money"]),
+  description: z.string().min(1).optional(),
+  extract: z.strictObject({ target: TargetDescriptorSchema }),
+});
+
+/**
+ * Success-turn contract: proof of completion plus extract locators.
+ *
+ * Discovery does not execute `read` steps to harvest these values.
+ */
+export const DiscoverySuccessResultSchema = z.strictObject({
+  successSignals: z.array(SuccessSignalSchema).min(1),
+  outputs: z.array(DiscoverySuccessOutputSchema),
+});
+
+/**
  * Required LLM response for every proposer call.
  *
  * - `continue` — ICAS should try `candidates` in rank order
- * - `success` — the goal is already satisfied on this observation
+ * - `success` — the goal is already satisfied; `result` is required
  * - `stuck` — do not improvise; request human intervention
  *
  * `candidates` may be empty only when `status` is `success` or `stuck`.
@@ -72,6 +110,7 @@ export const CandidateProposalSchema = z
     candidates: z.array(CandidateActionSchema),
     // Optional on success/stuck so the model can explain without extra candidates.
     rationale: z.string().min(1).optional(),
+    result: DiscoverySuccessResultSchema.optional(),
   })
   .superRefine((proposal, ctx) => {
     // continue with zero candidates would exhaust the node immediately and
@@ -83,10 +122,27 @@ export const CandidateProposalSchema = z
         message: "status continue requires at least one candidate",
       });
     }
+    if (proposal.status === "success" && proposal.result === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["result"],
+        message: "status success requires result",
+      });
+    }
+    if (proposal.status !== "success" && proposal.result !== undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["result"],
+        message: "result is only valid when status is success",
+      });
+    }
   });
 
 export type CandidateAction = z.infer<typeof CandidateActionSchema>;
 export type CandidateProposal = z.infer<typeof CandidateProposalSchema>;
+export type DiscoverySuccessResult = z.infer<typeof DiscoverySuccessResultSchema>;
+export type DiscoverySuccessOutput = z.infer<typeof DiscoverySuccessOutputSchema>;
+export type SuccessSignal = z.infer<typeof SuccessSignalSchema>;
 
 /**
  * Thrown when model output does not match {@link CandidateProposalSchema}.

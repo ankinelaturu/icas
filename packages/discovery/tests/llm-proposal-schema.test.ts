@@ -23,6 +23,7 @@ describe("llmProposalToCandidateProposal", () => {
     const proposal = llmProposalToCandidateProposal({
       status: "continue",
       rationale: null,
+      result: null,
       candidates: [
         {
           id: null,
@@ -62,6 +63,7 @@ describe("llmProposalToCandidateProposal", () => {
     const proposal = llmProposalToCandidateProposal({
       status: "continue",
       rationale: null,
+      result: null,
       candidates: [
         {
           id: null,
@@ -114,11 +116,99 @@ describe("llmProposalToCandidateProposal", () => {
     ]);
   });
 
+  it("maps success result locators onto catalog extract targets", () => {
+    const proposal = llmProposalToCandidateProposal({
+      status: "success",
+      rationale: null,
+      result: {
+        successSignals: [
+          { type: "textVisible", value: "Statement ready", pattern: null },
+          { type: "urlMatches", value: null, pattern: "/lending/payoff.htm" },
+        ],
+        outputs: [
+          {
+            name: "totalAmount",
+            type: "money",
+            description: "Quoted total",
+            source: {
+              strategies: [
+                {
+                  ...nullStrategyFields,
+                  type: "relative",
+                  text: "Total amount",
+                },
+              ],
+            },
+          },
+        ],
+      },
+      candidates: [],
+    });
+    expect(proposal.result?.successSignals).toEqual([
+      { type: "textVisible", value: "Statement ready" },
+      { type: "urlMatches", pattern: "/lending/payoff.htm" },
+    ]);
+    expect(proposal.result?.outputs[0]).toMatchObject({
+      name: "totalAmount",
+      type: "money",
+      extract: {
+        target: { strategies: [{ type: "relative", text: "Total amount" }] },
+      },
+    });
+  });
+
+  it("rejects success when result is null", () => {
+    expect(() =>
+      llmProposalToCandidateProposal({
+        status: "success",
+        rationale: "done",
+        result: null,
+        candidates: [],
+      }),
+    ).toThrow(CandidateValidationError);
+  });
+
+  it("rejects continue when result is non-null", () => {
+    expect(() =>
+      llmProposalToCandidateProposal({
+        status: "continue",
+        rationale: null,
+        result: {
+          successSignals: [{ type: "textVisible", value: "Home", pattern: null }],
+          outputs: [],
+        },
+        candidates: [
+          {
+            id: null,
+            action: {
+              type: "click" as const,
+              intent: null,
+              risk: "safe" as const,
+              path: null,
+              reason: null,
+              value: null,
+              proposedInputParam: null,
+              target: {
+                strategies: [{ ...nullStrategyFields, type: "visibleText", text: "Lending" }],
+              },
+            },
+            rationale: "Open lending",
+            rank: 1,
+            expectation: null,
+            risk: null,
+            possibleOutcomes: [],
+          },
+        ],
+      }),
+    ).toThrow(CandidateValidationError);
+  });
+
   it("rejects fill when proposedInputParam is null", () => {
     expect(() =>
       llmProposalToCandidateProposal({
         status: "continue",
         rationale: null,
+        result: null,
         candidates: [
           {
             id: null,

@@ -66,12 +66,6 @@ The discovery process is not a pre-programmed flow. At each state:
 Avoid parsing free-form prose. Every proposer call (Mastra `Agent.generate` with `structuredOutput`, or a test fake) must return **one JSON object** matching `CandidateProposal`:
 
 ```ts
-type CandidateProposal = {
-  status: "continue" | "success" | "stuck";
-  candidates: CandidateAction[];
-  rationale?: string;
-};
-
 interface OutcomeMatch {
   phrases: string[]; // 1–3 guessed page phrases; any one visible is a hit (OR)
 }
@@ -99,11 +93,34 @@ interface CandidateAction {
   proposedInputParam: ProposedInputParam | null; // non-null for fill/select; null otherwise
   risk?: "safe" | "risky";
 }
+
+interface CandidateProposal {
+  status: "continue" | "success" | "stuck";
+  candidates: CandidateAction[];
+  rationale?: string;
+  /** Required when status is success; null/omitted otherwise. */
+  result?: DiscoverySuccessResult;
+}
+
+interface DiscoverySuccessResult {
+  successSignals: Array<
+    | { type: "textVisible"; value: string }
+    | { type: "urlMatches"; pattern: string }
+  >; // ≥1; copied onto artifact.success
+  outputs: Array<{
+    name: string; // camelCase
+    type: "string" | "number" | "boolean" | "date" | "money";
+    description?: string;
+    extract: { target: TargetDescriptor }; // same locators as a read
+  }>;
+}
 ```
 
-- `continue` — try `candidates` in rank order (at least one required).
-- `success` — the current observation already satisfies the goal; `candidates` may be empty.
-- `stuck` — do not improvise; the search controller requests HITL.
+- `continue` — try `candidates` in rank order (at least one required). `result` is null.
+- `success` — the current observation already satisfies the goal; `candidates` may be empty. `result` is required: observed success chrome plus extract locators for caller-visible values. Do not propose `read` candidates only to harvest those values.
+- `stuck` — do not improvise; the search controller requests HITL. `result` is null.
+
+OpenAI structured output cannot use `oneOf`, so generate uses a flat `result` (nullable object; unused signal fields are `null`) and ICAS maps it onto catalog assertions and `TargetDescriptor`s.
 
 ### `possibleOutcomes`
 
@@ -203,7 +220,7 @@ Discovery evidence is intentionally richer than replay evidence. The trace shoul
 - state assessment;
 - backtracks/dead ends;
 - human interventions;
-- final success.
+- final success (payload includes `result` when the proposer declared completion);
 
 `icas-agent discover` also prints each observation (ARIA snapshot preview), agent instructions (once), the LLM user prompt, the LLM proposal JSON, and the chosen action to stderr. A thrown surface error (`TARGET_NOT_FOUND`) becomes a failed `action_result` with that message so the run still writes evidence.
 
@@ -222,8 +239,8 @@ A capability must be decoupled from the raw model transcript. `CapabilityCompile
 5. derive semantic target descriptors from successful actions;
 6. derive preconditions and postconditions from meaningful observed state;
 7. copy this step’s `possibleOutcomes` (`error` and `hitl` only, same order) onto the compiled step;
-8. derive output extraction rules;
-9. derive final success conditions;
+8. derive output extraction rules from the success-event `result.outputs` when present; otherwise from `read` actions on the success path;
+9. derive final success conditions from `result.successSignals` when present; otherwise from the last step’s expectation or URL;
 10. attach `schemaVersion` and Vendor+Product identity;
 11. write the base artifact through `CapabilityRegistry.save` (refuse if `id` already exists) and a header-only tenant override through `saveOverride` (`createdBy: "discovery"`). Tests use a temp registry root, never repo `capabilities/`.
 
