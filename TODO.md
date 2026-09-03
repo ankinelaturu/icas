@@ -371,6 +371,7 @@ Depends on Pass 1.10. Replaces Pass 4.6’s hardcoded product table (`LOAN_NOT_F
 
 Same artifact field. Do not store vectors on the capability. Strict replay still has no LLM.
 
+- [x] `EmbeddingOutcomeMatcher` is registered after substring and currently always misses (stub)
 - [ ] Matcher may embed page text vs stored `match.phrases` (local, bounded latency)
 - [ ] Threshold / false-positive policy lives here, not in discover
 - [ ] Tests against the same fixtures as Pass 4.14

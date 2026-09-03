@@ -103,11 +103,14 @@ Many legacy screens never expose a document status (XHR, frames, `200` error pag
 
 ### Matching `match.phrases`
 
-After the next locator misses, replay reads `Surface.visibleText()` **once** and tests each phrase as a case-insensitive substring of that snapshot. Do not `textVisible`-wait per phrase: the document is already the exceptional view. A single generic token is too weak; phrases should be distinctive multi-word copy.
+After the next locator misses, replay reads `Surface.visibleText()` **once** and runs an ordered matcher pipeline. First hit wins. All miss → generic chrome, then `UNEXPECTED_STATE`.
 
-A later matcher may embed the page text and the stored phrases and compare them (local embeddings, bounded latency). That does **not** change the artifact: do not store vectors on the capability. Strict replay still has **no LLM**. Thresholds and false-positive policy belong to that later pass, not to discover.
+1. **Substring** (implemented) — case-insensitive `includes` of each phrase. Do not `textVisible`-wait per phrase.
+2. **Embedding** (stub) — reserved for chunking page text, embedding chunks vs `match.phrases`, returning a high-confidence phrase. Always misses today. No vectors on the capability. Strict replay still has **no LLM**.
 
-Do not search `heading` or `summary` on the page.
+Register more matchers by appending ranks (cheap first). Do not search `heading` or `summary` on the page. A single generic token is too weak; phrases should be distinctive multi-word copy.
+
+Threshold / false-positive policy for embeddings belongs to Pass 4.15, not discover.
 
 ### Recoverable runtime conditions
 

@@ -466,6 +466,7 @@ export class ReplayEngine {
    * Call only after the next locator missed (or last-step success/post missed).
    * Missing `httpStatus` is normal and continues to phrases. 403/404 fail
    * before phrases. 5xx retries a known interstitial then fails if still stuck.
+   * Phrase matching uses the ordered matcher pipeline (cheap ranks first).
    *
    * @returns A structured stop, or `undefined` when nothing matched
    */
@@ -551,7 +552,8 @@ export class ReplayEngine {
   /**
    * Classify this step's possibleOutcomes against current visible text.
    *
-   * Snapshot scan, not a `textVisible` wait per phrase.
+   * Snapshot scan through the matcher pipeline (substring, then embedding
+   * stub). Not a `textVisible` wait per phrase.
    *
    * @returns A stop result, or `undefined` after a successful HITL resume
    */
