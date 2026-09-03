@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Helix CU — Place Hold</title>
+<link rel="stylesheet" href="/styles.css" type="text/css">
+</head>
+<body>
+<div class="shell">
+<div class="banner">
+<div class="prod">HELIX CREDIT UNION</div>
+<div class="meta">Vendor: HELIX &nbsp;|&nbsp; Product: MS 2.14.03 &nbsp; Build 2011.06.02 &nbsp;|&nbsp; Oper 1904 &nbsp; Br 012 &nbsp; 09/03/2026</div>
+</div>
+<div class="subbar">Institution 4401 &nbsp; HELIX CU &nbsp;|&nbsp; Licensed product: HELIX MEMBER OPS &nbsp;|&nbsp; Session 3C91A2 &nbsp;|&nbsp; SHHOLD {{memberId}} {{shareId}}</div>
+<div class="body">
+<div class="nav">
+<div class="nav-hd">MODULES</div>
+<div class="nav-item"><a href="/">Home</a></div>
+<div class="nav-item"><a href="/members.htm">Member Services</a></div>
+<div class="nav-item"><a href="/drafts.htm">Share Drafts</a></div>
+<div class="nav-item"><a href="/cards.htm">Cards</a></div>
+<div class="nav-item"><a href="/help.htm">Help</a></div>
+<p class="note">F1 Assist &nbsp; F3 Exit &nbsp; F12 Cancel</p>
+</div>
+<div class="work">
+<div class="section-hd">Place Hold</div>
+<div class="row"><div class="lbl">Member #</div><div class="val">{{memberId}}</div></div>
+<div class="row"><div class="lbl">Short Name</div><div class="val">{{shortName}}</div></div>
+<div class="row"><div class="lbl">Share ID</div><div class="val">{{shareId}}</div></div>
+<div class="row"><div class="lbl">Share</div><div class="val">{{shareDescription}}</div></div>
+<div class="row"><div class="lbl">Ledger Balance</div><div class="val amt">{{ledgerBalance}}</div></div>
+<div class="row"><div class="lbl">Available Balance</div><div class="val amt">{{availableBalance}}</div></div>
+<form method="post" action="/holds/place.htm">
+<input type="hidden" name="hidMb" value="{{memberId}}">
+<input type="hidden" name="hidSh" value="{{shareId}}">
+<p class="warn" style="{{errorDisplay}}">{{errorMessage}}</p>
+<div class="row"><div class="lbl">Hold Amt</div><div class="ctl"><input type="text" name="txtAmt" size="12" maxlength="12" value="{{txtAmt}}"></div></div>
+<div class="row"><div class="lbl">Reason</div><div class="ctl"><input type="text" name="txtReason" size="40" maxlength="80" value="{{txtReason}}"></div></div>
+<div class="row"><div class="lbl">&nbsp;</div><div class="ctl"><input type="submit" value="Place Hold"><input type="reset" value="Clear"></div></div>
+</form>
+<p class="note">A hold does not post as a transfer or a payment.</p>
+<p><a href="/holds/shares.htm?mb={{memberId}}">Back to Member Shares</a></p>
+</div>
+</div>
+<div class="status">Ready. Caps: Off &nbsp; NUM &nbsp;|&nbsp; Synthetic demonstration data. Not a real financial institution.</div>
+</div>
+</body>
+</html>

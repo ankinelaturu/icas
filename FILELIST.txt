@@ -73,8 +73,10 @@ packages/surface/package.json
 packages/surface/src/index.ts
 packages/surface/tsconfig.json
 pnpm-workspace.yaml
+tenants/README.md
 tenants/icas-bank/README.md
 tenants/loki-bank/README.md
+tenants/helix-cu/README.md
 tests/README.md
 tests/e2e/.gitkeep
 tests/fixtures/.gitkeep

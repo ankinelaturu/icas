@@ -8,7 +8,7 @@ Living checklist for filling in the scaffold. Design source of truth is `docs/`.
 
 - Implementation order: capability → surface/browser → replay → discovery/compiler, then apps.
 - Add fixtures and tests in the same pass that introduces the behavior.
-- Full tenant apps: icas-bank and loki-bank are in (Phase 7).
+- Full tenant apps: icas-bank, loki-bank, and helix-cu are in (Phase 7).
 - LLM env is Phase 5 (`ICAS_*_LLM_*`). Screenshot pixels on `generate` are Pass 5.22.
 - Assisted fallback, `icas-adapt`, HITL browser takeover, and MCP are in scope.
 - Tenant specialization is a declarative `CapabilityOverride` resolved by `CapabilityResolver`. `ReplayEngine` stays tenant-agnostic.
@@ -651,7 +651,7 @@ Depends on Pass 4.14. Do not duplicate replay matching in the adapter.
 
 ## Phase 7 — Synthetic tenant apps
 
-`tenants/icas-bank` (happy path + not-found), `tenants/loki-bank` (same product, label drift).
+`tenants/icas-bank` (happy path + not-found), `tenants/loki-bank` (same product, label drift), `tenants/helix-cu` (different product, share hold, div layout).
 
 Same fictional Vendor+Product: `icas-bank` / `icas-bank`. Tenant catalog id for the default demo is `icas-bank`. The second institution stays a separate app folder. No login flow. No real PII.
 
@@ -694,6 +694,13 @@ Same fictional Vendor+Product: `icas-bank` / `icas-bank`. Tenant catalog id for 
 ### Pass 7.8 — Injectable HITL / manual-review screen
 
 - [x] Ambiguous or approval boundary that automation should not click through
+
+### Pass 7.9 — Helix CU share hold (div layout)
+
+- [x] Runnable on `http://localhost:4103`
+- [x] Different vendor/product from icas-bank; no layout tables
+- [x] Home → Member Services → Share Holds → Find → Place Hold → confirmation
+- [x] Outputs: `holdConfirmationId`, available after hold, hold expiry; unknown member empty state
 
 ---
 

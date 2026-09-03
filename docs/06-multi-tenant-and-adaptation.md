@@ -224,7 +224,7 @@ Tenant overrides are subject to the same pre/post checkpoint validation as the b
 
 ## Repository tenant fixtures
 
-`tenants/icas-bank` is the first institution. `tenants/loki-bank` is a separate install of the **same fictional Vendor+Product** (`icas-bank` / `icas-bank`) with CU branding and small label drift.
+`tenants/icas-bank` is the first institution. `tenants/loki-bank` is a separate install of the **same fictional Vendor+Product** (`icas-bank` / `icas-bank`) with CU branding and small label drift. `tenants/helix-cu` is a different vendor/product (`helix` / `helix`) with a div-based share-hold path (not loan payoff).
 
 Both apps accept `?inject=wait` (session warning + Continue) and `?inject=hitl` (manual review; human must release). The query is stored on a cookie so it survives navigation. Overlays sit at **different steps**: loan details on icas-bank, search on Loki Bank. This gives the project a concrete environment for:
 

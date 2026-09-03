@@ -82,7 +82,7 @@ flowchart LR
   class host optional
 ```
 
-Both tenants are the same fictional Vendor+Product (`icas-bank` / `icas-bank`). Loki Bank is a second install with small label/nav drift, not a second product. See [`01-system-overview.md`](01-system-overview.md) and [`06-multi-tenant-and-adaptation.md`](06-multi-tenant-and-adaptation.md).
+Both icas-bank and Loki Bank are the same fictional Vendor+Product (`icas-bank` / `icas-bank`). Loki Bank is a second install with small label/nav drift, not a second product. Helix CU (`tenants/helix-cu`) is a separate vendor/product with a share-hold workflow. See [`01-system-overview.md`](01-system-overview.md) and [`06-multi-tenant-and-adaptation.md`](06-multi-tenant-and-adaptation.md).
 
 ---
 
@@ -681,6 +681,6 @@ flowchart TB
 | Out | Co-browsing console, queues, real PII, desktop driver, REST/DB registry, URL inference | Keep the `Surface` and `CapabilityRegistry` seams; do not implement the extras |
 | Remaining | vision pixels (5.22), phrase embeddings (4.15, deferred), Phase 8 live-run artifacts | See [`TODO.md`](../TODO.md) |
 
-Synthetic tenants `icas-bank` and `loki-bank` are in (Phase 7). The first concrete capability remains: generate a loan payoff statement for `loanAccountId` + `payoffDate`, extracting `totalPayoffAmount`, `principalBalance`, and `perDiemInterest`. Discovery must learn that path from the live UI; it must not hard-code it.
+Synthetic tenants `icas-bank`, `loki-bank`, and `helix-cu` are in (Phase 7). The first concrete capability remains: generate a loan payoff statement for `loanAccountId` + `payoffDate`, extracting `totalPayoffAmount`, `principalBalance`, and `perDiemInterest`. Helix CU is a second product (share hold) so a different `--goal` can be discovered. Discovery must learn each path from the live UI; it must not hard-code it.
 
 Reviewer-facing seven headings stay in [`REPORT.md`](../REPORT.md). Demo commands live in the root README. Testing philosophy: [`12-testing-and-demo.md`](12-testing-and-demo.md).

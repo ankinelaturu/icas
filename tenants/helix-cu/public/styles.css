@@ -1,0 +1,193 @@
+/* Helix Member Ops — staff intranet (synthetic; div layout, not tables) */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #c9d6d0;
+  color: #1a241e;
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+  font-size: 14px;
+}
+
+a {
+  color: #0b4d3c;
+  text-decoration: underline;
+}
+
+a:visited {
+  color: #3d5c52;
+}
+
+.shell {
+  min-height: 100vh;
+}
+
+.banner {
+  background: #0b4d3c;
+  color: #f4ead0;
+  padding: 8px 12px;
+  overflow: hidden;
+}
+
+.banner .prod {
+  float: left;
+  font-size: 17px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.banner .meta {
+  float: right;
+  font-size: 13px;
+  padding-top: 2px;
+}
+
+.subbar {
+  background: #163d32;
+  color: #e8d48b;
+  padding: 4px 12px;
+  font-size: 13px;
+  clear: both;
+}
+
+.body {
+  overflow: hidden;
+}
+
+.nav {
+  float: left;
+  width: 200px;
+  background: #dce8e2;
+  border-right: 2px solid #7a9488;
+  min-height: 420px;
+  padding: 8px 6px;
+  box-sizing: border-box;
+}
+
+.nav-hd {
+  background: #0b4d3c;
+  color: #f4ead0;
+  font-weight: bold;
+  padding: 4px 8px;
+  margin-bottom: 4px;
+}
+
+.nav-item {
+  padding: 4px 8px;
+  border-bottom: 1px solid #7a9488;
+}
+
+.nav-item a {
+  color: #1a241e;
+  text-decoration: none;
+}
+
+.nav-item a:hover {
+  text-decoration: underline;
+}
+
+.note {
+  color: #0b4d3c;
+  font-size: 12px;
+  margin: 10px 8px 0 8px;
+}
+
+.work {
+  margin-left: 200px;
+  padding: 10px 14px 24px 14px;
+  background: #eef4f0;
+  min-height: 420px;
+}
+
+.status {
+  clear: both;
+  background: #b7c8c0;
+  border-top: 2px solid #7a9488;
+  padding: 4px 12px;
+  font-size: 13px;
+}
+
+.section-hd {
+  background: #e8d48b;
+  border: 1px solid #0b4d3c;
+  padding: 4px 8px;
+  font-weight: bold;
+  color: #0b4d3c;
+  margin: 0 0 10px 0;
+}
+
+.row {
+  overflow: hidden;
+  border: 1px solid #7a9488;
+  border-top: none;
+  background: #fffef8;
+}
+
+.row:first-of-type {
+  border-top: 1px solid #7a9488;
+}
+
+.lbl {
+  float: left;
+  width: 180px;
+  background: #d5e4dc;
+  padding: 5px 8px;
+  box-sizing: border-box;
+}
+
+.val, .ctl {
+  margin-left: 180px;
+  padding: 5px 8px;
+}
+
+.amt {
+  font-family: "Courier New", Courier, monospace;
+}
+
+.warn {
+  color: #7a1f1f;
+  font-weight: bold;
+  margin: 8px 0;
+}
+
+.block {
+  border: 1px solid #7a9488;
+  background: #fffef8;
+  padding: 8px 10px;
+  margin: 0 0 10px 0;
+}
+
+.confirm-box {
+  border: 3px double #0b4d3c;
+  background: #fffef8;
+  padding: 12px;
+  width: 520px;
+}
+
+input[type="text"] {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 15px;
+  border: 2px inset #c9d6d0;
+  background: #ffffff;
+  color: #1a241e;
+}
+
+input[type="submit"], input[type="reset"] {
+  font-family: Verdana, Geneva, sans-serif;
+  font-size: 14px;
+  background: #dce8e2;
+  border: 2px outset #f4ead0;
+  padding: 3px 12px;
+  color: #1a241e;
+}
+
+h1 {
+  font-size: 16px;
+  margin: 0 0 8px 0;
+  color: #0b4d3c;
+}
+
+.muted {
+  color: #4a5c54;
+  font-style: italic;
+}

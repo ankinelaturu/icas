@@ -16,7 +16,8 @@
     "icas-adapt": "pnpm --filter @icas/adapt start --",
     "icas-mcp": "pnpm --filter @icas/mcp start --",
     "icas-bank": "pnpm --filter @icas/icas-bank start",
-    "loki-bank": "pnpm --filter @icas/loki-bank start"
+    "loki-bank": "pnpm --filter @icas/loki-bank start",
+    "helix-cu": "pnpm --filter @icas/helix-cu start"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",

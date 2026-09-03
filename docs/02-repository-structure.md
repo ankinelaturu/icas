@@ -11,7 +11,8 @@ icas/
 │   └── icas-mcp/
 ├── tenants/
 │   ├── icas-bank/
-│   └── loki-bank/
+│   ├── loki-bank/
+│   └── helix-cu/
 ├── packages/
 │   ├── capability/
 │   ├── discovery/
@@ -45,7 +46,7 @@ Reusable runtime/library code. An app should remain thin and delegate behavior t
 
 ### `tenants/`
 
-Synthetic target banking applications. The term intentionally matches the Interface.AI brief: a tenant is one customer institution. `tenants/icas-bank` is the first institution (catalog vendor/product/tenant `icas-bank`). A later tenant app should be a **separate install** of the same fictional Vendor+Product with small UI drift, not a second product.
+Synthetic target banking applications. The term intentionally matches the Interface.AI brief: a tenant is one customer institution. `tenants/icas-bank` is the first institution (catalog vendor/product/tenant `icas-bank`). `tenants/loki-bank` is a **separate install** of that same fictional Vendor+Product with small UI drift. `tenants/helix-cu` is a **different** vendor/product (share holds, div layout) so a second `--goal` can be discovered without reusing the loan-payoff path. See `tenants/README.md`.
 
 ### `capabilities/`
 

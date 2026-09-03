@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Helix CU — Member Shares</title>
+<link rel="stylesheet" href="/styles.css" type="text/css">
+</head>
+<body>
+<div class="shell">
+<div class="banner">
+<div class="prod">HELIX CREDIT UNION</div>
+<div class="meta">Vendor: HELIX &nbsp;|&nbsp; Product: MS 2.14.03 &nbsp; Build 2011.06.02 &nbsp;|&nbsp; Oper 1904 &nbsp; Br 012 &nbsp; 09/03/2026</div>
+</div>
+<div class="subbar">Institution 4401 &nbsp; HELIX CU &nbsp;|&nbsp; Licensed product: HELIX MEMBER OPS &nbsp;|&nbsp; Session 3C91A2 &nbsp;|&nbsp; SHHOLD {{memberId}}</div>
+<div class="body">
+<div class="nav">
+<div class="nav-hd">MODULES</div>
+<div class="nav-item"><a href="/">Home</a></div>
+<div class="nav-item"><a href="/members.htm">Member Services</a></div>
+<div class="nav-item"><a href="/drafts.htm">Share Drafts</a></div>
+<div class="nav-item"><a href="/cards.htm">Cards</a></div>
+<div class="nav-item"><a href="/help.htm">Help</a></div>
+<p class="note">F1 Assist &nbsp; F3 Exit &nbsp; F12 Cancel</p>
+</div>
+<div class="work">
+<div class="section-hd">Member Shares</div>
+<div class="row"><div class="lbl">Member #</div><div class="val">{{memberId}}</div></div>
+<div class="row"><div class="lbl">Short Name</div><div class="val">{{shortName}}</div></div>
+<div class="row"><div class="lbl">Branch</div><div class="val">{{branch}}</div></div>
+<div class="row"><div class="lbl">Proc Date</div><div class="val">{{processingDate}}</div></div>
+<p>Select a share to place a hold.</p>
+<div class="block">
+<p>Share {{share01Id}} &nbsp; <a href="{{share01Href}}">Primary Share</a> &nbsp; Avail <span class="amt">{{share01Avail}}</span></p>
+<p style="{{share02Display}}">Share {{share02Id}} &nbsp; <a href="{{share02Href}}">Holiday Club</a> &nbsp; Avail <span class="amt">{{share02Avail}}</span></p>
+</div>
+<p><a href="/holds.htm">New Find</a> &nbsp;|&nbsp; <a href="/members.htm">Member Services</a></p>
+</div>
+</div>
+<div class="status">Ready. Caps: Off &nbsp; NUM &nbsp;|&nbsp; Synthetic demonstration data. Not a real financial institution.</div>
+</div>
+</body>
+</html>
