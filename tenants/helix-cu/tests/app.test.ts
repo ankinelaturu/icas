@@ -40,6 +40,8 @@ describe("helix-cu HTTP", () => {
     expect(html).toContain("Licensed product: HELIX MEMBER OPS");
     expect(html).toContain('href="/styles.css"');
     expect(html).not.toMatch(/<table/i);
+    expect(html).not.toContain("MODULES");
+    expect(html).toContain('class="tab');
     expect(html).not.toMatch(/__NEXT_DATA__|data-reactroot|@vite\/client/i);
     const css = await fetch(`${baseUrl}/styles.css`);
     expect(css.status).toBe(200);

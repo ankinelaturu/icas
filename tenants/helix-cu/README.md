@@ -7,7 +7,7 @@ The large banner is the **institution** (`HELIX CREDIT UNION`). This is a **diff
 - Tenant: **helix-cu** (Institution 4401)
 - Catalog: `--vendor helix --product helix --tenant helix-cu`
 
-Staff share-hold workflow. Markup is **divs only** (no layout tables). No login. No real PII.
+Staff share-hold workflow. Markup is **divs only**. Chrome is **top tabs + a centered card** (not the icas-bank left-nav shell). No login. No real PII.
 
 - URL: `http://localhost:4103`
 

@@ -6,31 +6,28 @@
 <link rel="stylesheet" href="/styles.css" type="text/css">
 </head>
 <body>
-<div class="shell">
-<div class="banner">
-<div class="prod">HELIX CREDIT UNION</div>
-<div class="meta">Vendor: HELIX &nbsp;|&nbsp; Product: MS 2.14.03 &nbsp; Build 2011.06.02 &nbsp;|&nbsp; Oper 1904 &nbsp; Br 012 &nbsp; 09/03/2026</div>
+<div class="top">
+<div class="brand">HELIX CREDIT UNION</div>
+<div class="branch">Branch 012 &nbsp;·&nbsp; Staff workstation</div>
 </div>
-<div class="subbar">Institution 4401 &nbsp; HELIX CU &nbsp;|&nbsp; Licensed product: HELIX MEMBER OPS &nbsp;|&nbsp; Session 3C91A2 &nbsp;|&nbsp; SHHOLD</div>
-<div class="body">
-<div class="nav">
-<div class="nav-hd">MODULES</div>
-<div class="nav-item"><a href="/">Home</a></div>
-<div class="nav-item"><a href="/members.htm">Member Services</a></div>
-<div class="nav-item"><a href="/drafts.htm">Share Drafts</a></div>
-<div class="nav-item"><a href="/cards.htm">Cards</a></div>
-<div class="nav-item"><a href="/help.htm">Help</a></div>
-<p class="note">F1 Assist &nbsp; F3 Exit &nbsp; F12 Cancel</p>
+<div class="tabs">
+<a class="tab" href="/">Home</a>
+<a class="tab" href="/members.htm">Members</a>
+<a class="tab on" href="/holds.htm">Holds</a>
+<a class="tab" href="/drafts.htm">Drafts</a>
+<a class="tab" href="/cards.htm">Cards</a>
 </div>
-<div class="work">
-<div class="section-hd">Find Member</div>
+<div class="page">
+<div class="card">
+<p class="steps">Holds &nbsp;·&nbsp; Find member</p>
+<h1>Find Member</h1>
 <p class="warn">No member record found</p>
-<div class="row"><div class="lbl">Member #</div><div class="val">{{memberId}}</div></div>
-<p>The member number is not on file at this branch. This is a business empty state, not a system error.</p>
-<p><a href="/holds.htm">New Find</a> &nbsp;|&nbsp; <a href="/members.htm">Member Services</a></p>
+<div class="field"><span class="lab">Member #</span><div class="val">{{memberId}}</div></div>
+<p class="lead">The member number is not on file at this branch. This is a business empty state, not a system error.</p>
+<p class="muted"><a href="/holds.htm">New Find</a></p>
 </div>
 </div>
-<div class="status">Ready. Caps: Off &nbsp; NUM &nbsp;|&nbsp; Synthetic demonstration data. Not a real financial institution.</div>
-</div>
+<div class="foot">Vendor: HELIX &nbsp;|&nbsp; Product: MS 2.14.03 &nbsp;|&nbsp; Licensed product: HELIX MEMBER OPS &nbsp;|&nbsp; Inst 4401 &nbsp;|&nbsp; <a href="/help.htm">Help</a><br>
+Synthetic demonstration data. Not a real financial institution.</div>
 </body>
 </html>
