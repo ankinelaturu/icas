@@ -64,8 +64,8 @@ describe("loan not found integration", () => {
       details: {
         heading: "Loan not found",
         summary: "No loan matches the requested account id.",
+        message: "Loan not found",
         match: { phrases: ["Loan not found"] },
-        phrase: "Loan not found",
       },
       runId: "int-missing",
     });

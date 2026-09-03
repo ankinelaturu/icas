@@ -15,6 +15,7 @@ import type {
 
 /**
  * Records calls. Tests configure `assertHandler` / `executeHandler` per case.
+ * Set `visibleTextContent` for possibleOutcomes scans (not `assertHandler`).
  */
 export class FakeSurface implements Surface {
   readonly executed: CapabilityAction[] = [];
@@ -42,6 +43,15 @@ export class FakeSurface implements Surface {
   async assert(assertion: Assertion): Promise<boolean> {
     this.asserted.push(assertion);
     return await this.assertHandler(assertion);
+  }
+
+  /**
+   * Snapshot of the current view. Tests set {@link visibleTextContent}.
+   */
+  visibleTextContent = "";
+
+  async visibleText(): Promise<string> {
+    return this.visibleTextContent;
   }
 
   async locate(_target: TargetDescriptor): Promise<unknown> {

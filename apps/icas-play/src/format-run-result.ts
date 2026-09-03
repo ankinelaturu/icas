@@ -1,11 +1,26 @@
 /**
  * @file Human-readable ReplayEngine result for stdout.
+ *
+ * Status and ids stay as labeled lines. Nested objects (especially
+ * `business_outcome.details`) use indented JSON so operators can scan them.
  */
 
 import type { ExecutionResult } from "@icas/replay";
 
 /**
- * Format one replay result. JSON is avoided so operators can scan the terminal.
+ * Pretty-print a structured field for the terminal.
+ *
+ * Compact stringify hides nested keys on one line. Indent 2 keeps heading,
+ * summary, the hitting `message`, and match phrases readable.
+ *
+ * @param value - Replay field (object, string, or other JSON value)
+ */
+function formatJsonField(value: unknown): string {
+  return JSON.stringify(value, null, 2);
+}
+
+/**
+ * Format one replay result as labeled lines plus indented JSON objects.
  *
  * @param result - Structured outcome from {@link ReplayEngine.run}
  */
@@ -30,7 +45,7 @@ export function formatRunResult(result: ExecutionResult): string {
   if (result.status === "business_outcome") {
     lines.push(`outcome: ${result.outcome}`);
     if (result.details !== undefined) {
-      lines.push(`details: ${JSON.stringify(result.details)}`);
+      lines.push(`details: ${formatJsonField(result.details)}`);
     }
     return lines.join("\n");
   }
@@ -39,10 +54,10 @@ export function formatRunResult(result: ExecutionResult): string {
     lines.push(`step: ${result.stepId}`);
   }
   if (result.expected !== undefined) {
-    lines.push(`expected: ${JSON.stringify(result.expected)}`);
+    lines.push(`expected: ${formatJsonField(result.expected)}`);
   }
   if (result.observed !== undefined) {
-    lines.push(`observed: ${JSON.stringify(result.observed)}`);
+    lines.push(`observed: ${formatJsonField(result.observed)}`);
   }
   return lines.join("\n");
 }

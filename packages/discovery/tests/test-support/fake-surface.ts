@@ -46,6 +46,10 @@ export class FakeSurface implements Surface {
     return true;
   }
 
+  async visibleText(): Promise<string> {
+    return "";
+  }
+
   async locate(_target: TargetDescriptor): Promise<unknown> {
     return { ok: true };
   }

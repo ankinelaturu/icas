@@ -313,8 +313,7 @@ describe("ReplayEngine possibleOutcomes", () => {
       }
       return { ok: true };
     };
-    surface.assertHandler = (assertion) =>
-      assertion.type === "textVisible" && assertion.value === "Loan not found";
+    surface.visibleTextContent = "Inquiry: Loan not found for that account.";
     const { events, summaries, signals, evidence } = memoryEvidence();
     const engine = new ReplayEngine(surface, { evidence });
     const result = await engine.run(
@@ -334,8 +333,8 @@ describe("ReplayEngine possibleOutcomes", () => {
       details: {
         heading: "Loan not found",
         summary: "No loan matches the requested account id.",
+        message: "Loan not found",
         match: { phrases: ["Loan not found"] },
-        phrase: "Loan not found",
       },
       runId: "run-loan-missing",
     });
@@ -399,8 +398,7 @@ describe("ReplayEngine possibleOutcomes", () => {
     surface.locateHandler = () => {
       throw targetMiss();
     };
-    surface.assertHandler = (assertion) =>
-      assertion.type === "textVisible" && assertion.value === "Call member services";
+    surface.visibleTextContent = "Call member services to continue this inquiry.";
     const handoff = new SessionHandoffController();
     const engine = new ReplayEngine(surface, { handoff });
     const run = engine.run(
@@ -534,8 +532,7 @@ describe("ReplayEngine HTTP status and generic chrome", () => {
     surface.locateHandler = () => {
       throw targetMiss();
     };
-    surface.assertHandler = (assertion) =>
-      assertion.type === "textVisible" && assertion.value === "Internal Server Error";
+    surface.visibleTextContent = "Internal Server Error\nThe server returned a generic error page.";
     const engine = new ReplayEngine(surface);
     const result = await engine.run(
       testCapability({
@@ -549,7 +546,7 @@ describe("ReplayEngine HTTP status and generic chrome", () => {
       outcome: "internal_server_error",
       details: {
         heading: "Internal Server Error",
-        phrase: "Internal Server Error",
+        message: "Internal Server Error",
       },
       runId: "run-generic-500",
     });
@@ -560,9 +557,8 @@ describe("ReplayEngine HTTP status and generic chrome", () => {
     surface.locateHandler = () => {
       throw targetMiss();
     };
-    surface.assertHandler = (assertion) =>
-      assertion.type === "textVisible" &&
-      (assertion.value === "Loan not found" || assertion.value === "Internal Server Error");
+    surface.visibleTextContent =
+      "Loan not found.\nInternal Server Error is also on this host banner.";
     const engine = new ReplayEngine(surface);
     const result = await engine.run(
       testCapability({
@@ -586,7 +582,7 @@ describe("ReplayEngine HTTP status and generic chrome", () => {
     expect(result).toMatchObject({
       status: "business_outcome",
       outcome: "loan_not_found",
-      details: { phrase: "Loan not found" },
+      details: { message: "Loan not found" },
       runId: "run-step-wins",
     });
   });

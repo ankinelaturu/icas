@@ -278,6 +278,17 @@ export class PlaywrightSurface implements Surface {
   }
 
   /**
+   * Visible text of the current document, with no wait.
+   *
+   * Used to classify exceptional chrome after a locator miss. `innerText`
+   * skips hidden nodes so banner copy matches what the operator sees.
+   */
+  async visibleText(): Promise<string> {
+    this.assertAutomation();
+    return await this.requirePage().locator("body").innerText();
+  }
+
+  /**
    * Resolve a ranked target to a Playwright locator.
    *
    * @throws {SurfaceError} `TARGET_NOT_FOUND` when no strategy matches

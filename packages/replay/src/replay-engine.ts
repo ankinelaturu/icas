@@ -466,6 +466,7 @@ export class ReplayEngine {
    * Call only after the next locator missed (or last-step success/post missed).
    * Missing `httpStatus` is normal and continues to phrases. 403/404 fail
    * before phrases. 5xx retries a known interstitial then fails if still stuck.
+   * Phrase matching uses the ordered matcher pipeline (cheap ranks first).
    *
    * @returns A structured stop, or `undefined` when nothing matched
    */
@@ -549,7 +550,10 @@ export class ReplayEngine {
   }
 
   /**
-   * Map a matched catalog outcome to `business_outcome` or same-session HITL.
+   * Classify this step's possibleOutcomes against current visible text.
+   *
+   * Snapshot scan through the matcher pipeline (substring, then embedding
+   * stub). Not a `textVisible` wait per phrase.
    *
    * @returns A stop result, or `undefined` after a successful HITL resume
    */
@@ -614,6 +618,9 @@ export class ReplayEngine {
 
   /**
    * Structured domain stop from a matched `error` outcome.
+   *
+   * `details.message` is the phrase that hit. Catalog guesses stay under
+   * `details.match.phrases`.
    */
   private businessOutcomeResult(
     capabilityId: string,
@@ -627,8 +634,9 @@ export class ReplayEngine {
       details: {
         heading: hit.outcome.heading,
         summary: hit.outcome.summary,
+        // Operator-facing copy of the hitting phrase, not the catalog field name.
+        message: hit.phrase,
         match: hit.outcome.match,
-        phrase: hit.phrase,
       },
       runId,
     };
