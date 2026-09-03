@@ -16,7 +16,7 @@ describe("DISCOVERY_PROPOSER_INSTRUCTIONS", () => {
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain('type "relative"');
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("possibleOutcomes");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("match.phrases");
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("staff back-office");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("staff-facing back-office");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("proposedInputParam");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("camelCase");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).not.toContain("loanAccountId");
@@ -25,7 +25,17 @@ describe("DISCOVERY_PROPOSER_INSTRUCTIONS", () => {
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("materially different");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).not.toContain("payoff statement");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).not.toContain("After execute, ICAS asserts");
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).not.toContain("ICAS");
+  });
+
+  it("requires a compile-shaped success result, not a harvest read", () => {
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("successSignals");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain('"type": "textVisible"');
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain('"type": "urlMatches"');
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("result.outputs[].source");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("Do not propose a 'read' action solely");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain(
+      "you MUST declare them. Empty outputs is not allowed in that case.",
+    );
   });
 });
 
@@ -33,12 +43,12 @@ describe("composeDiscoveryProposerInstructions", () => {
   it("puts packaged policy before the ranking contract", () => {
     const instructions = composeDiscoveryProposerInstructions("Do not transfer funds.");
     expect(instructions.startsWith("Do not transfer funds.")).toBe(true);
-    expect(instructions).toContain("JSON object matching this contract");
+    expect(instructions).toContain("structured-output schema");
   });
 });
 
 describe("formatProposePrompt", () => {
-  it("includes goal, observation, and search history", () => {
+  it("includes goal, observation, search history, and the success result reminder", () => {
     const prompt = formatProposePrompt({
       goal: "quote loan 987654",
       observation: { id: "obs", url: "http://localhost:4101/", imagePath: "/tmp/a.png" },
@@ -50,6 +60,7 @@ describe("formatProposePrompt", () => {
     expect(prompt).toContain("/tmp/a.png");
     expect(prompt).toContain("accessibilitySnapshot:");
     expect(prompt).toContain("Search history:");
+    expect(prompt).toContain("result must be non-null");
     expect(prompt).not.toContain("ICAS");
   });
 

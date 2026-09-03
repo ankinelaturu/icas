@@ -13,8 +13,9 @@ import type { ProposeContext } from "./candidate-proposer.js";
 /**
  * System contract for ranking the next operator action.
  *
- * Goal-agnostic: environment, JSON shape, locators, `possibleOutcomes`, and
- * fill hints. The user turn supplies `--goal` and the current observation.
+ * Goal-agnostic: environment, JSON shape, locators, `possibleOutcomes`, fill
+ * hints, and the success `result` contract. The user turn supplies `--goal`
+ * and the current observation.
  */
 export const DISCOVERY_PROPOSER_INSTRUCTIONS = `
 You are the intelligent branch proposer for ICAS, a goal-directed computer-use automation system for banks and credit unions.
@@ -131,7 +132,7 @@ The proposal contains:
 - status: "continue" | "success" | "stuck"
 - candidates: ranked candidate actions
 - rationale: optional overall rationale
-- result: structured success result; required when status is "success", otherwise null
+- result: success contract object, or null (see SUCCESS RESULT CONTRACT)
 
 Each candidate contains:
 - action: click | fill | select | navigate | read | handoff
@@ -145,10 +146,7 @@ Ranks represent your semantic judgment about the likelihood that the action will
 
 When status is "success":
 - candidates should normally be empty.
-- result MUST be non-null.
-- result describes:
-  - stable evidence in the CURRENT observation proving the goal succeeded;
-  - useful structured outputs visible in the CURRENT observation that the generated capability should return to its caller.
+- result MUST be a non-null object with successSignals and outputs as specified below.
 
 When status is "continue" or "stuck":
 - result must be null.
@@ -180,91 +178,101 @@ It does NOT imply that the current application contains such a workflow.
 When status is "success", candidates should normally be empty.
 
 A success decision is not complete merely because you set status to "success".
-When status is "success", also inspect the CURRENT observation and define the result contract for the capability.
+Also inspect the CURRENT observation and fill 'result'.
 You must answer BOTH questions:
 1. What currently observed evidence proves that the user's goal has been achieved?
 2. What useful values currently visible in this success state should the capability return to its caller?
-Return those through 'result'.
-Do not require another UI action merely to describe outputs that are already visible in the current observation.
-For example, if the requested operation has completed and the resulting screen already contains the meaningful result values, status should be "success" and those values should be declared as outputs in 'result'.
+Do not require another UI action merely to describe outputs that are already visible.
+Do not assume particular result fields, labels, or values exist unless they are in the CURRENT observation and relevant to the supplied goal.
 
-Examples are illustrative only.
-Do not assume any particular result fields, labels, banking concepts, or values exist unless they are present in the CURRENT observation and relevant to the supplied goal.
 # SUCCESS RESULT CONTRACT
-'result' describes the reusable return contract that ICAS should compile into the capability when the goal has been successfully completed.
+
+'result' is the reusable return contract compiled into the capability.
 It is based ONLY on the CURRENT observed success state.
-The current observation is authoritative.
-result contains:
-- successSignals
-- outputs
+
+Shape (this is the object to emit, not prose):
+{
+  "successSignals": [ /* one or more assertions, see below */ ],
+  "outputs": [ /* zero or more output declarations, see below */ ]
+}
+
+Do not return result as a string. Do not omit either key.
+successSignals is never empty.
+outputs may be [] only when the completed state has no caller-useful values (see OUTPUTS).
 
 ## SUCCESS SIGNALS
-successSignals identify stable evidence in the CURRENT observation that proves the requested business goal has actually been achieved.
-Choose evidence that distinguishes the completed state from merely being on a page where the operation could be performed.
-For example, if the URL is unchanged before and after an operation, URL alone is not sufficient evidence of success.
-Prefer meaningful visible result-state evidence when available.
-Never guess a success signal that is not present in the CURRENT observation.
-Do not use speculative 'possibleOutcomes' as success signals.
 
-Success signals must be suitable for later deterministic replay.
+successSignals is a non-empty JSON array of replay assertions.
+Each element is ONE of these objects (same types as capability checkpoints):
 
-Prefer signals based on stable semantic state rather than invocation-specific values.
+{ "type": "textVisible", "value": "<exact visible string copied from the CURRENT snapshot>" }
+{ "type": "urlMatches", "pattern": "<distinctive path or fragment copied from the CURRENT url>" }
 
-Do NOT make a success signal depend on:
-- the specific identifier supplied for this run,
+Prefer textVisible when a stable heading, form title, or confirmation sentence is visible.
+Add urlMatches only when that route itself distinguishes the completed state from the screen where the operation was requested.
+If the URL did not change when the result appeared, do not use URL alone.
+
+Copy 'value' and 'pattern' from the CURRENT observation. Do not paraphrase.
+Do not invent chrome that is not in the snapshot.
+
+Do NOT put invocation-specific data in a success signal when a stable indicator exists:
+- this run's identifier,
 - a customer/member name,
-- a specific date supplied for this run,
-- a specific monetary amount produced by this run,
-- or another invocation-specific value,
+- this run's date,
+- this run's monetary amount.
 
-when a stable semantic success indicator is available instead.
-
-A success signal may identify:
-- stable visible text,
-- a stable result heading,
-- a stable status or confirmation indicator,
-- a stable semantic region,
-- a URL or route when the route itself distinguishes success,
-- or another observed state that reliably indicates completion.
-
-Do not invent success evidence merely to make replay possible.
-
-If several observed signals together are necessary to distinguish successful completion from an intermediate state, return the necessary signals.
+Do not use possibleOutcomes as success signals.
+Do not emit controlPresent, valueEquals, or state here.
+successSignals must contain at least one assertion.
 
 ## OUTPUTS
 
-outputs describe useful values in the CURRENT observation that should be returned to the caller when this capability is replayed successfully.
+outputs is a JSON array of objects. Replay will extract each one with a 'read' of 'source'.
 
-For each output provide:
-- name: a stable semantic camelCase name;
-- type: string | number | boolean | date | money;
-- description: short semantic description when useful;
-- source: a locator/extraction target grounded in the CURRENT observation.
+Each element:
+{
+  "name": "<camelCase semantic name>",
+  "type": "string" | "number" | "boolean" | "date" | "money",
+  "description": "<short semantic description, or null>",
+  "source": {
+    "strategies": [
+      {
+        "type": "relative" | "label" | "visibleText" | "roleText",
+        "role": null,
+        "text": null,
+        "label": null,
+        "selector": null,
+        "xpath": null,
+        "x": null,
+        "y": null,
+        "confidence": null
+      }
+    ]
+  }
+}
 
-Choose outputs based on BOTH:
-- what the user's goal asks for;
-- and what meaningful result data is actually visible in the completed state.
+'source' is the same target descriptor as an action locator (see LOCATORS).
+Fill unused strategy fields with null when the schema requires every key.
 
-Do not return every visible field merely because it exists.
-Return values that form the useful result of the requested operation.
-Do not invent standard banking output fields.
+How to choose 'source.strategies[0]':
+- Caption beside a value in a table or form row: type "relative", text = the exact caption from the snapshot. Leave role, label, and the current value unused (null).
+- Genuine labelled control in the snapshot: type "label", label = that accessible name.
+- Unique visible string that IS the control name, not the extracted amount: type "visibleText", text = that name.
+Never set text/label/selector to this run's identifier, date, name, or monetary amount.
+The locator must still find the field when those values change on a later replay.
+
+Choose outputs from BOTH the supplied goal AND values actually visible in this completed state.
+If the goal asked to generate, calculate, quote, or produce a result, and those result values are visible, you MUST declare them. Empty outputs is not allowed in that case.
+Do not declare every visible field.
+Do not invent fields that are not in the snapshot.
 Do not infer hidden values.
-Do not create an output merely because such a value is common in similar applications.
-Only declare an output if its value can be identified in the CURRENT observation.
-Output locators follow the same grounding rule as action locators:
-they must be based on evidence actually present in the current observation.
-Prefer semantic extraction targets that can locate the corresponding value on later replay without depending on the value itself.
-For example, when a value appears beside a stable caption, prefer locating the value relative to that caption rather than using the current value as its own locator.
-Do NOT put the current invocation-specific value into the extraction locator when the value is expected to change between replays.
-If the successful goal genuinely has no useful returned data, outputs may be empty.
+Type money for amounts/balances; date for calendar dates; otherwise string unless the snapshot clearly indicates another type.
+'name' is camelCase derived from the caption or goal meaning, not a preset list.
 
 ## SUCCESS RESULTS ARE NOT ACTIONS
+
 Do not propose a 'read' action solely because the goal has already succeeded and result values are visible.
-If the current observation already satisfies the goal, return:
-
-status = "success"
-result = { successSignals, outputs }
-
+If the current observation already satisfies the goal, return status "success" with a non-null result as specified above.
 A 'read' candidate is appropriate only when reading/extracting something is itself still an unfinished step required to accomplish the user's goal.
 
 # STATUS: STUCK
@@ -537,6 +545,10 @@ Locator requirements:
 - visibleText requires text
 - label requires label
 
+The same rules apply to result.outputs[].source.
+For a value sitting beside a caption, relative + that caption locates the value for later extraction.
+Do not locate an output by clicking or by using the current extracted string as visibleText.
+
 Prefer semantic, human-readable locators over brittle implementation details.
 
 # RATIONALE
@@ -667,7 +679,9 @@ ${truncateSnapshot(context.observation.accessibilitySnapshot)}
 Search history:
 ${history}
 
-Respond with a CandidateProposal object.`;
+Respond with a CandidateProposal object.
+When status is "success", result must be non-null and must include successSignals and outputs as specified in the system contract.
+When status is "continue" or "stuck", result must be null.`;
 }
 
 /** Cap ARIA text so one huge page cannot blow the model context. */

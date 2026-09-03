@@ -152,6 +152,6 @@ describe("createConfiguredDiscoveryProposer", () => {
     });
     expect(configured.model).toBe("openai/gpt-4o");
     expect(configured.instructions).toContain("Do not transfer funds.");
-    expect(configured.instructions).toContain("JSON object matching this contract");
+    expect(configured.instructions).toContain("structured-output schema");
   });
 });

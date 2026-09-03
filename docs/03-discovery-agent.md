@@ -233,7 +233,7 @@ Human actions require classification. A normal reusable approval boundary (`appr
 
 Mastra is the LLM/tool layer, not the owner of ICAS search, artifacts, or the ranking prompt.
 
-- The system contract lives in `@icas/discovery` `proposer-prompt.ts` (`DISCOVERY_PROPOSER_INSTRUCTIONS` + `formatProposePrompt`). It is goal-agnostic: staff back-office at banks and credit unions (not consumer banking), often legacy surfaces, JSON shape including `possibleOutcomes` and `proposedInputParam` rules, locator rules. A second `CandidateProposer` SDK reuses that module; it does not copy prompt text into the adapter.
+- The system contract lives in `@icas/discovery` `proposer-prompt.ts` (`DISCOVERY_PROPOSER_INSTRUCTIONS` + `formatProposePrompt`). It is goal-agnostic: staff back-office at banks and credit unions (not consumer banking), often legacy surfaces, JSON shape including `possibleOutcomes`, `proposedInputParam`, locators, and on `status: "success"` a `result` object (`successSignals` as `textVisible` / `urlMatches`, `outputs` with the same target descriptors as actions). A second `CandidateProposer` SDK reuses that module; it does not copy prompt text into the adapter.
 - Construct `new Agent({ id, name, instructions, model })` with `model` as `'provider/model'` (e.g. `openai/gpt-4o`). `instructions` are packaged prompt-policy plus that contract (`composeDiscoveryProposerInstructions`).
 - Call `agent.generate(prompt, { structuredOutput: { schema: … } })` **once per DFS node**. That `prompt` is the **user** turn from `formatProposePrompt`: goal, this observation, search history.
 - `icas-agent discover` logs instructions once (`LLM agent instructions`) and each user turn (`LLM user prompt`).
