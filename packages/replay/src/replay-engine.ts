@@ -618,6 +618,9 @@ export class ReplayEngine {
 
   /**
    * Structured domain stop from a matched `error` outcome.
+   *
+   * `details.message` is the phrase that hit. Catalog guesses stay under
+   * `details.match.phrases`.
    */
   private businessOutcomeResult(
     capabilityId: string,
@@ -631,8 +634,9 @@ export class ReplayEngine {
       details: {
         heading: hit.outcome.heading,
         summary: hit.outcome.summary,
+        // Operator-facing copy of the hitting phrase, not the catalog field name.
+        message: hit.phrase,
         match: hit.outcome.match,
-        phrase: hit.phrase,
       },
       runId,
     };

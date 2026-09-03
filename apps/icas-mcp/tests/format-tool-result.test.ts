@@ -16,7 +16,7 @@ describe("formatMcpToolResult", () => {
         heading: "Loan not found",
         summary: "No loan matches the requested account id.",
         match: { phrases: ["Loan not found"] },
-        phrase: "Loan not found",
+        message: "Loan not found",
       },
       runId: "run-mcp-biz",
     });

@@ -645,7 +645,7 @@ Thin entry points. Packages own behavior.
 
 Depends on Pass 4.14. Do not duplicate replay matching in the adapter.
 
-- [x] On `business_outcome`, surface `heading` and `summary` from the matching `possibleOutcomes` entry (plus the phrase that hit)
+- [x] On `business_outcome`, surface `heading` and `summary` from the matching `possibleOutcomes` entry (plus `details.message`, the phrase that hit)
 - [x] Evidence still holds the screenshot
 
 ---

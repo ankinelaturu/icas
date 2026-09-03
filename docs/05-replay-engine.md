@@ -80,7 +80,7 @@ type ExecutionResult =
 
 Expected application results that the caller must know about. They are not crashes.
 
-Replay does **not** own a product-specific message table. It walks `possibleOutcomes` on the effective capability in array order. An entry hits when **any** `match.phrases` string is visible (**OR**). The first hitting entry with `kind: "error"` returns `business_outcome`. `details` carries that entry’s `heading`, `summary`, and `match` so MCP/`icas-play` can format a response. Evidence still includes a screenshot.
+Replay does **not** own a product-specific message table. It walks `possibleOutcomes` on the effective capability in array order. An entry hits when **any** `match.phrases` string is visible (**OR**). The first hitting entry with `kind: "error"` returns `business_outcome`. `details` carries that entry’s `heading`, `summary`, `match`, and `message` (the phrase that hit) so MCP/`icas-play` can format a response. Evidence still includes a screenshot.
 
 `outcome` on `ExecutionResult` may be a stable slug derived from the hit (or the matching phrase). It is **not** a hardcoded loan-payoff enum inside `ReplayEngine`.
 

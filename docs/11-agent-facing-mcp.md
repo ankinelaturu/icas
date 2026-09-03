@@ -71,7 +71,7 @@ Invocation delegates to:
 ReplayEngine.run(capability, args)
 ```
 
-The MCP adapter should not duplicate browser or replay logic. On `business_outcome`, surface `heading` and `summary` from the matching `possibleOutcomes` entry (plus the phrase that hit) so the calling agent gets a formatted message. Evidence still holds the screenshot.
+The MCP adapter should not duplicate browser or replay logic. On `business_outcome`, surface `heading` and `summary` from the matching `possibleOutcomes` entry (plus `details.message`, the phrase that hit) so the calling agent gets a formatted message. Evidence still holds the screenshot.
 
 ## Important boundary
 

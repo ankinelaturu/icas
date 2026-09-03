@@ -333,8 +333,8 @@ describe("ReplayEngine possibleOutcomes", () => {
       details: {
         heading: "Loan not found",
         summary: "No loan matches the requested account id.",
+        message: "Loan not found",
         match: { phrases: ["Loan not found"] },
-        phrase: "Loan not found",
       },
       runId: "run-loan-missing",
     });
@@ -546,7 +546,7 @@ describe("ReplayEngine HTTP status and generic chrome", () => {
       outcome: "internal_server_error",
       details: {
         heading: "Internal Server Error",
-        phrase: "Internal Server Error",
+        message: "Internal Server Error",
       },
       runId: "run-generic-500",
     });
@@ -582,7 +582,7 @@ describe("ReplayEngine HTTP status and generic chrome", () => {
     expect(result).toMatchObject({
       status: "business_outcome",
       outcome: "loan_not_found",
-      details: { phrase: "Loan not found" },
+      details: { message: "Loan not found" },
       runId: "run-step-wins",
     });
   });

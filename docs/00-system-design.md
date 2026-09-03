@@ -482,7 +482,7 @@ flowchart TB
 
 `icas-play` is the human CLI. `icas-mcp` is the agent-facing adapter over the **same** registry, resolver, and `ReplayEngine`. Stdio transport for the local demo. One tool per saved capability; typed args from compiled `inputs`. Tenant must already be enrolled (default `icas-bank`).
 
-No separate MCP diagram: it is the dashed `icas-mcp` node on [§3](#3-high-level-architecture). On `business_outcome`, MCP surfaces `heading` / `summary` / the phrase that hit from replay `details` (Pass 6.13). Details: [`11-agent-facing-mcp.md`](11-agent-facing-mcp.md).
+No separate MCP diagram: it is the dashed `icas-mcp` node on [§3](#3-high-level-architecture). On `business_outcome`, MCP surfaces `heading` / `summary` / `message` from replay `details` (Pass 6.13). Details: [`11-agent-facing-mcp.md`](11-agent-facing-mcp.md).
 
 ---
 
