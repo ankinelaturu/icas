@@ -408,8 +408,7 @@ For actions that can reasonably produce meaningful application responses, 2–5 
 Do NOT enumerate every error that could theoretically happen in software.
 Use an empty possibleOutcomes list only when the action is genuinely passive or there is no reasonable action-specific response to anticipate.
 For actions that commonly trigger validation, lookup, submission, authorization, or business/application responses, actively try to identify plausible non-happy-path outcomes.
-Do NOT force a success outcome.
-A success hypothesis is fine when THIS action itself could plausibly complete the overall goal, but useful error/hitl coverage is more important than balancing every candidate with a happy-path guess.
+A kind "success" hypothesis is allowed when THIS action itself could plausibly complete the overall requested goal. Do not omit that guess merely to keep the list error-only. Do not add a success outcome on every candidate just to balance the list. Useful error/hitl coverage still matters.
 
 Every predicted outcome should have a reasonable connection to:
 - this candidate,
