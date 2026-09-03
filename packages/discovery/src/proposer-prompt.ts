@@ -131,6 +131,8 @@ The proposal contains:
 - status: "continue" | "success" | "stuck"
 - candidates: ranked candidate actions
 - rationale: optional overall rationale
+- result: structured success result; required when status is "success", otherwise null
+
 Each candidate contains:
 - action: click | fill | select | navigate | read | handoff
 - rationale: why this branch may advance the goal
@@ -140,6 +142,16 @@ Each candidate contains:
 - risk: optional "safe" | "risky"
 - expectation: if the schema requires this key, set it to null
 Ranks represent your semantic judgment about the likelihood that the action will make useful progress toward the goal.
+
+When status is "success":
+- candidates should normally be empty.
+- result MUST be non-null.
+- result describes:
+  - stable evidence in the CURRENT observation proving the goal succeeded;
+  - useful structured outputs visible in the CURRENT observation that the generated capability should return to its caller.
+
+When status is "continue" or "stuck":
+- result must be null.
 
 # STATUS: CONTINUE
 
@@ -166,6 +178,94 @@ Seeing direct evidence that the requested result has actually been produced may 
 This illustrates the distinction between "ready to perform" and "already accomplished".
 It does NOT imply that the current application contains such a workflow.
 When status is "success", candidates should normally be empty.
+
+A success decision is not complete merely because you set status to "success".
+When status is "success", also inspect the CURRENT observation and define the result contract for the capability.
+You must answer BOTH questions:
+1. What currently observed evidence proves that the user's goal has been achieved?
+2. What useful values currently visible in this success state should the capability return to its caller?
+Return those through 'result'.
+Do not require another UI action merely to describe outputs that are already visible in the current observation.
+For example, if the requested operation has completed and the resulting screen already contains the meaningful result values, status should be "success" and those values should be declared as outputs in 'result'.
+
+Examples are illustrative only.
+Do not assume any particular result fields, labels, banking concepts, or values exist unless they are present in the CURRENT observation and relevant to the supplied goal.
+# SUCCESS RESULT CONTRACT
+'result' describes the reusable return contract that ICAS should compile into the capability when the goal has been successfully completed.
+It is based ONLY on the CURRENT observed success state.
+The current observation is authoritative.
+result contains:
+- successSignals
+- outputs
+
+## SUCCESS SIGNALS
+successSignals identify stable evidence in the CURRENT observation that proves the requested business goal has actually been achieved.
+Choose evidence that distinguishes the completed state from merely being on a page where the operation could be performed.
+For example, if the URL is unchanged before and after an operation, URL alone is not sufficient evidence of success.
+Prefer meaningful visible result-state evidence when available.
+Never guess a success signal that is not present in the CURRENT observation.
+Do not use speculative 'possibleOutcomes' as success signals.
+
+Success signals must be suitable for later deterministic replay.
+
+Prefer signals based on stable semantic state rather than invocation-specific values.
+
+Do NOT make a success signal depend on:
+- the specific identifier supplied for this run,
+- a customer/member name,
+- a specific date supplied for this run,
+- a specific monetary amount produced by this run,
+- or another invocation-specific value,
+
+when a stable semantic success indicator is available instead.
+
+A success signal may identify:
+- stable visible text,
+- a stable result heading,
+- a stable status or confirmation indicator,
+- a stable semantic region,
+- a URL or route when the route itself distinguishes success,
+- or another observed state that reliably indicates completion.
+
+Do not invent success evidence merely to make replay possible.
+
+If several observed signals together are necessary to distinguish successful completion from an intermediate state, return the necessary signals.
+
+## OUTPUTS
+
+outputs describe useful values in the CURRENT observation that should be returned to the caller when this capability is replayed successfully.
+
+For each output provide:
+- name: a stable semantic camelCase name;
+- type: string | number | boolean | date | money;
+- description: short semantic description when useful;
+- source: a locator/extraction target grounded in the CURRENT observation.
+
+Choose outputs based on BOTH:
+- what the user's goal asks for;
+- and what meaningful result data is actually visible in the completed state.
+
+Do not return every visible field merely because it exists.
+Return values that form the useful result of the requested operation.
+Do not invent standard banking output fields.
+Do not infer hidden values.
+Do not create an output merely because such a value is common in similar applications.
+Only declare an output if its value can be identified in the CURRENT observation.
+Output locators follow the same grounding rule as action locators:
+they must be based on evidence actually present in the current observation.
+Prefer semantic extraction targets that can locate the corresponding value on later replay without depending on the value itself.
+For example, when a value appears beside a stable caption, prefer locating the value relative to that caption rather than using the current value as its own locator.
+Do NOT put the current invocation-specific value into the extraction locator when the value is expected to change between replays.
+If the successful goal genuinely has no useful returned data, outputs may be empty.
+
+## SUCCESS RESULTS ARE NOT ACTIONS
+Do not propose a 'read' action solely because the goal has already succeeded and result values are visible.
+If the current observation already satisfies the goal, return:
+
+status = "success"
+result = { successSignals, outputs }
+
+A 'read' candidate is appropriate only when reading/extracting something is itself still an unfinished step required to accomplish the user's goal.
 
 # STATUS: STUCK
 
@@ -507,6 +607,17 @@ For possibleOutcomes, useful coverage of plausible non-happy-path responses is v
 Examples in these instructions teach reasoning patterns only.
 Never treat example controls, fields, messages, workflows, or outcomes as evidence about the current application.
 The current goal, observation, and search history determine what exists and what is relevant.
+
+When the current state satisfies the goal, your semantic responsibility changes.
+Do not search for another branch.
+
+Instead:
+- identify evidence proving completion;
+- identify the useful structured outputs visible in that completed state;
+- and return them through the success 'result' contract.
+
+Discovery must learn not only HOW to reach the result, but also HOW the resulting capability knows it succeeded and WHAT data it returns.
+
 Do not execute actions.
 ICAS will policy-check, execute, observe, classify the resulting state, backtrack when necessary, and construct the final capability artifact.
 `;
