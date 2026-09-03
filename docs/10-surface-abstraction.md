@@ -43,7 +43,7 @@ Discovery may use full rendered page images with a vision-capable model because 
 
 ## Deterministic replay targeting
 
-Replay should prefer stable semantic locators derived during/after discovery rather than raw screen coordinates. TargetDescriptor can contain ranked strategies and fallbacks. `relative` without `xpath`/`role` binds to the nearest following form control or table cell after the anchor text so statement-style caption|value rows can be `read`.
+Replay should prefer stable semantic locators derived during/after discovery rather than raw screen coordinates. TargetDescriptor can contain ranked strategies and fallbacks. `relative` without `xpath`/`role` binds to the nearest following form control, or a table cell that does not wrap one, so inquiry fills skip the wrapping `td` and statement-style caption|value rows can still be `read`.
 
 ## Desktop extension
 

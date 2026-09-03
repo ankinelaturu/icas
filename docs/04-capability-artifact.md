@@ -258,7 +258,7 @@ interface TargetDescriptor {
 }
 ```
 
-`relative` anchors on visible `text`, then optionally a `role` or `xpath` from that node. With neither, it takes the nearest following `input` / `textarea` / `select` **or** `td` so unlabeled fills and caption|value table rows share one strategy. `coordinates` is last-resort only.
+`relative` anchors on visible `text`, then optionally a `role` or `xpath` from that node. With neither, it takes the nearest following `input` / `textarea` / `select`, or a `td` that does **not** wrap a form control. Inquiry rows are caption `td` + value `td` around an input; a bare following-`td` would fill the wrapper. Statement amount cells have no control, so they still match. `coordinates` is last-resort only.
 
 Potential strategies:
 

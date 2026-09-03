@@ -183,9 +183,9 @@ Replay Pass 4.16 needs this. Do not classify business outcomes here.
 
 Default `relative` was `following::input[1]` (unlabeled fill). Statement-style rows are caption `td` + value `td`, so `read` missed the amount.
 
-- [x] Default `relative` (no `xpath` / `role`) locates the nearest following `input` / `textarea` / `select` **or** `td`
+- [x] Default `relative` (no `xpath` / `role`) locates the nearest following `input` / `textarea` / `select`, or a `td` that does not wrap a form control
 - [x] Explicit `xpath` / `role` on the strategy still win
-- [x] Tests: unlabeled input after a caption still fills; caption|value table row `read` returns the cell text, not the caption
+- [x] Tests: unlabeled input after a caption still fills; caption `td` + value `td` wrapping an input fills the input; caption|value table row `read` returns the cell text, not the caption
 
 ---
 

@@ -151,6 +151,14 @@ describe("PlaywrightSurface locate (fallbacks)", () => {
     await expect(control.innerText()).resolves.toBe("113544.40");
   });
 
+  it("skips a wrapping value td and locates the input inside it", async () => {
+    await surface.open(pageUrl("labeled-fields.html"));
+    const control = await surface.locate({
+      strategies: [{ type: "relative", text: "LN Acct #" }],
+    });
+    await expect(control.inputValue()).resolves.toBe("112233");
+  });
+
   it("uses coordinates only as a last resort", async () => {
     await surface.open(pageUrl("labeled-fields.html"));
     const control = await surface.locate({
@@ -236,6 +244,20 @@ describe("PlaywrightSurface execute", () => {
       target: { strategies: [{ type: "relative", text: "Statement total" }] },
     });
     expect(read).toEqual({ status: "ok", details: { value: "113544.40" } });
+  });
+
+  it("fills an input wrapped in a value td via default relative", async () => {
+    await surface.open(pageUrl("labeled-fields.html"));
+    await surface.execute({
+      type: "fill",
+      target: { strategies: [{ type: "relative", text: "LN Acct #" }] },
+      value: { literal: "987654" },
+    });
+    const read = await surface.execute({
+      type: "read",
+      target: { strategies: [{ type: "relative", text: "LN Acct #" }] },
+    });
+    expect(read).toEqual({ status: "ok", details: { value: "987654" } });
   });
 
   it("navigates a relative path", async () => {

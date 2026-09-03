@@ -80,8 +80,7 @@ function locatorFor(page: Page, strategy: TargetStrategy): Locator | undefined {
  * Locate a control relative to visible anchor text.
  *
  * Prefer an explicit xpath, then a role under following siblings. Default is
- * the nearest following input/textarea/select or table cell so fill and
- * statement `read` share one strategy.
+ * the nearest following form control, or a table cell that does not wrap one.
  */
 function relativeLocator(
   page: Page,
@@ -96,10 +95,11 @@ function relativeLocator(
       strategy.role as Parameters<Page["getByRole"]>[0],
     );
   }
-  // Nearest following form control or table cell. Unlabeled fills use input;
-  // statement rows use the value td beside the caption. Explicit xpath/role above win.
+  // Bank inquiry rows are caption td + value td wrapping <input>. A bare
+  // `self::td` would fill that wrapper. Skip cells that already contain a
+  // control; statement amount cells have no input, so they still match.
   return anchor.locator(
-    "xpath=following::*[self::input or self::textarea or self::select or self::td][1]",
+    "xpath=following::*[self::input or self::textarea or self::select or (self::td and not(.//input or .//textarea or .//select))][1]",
   );
 }
 
