@@ -12,3 +12,7 @@ docs/brief.pdf
 docs/brief.md
 apps/icas-agent/capabilities/
 apps/icas-agent/evidence/
+capabilities/*
+!capabilities/README.md
+evidence/*
+!evidence/README.md
