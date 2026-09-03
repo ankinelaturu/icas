@@ -13,6 +13,8 @@ interface Surface {
   observe(): Promise<Observation>;
   execute(action: CapabilityAction): Promise<SurfaceActionResult>;
   assert(assertion: Assertion): Promise<boolean>;
+  /** Current visible text; no wait. Replay scans this for possibleOutcomes. */
+  visibleText(): Promise<string>;
   locate(target: TargetDescriptor): Promise<unknown>;
   peekDestination(target: TargetDescriptor): Promise<string | undefined>;
   handoffToHuman(): Promise<void>;

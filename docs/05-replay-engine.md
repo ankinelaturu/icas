@@ -103,7 +103,7 @@ Many legacy screens never expose a document status (XHR, frames, `200` error pag
 
 ### Matching `match.phrases`
 
-The first implementation uses exact/substring visible-text search (same family as `textVisible`). A single generic token is too weak; phrases should be distinctive multi-word copy.
+After the next locator misses, replay reads `Surface.visibleText()` **once** and tests each phrase as a case-insensitive substring of that snapshot. Do not `textVisible`-wait per phrase: the document is already the exceptional view. A single generic token is too weak; phrases should be distinctive multi-word copy.
 
 A later matcher may embed the page text and the stored phrases and compare them (local embeddings, bounded latency). That does **not** change the artifact: do not store vectors on the capability. Strict replay still has **no LLM**. Thresholds and false-positive policy belong to that later pass, not to discover.
 

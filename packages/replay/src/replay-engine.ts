@@ -549,7 +549,9 @@ export class ReplayEngine {
   }
 
   /**
-   * Map a matched catalog outcome to `business_outcome` or same-session HITL.
+   * Classify this step's possibleOutcomes against current visible text.
+   *
+   * Snapshot scan, not a `textVisible` wait per phrase.
    *
    * @returns A stop result, or `undefined` after a successful HITL resume
    */

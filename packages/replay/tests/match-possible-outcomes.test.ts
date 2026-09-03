@@ -4,14 +4,13 @@
 
 import { describe, expect, it } from "vitest";
 
-import { matchPossibleOutcomes, outcomeSlug } from "../src/match-possible-outcomes.js";
+import { matchPossibleOutcomes, outcomeSlug, pageTextContainsPhrase } from "../src/match-possible-outcomes.js";
 import { FakeSurface } from "./test-support/fake-surface.js";
 
 describe("matchPossibleOutcomes", () => {
   it("hits when any phrase is visible and skips success entries", async () => {
     const surface = new FakeSurface();
-    surface.assertHandler = (assertion) =>
-      assertion.type === "textVisible" && assertion.value === "Loan not found";
+    surface.visibleTextContent = "Inquiry failed: Loan not found for that account.";
     const hit = await matchPossibleOutcomes(surface, [
       {
         kind: "success",
@@ -30,9 +29,27 @@ describe("matchPossibleOutcomes", () => {
     expect(hit?.outcome.kind).toBe("error");
   });
 
+  it("reads visibleText once and does not assert", async () => {
+    const surface = new FakeSurface();
+    surface.visibleTextContent = "Call member services";
+    surface.assertHandler = () => {
+      throw new Error("possibleOutcomes must not wait via assert");
+    };
+    const hit = await matchPossibleOutcomes(surface, [
+      {
+        kind: "hitl",
+        match: { phrases: ["Call member services"] },
+        heading: "Need assistance",
+        summary: null,
+      },
+    ]);
+    expect(hit?.phrase).toBe("Call member services");
+    expect(surface.asserted).toEqual([]);
+  });
+
   it("returns undefined when nothing matches", async () => {
     const surface = new FakeSurface();
-    surface.assertHandler = () => false;
+    surface.visibleTextContent = "Search Loan Account";
     const hit = await matchPossibleOutcomes(surface, [
       {
         kind: "error",
@@ -42,6 +59,15 @@ describe("matchPossibleOutcomes", () => {
       },
     ]);
     expect(hit).toBeUndefined();
+  });
+});
+
+describe("pageTextContainsPhrase", () => {
+  it("matches a case-insensitive substring", () => {
+    expect(
+      pageTextContainsPhrase("No loan record found for LN Acct # 909090.", "no loan record found"),
+    ).toBe(true);
+    expect(pageTextContainsPhrase("Ready.", "Loan not found")).toBe(false);
   });
 });
 

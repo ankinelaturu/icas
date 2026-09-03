@@ -84,6 +84,14 @@ export interface Surface {
   assert(assertion: Assertion): Promise<boolean>;
 
   /**
+   * Visible text of the current view, with no wait.
+   *
+   * Replay uses this to classify `possibleOutcomes` after the next locator
+   * already missed. Do not wait for phrases to appear here.
+   */
+  visibleText(): Promise<string>;
+
+  /**
    * Resolve a ranked {@link TargetDescriptor} to a surface-native handle.
    */
   locate(target: TargetDescriptor): Promise<unknown>;

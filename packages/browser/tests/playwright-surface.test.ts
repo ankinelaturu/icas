@@ -33,6 +33,13 @@ describe("PlaywrightSurface lifecycle", () => {
     await surface.close();
     expect(() => surface.url()).toThrow(/no open page/);
   });
+
+  it("returns visible body text without waiting", async () => {
+    await surface.open(pageUrl("labeled-fields.html"));
+    const text = await surface.visibleText();
+    expect(text).toContain("Payoff Statement");
+    expect(text).toContain("Statement total");
+  });
 });
 
 describe("PlaywrightSurface locate (semantic)", () => {
