@@ -151,6 +151,41 @@ When status is "success":
 When status is "continue" or "stuck":
 - result must be null.
 
+# REPLAY MATCHERS
+
+The compiled capability is reused with different callers, accounts, and amounts.
+Replay matchers are strings ICAS looks for later. They must stay valid when this run's values change.
+
+Replay matchers are:
+- locator strategies: roleText.text, visibleText.text, relative.text, label
+- successSignals textVisible.value and urlMatches.pattern
+- possibleOutcomes match.phrases
+
+They are NOT:
+- fill/select value literals (those are this run's inputs)
+- output extracted values (those are this run's results; only the output locator is a matcher)
+- proposedInputParam.name (a parameter name, not a look-for string)
+
+A matcher must be generic UI chrome: a heading, button name, field caption, status label, or product/share name that is still on screen after a later run.
+
+Do not copy a quoted snapshot accessible name when it concatenates chrome with this run's data. If a line or node mixes a heading with instance data, keep ONLY the heading or caption. Do not paste a parent, card, or page's combined text.
+
+The following MUST NOT appear in any replay matcher. This list is examples, not exhaustive:
+- values typed into a field on this run
+- values carried from an earlier page or step (search history)
+- dates, times, processing dates, expiry dates, and "as of" timestamps
+- monetary amounts, balances, and values computed from other fields
+- confirmation numbers, reference ids, and other ids minted for this invocation
+- looked-up record values (member or account numbers as values, displayed names, addresses, masks)
+
+Also exclude anything that looks like PII or other person-identifying or account-identifying data, even if it is not in the list above: names, member or customer numbers, account numbers, government ids, phones, emails, addresses, and any other token that would identify a specific person, account, or this invocation's result.
+When unsure whether a token is chrome or identifying data, omit it.
+
+Captions are chrome. Values beside captions are not.
+"Member #" and "Hold Amount" are valid locators. The member number and hold amount themselves are not.
+
+Outputs still declare those values. Locate them with the caption, never with the current displayed string.
+
 # STATUS: CONTINUE
 
 Use status "continue" when:
@@ -202,29 +237,15 @@ outputs may be [] only when the completed state has no caller-useful values (see
 
 ## SUCCESS SIGNALS
 
-successSignals are replay assertions. A later replay uses different typed inputs than this discovery run. The signal must still match.
+successSignals are replay assertions. Follow REPLAY MATCHERS.
 
 Each element is ONE of:
 
-{ "type": "textVisible", "value": "<replay-stable substring that appears in the CURRENT snapshot>" }
+{ "type": "textVisible", "value": "<chrome heading or status phrase from the CURRENT snapshot>" }
 { "type": "urlMatches", "pattern": "<path that still identifies the completed screen for any inputs>" }
 
-Replay-stable means: the same heading or path is present after replay with a different account, amount, or date.
-
-textVisible.value MUST be a contiguous substring of the current snapshot. Do not paraphrase. Do not invent chrome.
-
-If a snapshot line mixes a heading and instance data, copy ONLY the heading (status banner or form title) and omit the data.
-
-NEVER put any of the following in value or pattern:
-- identifiers or confirmation numbers generated for this run
-- customer or member names
-- calendar dates, including a processing date shown on the page
-- monetary amounts or balances
-- any literal typed into a field on this run
-
-Do not copy an entire snapshot node because it is visible. The capability is reused; instance chrome is not a validator.
-
-Prefer a form title, status heading, or ready banner that contains no data.
+textVisible.value must appear in the current snapshot as chrome. Do not paraphrase. Do not invent chrome.
+Prefer a form title, status heading, or ready banner.
 urlMatches must not embed this run's ids.
 
 Do not use possibleOutcomes as success signals.
@@ -265,8 +286,7 @@ How to choose 'source.strategies[0]':
 - Caption beside a value in a table or form row: type "relative", text = the exact caption from the snapshot. Leave role, label, and the current value unused (null).
 - Genuine labelled control in the snapshot: type "label", label = that accessible name.
 - Unique visible string that IS the control name, not the extracted amount: type "visibleText", text = that name.
-Never set text/label/selector to this run's identifier, date, name, or monetary amount.
-The locator must still find the field when those values change on a later replay.
+Output locators follow REPLAY MATCHERS. The locator must still find the field when extracted values change on a later replay.
 
 Choose outputs from BOTH the supplied goal AND values actually visible in this completed state.
 If the goal asked to generate, calculate, quote, or produce a result, and those result values are visible, you MUST declare them. Empty outputs is not allowed in that case.
@@ -462,6 +482,7 @@ Alternative wording for the SAME predicted situation belongs in the same phrases
 Different predicted situations should be separate outcomes.
 Phrase matching is OR within one outcome.
 Prefer phrases with enough semantic meaning to avoid accidental matches.
+Phrases are replay matchers. Follow REPLAY MATCHERS. Predict generic chrome ("Insufficient funds"), not this run's member, amount, date, or other identifying data.
 
 Do NOT use single generic tokens such as:
 - "Error"
@@ -469,13 +490,6 @@ Do NOT use single generic tokens such as:
 - "Failed"
 - "Denied"
 by themselves.
-
-Do NOT put invocation-specific values into phrases, including:
-- identifiers,
-- customer/member names,
-- dates,
-- monetary amounts,
-- or other values supplied for this run.
 
 # OUTCOME HEADING AND SUMMARY
 
@@ -541,24 +555,18 @@ The accessibility snapshot stamps interactable nodes with [ref=eN] (or iframe-pr
 For click, fill, select, and read of an interactable control, set target.ref to that token.
 ICAS executes the ref on the live page.
 
-strategies[0] must still be replay-stable. Do not copy a quoted accessible name that includes amounts, dates, balances, or ids. Use the control's stable name (link/button label or field caption). ICAS binds the ref for this session; the catalog locator must match on a later replay with different data.
+strategies[0] text and label must follow REPLAY MATCHERS. Do not copy a quoted accessible name that concatenates chrome with this run's data. Use the control's stable name (link/button label, product name, or field caption). ICAS executes the ref on this session; the catalog locator is the model's chrome phrase.
 
 Static values that are not interactable (confirmation numbers beside a caption) often have no ref. For those, set ref to null and use relative / visibleText / label as below.
 
 Do not invent refs. Copy them exactly from [ref=eN] on the current snapshot.
 
-Locators identify controls, not this run's data.
-NEVER set roleText.text, visibleText.text, label, or relative.text to:
-- a value typed on this run,
-- a computed amount, balance, date, or confirmation number,
-- a list row whose accessible name concatenates live balances or ids.
-
 For a result row or tile, locate by the stable product or action name in the snapshot, not an available-balance or account-id suffix.
 
 For click:
 Prefer a snapshot ref when present.
-Otherwise prefer roleText when the accessibility snapshot provides a recognizable role and a replay-stable accessible name.
-Otherwise use visibleText when that text uniquely identifies the intended control and contains no instance data.
+Otherwise prefer roleText when the accessibility snapshot provides a recognizable role and a chrome name that follows REPLAY MATCHERS.
+Otherwise use visibleText when that text identifies the intended control and follows REPLAY MATCHERS.
 
 For fill/select:
 Prefer a snapshot ref on the input when present.
@@ -708,7 +716,7 @@ Search history:
 ${history}
 
 Respond with a CandidateProposal object.
-When status is "success", result must be non-null and must include successSignals and outputs as specified in the system contract. successSignals textVisible values must be replay-stable headings with no dates, amounts, ids, or typed field values.
+When status is "success", result must be non-null and must include successSignals and outputs as specified in the system contract. Replay matchers (locators, successSignals, outcome phrases) must follow REPLAY MATCHERS: generic chrome only, no this-run values, no PII-style identifying data.
 When status is "continue" or "stuck", result must be null.`;
 }
 

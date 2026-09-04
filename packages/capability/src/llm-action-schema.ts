@@ -8,10 +8,11 @@
  * caption as `label` or `visibleText`.
  *
  * `target.ref` is a Playwright AI snapshot handle (`e12`). It is discovery-only:
- * the mapper does not copy it onto {@link CapabilityAction}. Discovery binds
- * the live node and stamps durable strategies before compile. Incomplete
- * `roleText` (null `role`) becomes `visibleText` when `text` is set; a valid
- * `ref` with no usable strategy still maps so execute can use the ref.
+ * the mapper does not copy it onto {@link CapabilityAction}. Discovery executes
+ * the ref; catalog locators stay the model's chrome phrases plus optional bind
+ * CSS/`label`. Incomplete `roleText` (null `role`) becomes `visibleText` when
+ * `text` is set; a valid `ref` with no usable strategy still maps so execute
+ * can use the ref.
  */
 
 import * as z from "zod";

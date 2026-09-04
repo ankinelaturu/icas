@@ -28,7 +28,9 @@ describe("DISCOVERY_PROPOSER_INSTRUCTIONS", () => {
   });
 
   it("requires a compile-shaped success result, not a harvest read", () => {
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("replay-stable");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("REPLAY MATCHERS");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("looks like PII");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("Captions are chrome");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain('"type": "textVisible"');
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain('"type": "urlMatches"');
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("result.outputs[].source.ref must be null");
@@ -63,6 +65,7 @@ describe("formatProposePrompt", () => {
     expect(prompt).toContain("accessibilitySnapshot:");
     expect(prompt).toContain("Search history:");
     expect(prompt).toContain("result must be non-null");
+    expect(prompt).toContain("REPLAY MATCHERS");
     expect(prompt).not.toContain("ICAS");
   });
 

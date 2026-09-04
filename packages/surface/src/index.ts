@@ -103,10 +103,11 @@ export interface Surface {
    */
   peekDestination(target: TargetDescriptor): Promise<string | undefined>;
   /**
-   * Discovery-only: durable locators for a snapshot ref from the last observe().
+   * Discovery-only: locators derived from a snapshot ref after the last observe().
    *
-   * Replay never calls this. Refs are session-scoped; the returned descriptor
-   * is what compile writes to the catalog.
+   * Replay never calls this. Refs are session-scoped. Discovery keeps the
+   * model's chrome phrases in the catalog and may append CSS/`label` identity
+   * from this descriptor; it does not copy live accessible names.
    */
   bindSnapshotRef(ref: string): Promise<TargetDescriptor>;
   /**
@@ -117,8 +118,8 @@ export interface Surface {
    * Discovery-only: click/fill/select/read the live snapshot-ref node.
    *
    * Uses the same semantic `action` as {@link execute} but does not re-resolve
-   * `action.target`. After this succeeds, discovery replaces that target with
-   * {@link bindSnapshotRef} so backtrack and replay use durable locators.
+   * `action.target`. After this succeeds, discovery may append CSS/`label`
+   * identity from {@link bindSnapshotRef}; catalog phrases stay the model's.
    */
   executeSnapshotRef(
     ref: string,

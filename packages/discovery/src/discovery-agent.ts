@@ -319,10 +319,11 @@ export class DiscoveryAgent {
   }
 
   /**
-   * Stamp durable locators from a snapshot ref onto the catalog action.
+   * Merge bind identity locators onto the catalog action after a snapshot ref.
    *
-   * Execute still uses the ref. A describe miss (empty unlabeled input) is not
-   * fatal: the model's strategies stay on the action for compile and replay.
+   * Execute still uses the ref. Live accessible names are not copied: those
+   * strings include this run's balances and ids. CSS `[name=]` / `#id` from
+   * bind append after the model's locators. A describe miss is not fatal.
    *
    * @param candidate - Ranked sibling, possibly with `snapshotRef`
    */
@@ -350,7 +351,7 @@ export class DiscoveryAgent {
    * Do not bind output refs. `descriptorFromLocator` on a statement cell
    * stamps this run's amount as `visibleText`, which then becomes a catalog
    * locator and burns a full timeout on later replay with different inputs.
-   * Click/fill still bind; extracts keep the model's caption strategies.
+   * Extracts keep the model's caption strategies.
    *
    * @param result - Proposer success result, or undefined on older traces
    */

@@ -368,7 +368,7 @@ describe("DiscoveryAgent.run", () => {
                   strategies: [
                     {
                       type: "visibleText" as const,
-                      text: "Share Holds Place a hold on available funds",
+                      text: "Share Holds",
                     },
                   ],
                 },
@@ -396,17 +396,7 @@ describe("DiscoveryAgent.run", () => {
       action: {
         type: "click",
         target: {
-          strategies: [
-            {
-              type: "roleText",
-              role: "link",
-              text: "Share Holds Place a hold on available funds",
-            },
-            {
-              type: "visibleText",
-              text: "Share Holds Place a hold on available funds",
-            },
-          ],
+          strategies: [{ type: "visibleText", text: "Share Holds" }],
         },
       },
     });
@@ -415,17 +405,7 @@ describe("DiscoveryAgent.run", () => {
       type: "click",
       risk: "safe",
       target: {
-        strategies: [
-          {
-            type: "roleText",
-            role: "link",
-            text: "Share Holds Place a hold on available funds",
-          },
-          {
-            type: "visibleText",
-            text: "Share Holds Place a hold on available funds",
-          },
-        ],
+        strategies: [{ type: "visibleText", text: "Share Holds" }],
       },
     });
   });
@@ -522,10 +502,7 @@ describe("DiscoveryAgent.run", () => {
     expect(surface.executed[0]).toMatchObject({
       type: "click",
       target: {
-        strategies: [
-          { type: "roleText", role: "link", text: "Lending" },
-          { type: "visibleText", text: "Lending" },
-        ],
+        strategies: [{ type: "visibleText", text: "Lending" }],
       },
     });
   });

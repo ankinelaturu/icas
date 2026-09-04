@@ -1,21 +1,39 @@
 /**
- * @file mergeDurableTarget — put live-node locators ahead of the model's guess.
+ * @file mergeDurableTarget — keep the model's locators; append bind identity only.
  *
- * Discovery executes by snapshot ref, then stamps {@link TargetDescriptor}
- * strategies from that node. The model's copied `visibleText` stays as a later
- * rank so a bind that only produced CSS still has a semantic fallback.
+ * Discovery executes by snapshot ref. The catalog must not store the live
+ * node's accessible name: that string often concatenates this run's balances
+ * and ids. CSS `#id` / `[name=]` and an associated `<label>` are identity, not
+ * instance chrome, so those bind ranks stay as fallbacks after the proposal.
  */
 
 import type { CapabilityAction, TargetDescriptor } from "@icas/capability";
 
+type TargetStrategy = TargetDescriptor["strategies"][number];
+
 /**
- * Replace the action target with durable strategies first, then the proposal.
+ * Strategies that identify a control without copying this run's displayed data.
+ *
+ * `roleText` / `visibleText` from bind are collapsed innerText of the live
+ * node. Those go in the catalog only when the model emitted them.
+ */
+function identityStrategies(
+  durable: TargetDescriptor,
+): TargetDescriptor["strategies"] {
+  return durable.strategies.filter(
+    (strategy): strategy is Extract<TargetStrategy, { type: "css" | "label" }> =>
+      strategy.type === "css" || strategy.type === "label",
+  );
+}
+
+/**
+ * Keep the proposed locators first. Append bind CSS/label after.
  *
  * Navigate/handoff have no target and are returned unchanged.
  *
- * @param action - Catalog action (possibly still holding the model's locators)
+ * @param action - Catalog action (model locators, never a snapshot ref)
  * @param durable - Locators derived from the live snapshot-ref node
- * @returns Action whose `target.strategies` start with `durable`
+ * @returns Action whose `target.strategies` start with the proposal
  */
 export function mergeDurableTarget(
   action: CapabilityAction,
@@ -27,13 +45,16 @@ export function mergeDurableTarget(
   return {
     ...action,
     target: {
-      strategies: uniqueStrategies([...durable.strategies, ...action.target.strategies]),
+      strategies: uniqueStrategies([
+        ...action.target.strategies,
+        ...identityStrategies(durable),
+      ]),
     },
   };
 }
 
 /**
- * Drop duplicate strategies after merging durable and proposed ranks.
+ * Drop duplicate strategies after merging proposed and bind identity ranks.
  *
  * @param strategies - Ranked locators, possibly with repeats
  */

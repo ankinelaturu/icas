@@ -260,7 +260,7 @@ interface TargetDescriptor {
 
 `relative` anchors on visible `text`, then optionally a `role` or `xpath` from that node. With neither, it takes the nearest following `input` / `textarea` / `select`, or a `td` that does **not** wrap a form control. Inquiry rows are caption `td` + value `td` around an input; a bare following-`td` would fill the wrapper. Statement amount cells have no control, so they still match. `coordinates` is last-resort only.
 
-Discovery may propose a snapshot `ref` (`e12`). That token is not a catalog strategy. After a successful discover click, compile stores durable `roleText` (accessible name) and optional CSS from the live node. Replay uses those ranks, never the ref.
+Discovery may propose a snapshot `ref` (`e12`). That token is not a catalog strategy. Discovery executes the ref, then keeps the model's locator phrases and may append bind CSS/`label` identity. Live accessible names are not copied: they concatenate this run's balances and ids. Replay matches `roleText` / `visibleText` as a substring of the accessible name so a chrome phrase still hits a data tile. Replay never uses the ref.
 
 Potential strategies:
 
@@ -283,7 +283,7 @@ Do not persist the tenant's concrete base URL as the reusable capability identit
 
 ## Success condition
 
-The artifact declares an overall success condition in addition to per-step postconditions. Compile copies proposer `successSignals`. The discovery prompt requires replay-stable headings (no dates, amounts, or ids); compile does not rewrite or scan those strings.
+The artifact declares an overall success condition in addition to per-step postconditions. Compile copies proposer `successSignals`. The discovery prompt (`REPLAY MATCHERS`) requires generic chrome only (no this-run values, no PII-style identifying data); compile does not rewrite or scan those strings.
 
 ## Versioning
 

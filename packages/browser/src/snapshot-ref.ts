@@ -1,10 +1,10 @@
 /**
- * @file Snapshot-ref helpers — bind a Playwright AI aria-ref to catalog locators.
+ * @file Snapshot-ref helpers — resolve a Playwright AI aria-ref on the live page.
  *
  * Discovery observes with `ariaSnapshot({ mode: "ai" })`, which stamps `[ref=eN]`
  * on interactable nodes. Those refs die with the session. This module locates
- * the live node and derives durable {@link TargetDescriptor} strategies so the
- * capability artifact never stores a ref.
+ * the live node for execute and can derive CSS/`label` identity. Catalog
+ * phrases come from the model, not from the node's concatenated innerText.
  */
 
 import { isSnapshotRef, type TargetDescriptor } from "@icas/capability";

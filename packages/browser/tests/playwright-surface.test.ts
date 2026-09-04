@@ -49,12 +49,16 @@ describe("PlaywrightSurface locate (semantic)", () => {
     await surface.close();
   });
 
-  it("finds a button by role and text", async () => {
-    await surface.open(pageUrl("home.html"));
-    const control = await surface.locate({
-      strategies: [{ type: "roleText", role: "button", text: "Lending" }],
+  it("finds a concatenated-name link by a generic chrome phrase", async () => {
+    await surface.open(pageUrl("concatenated-name.html"));
+    const byRole = await surface.locate({
+      strategies: [{ type: "roleText", role: "link", text: "Share Holds" }],
     });
-    await expect(control.innerText()).resolves.toBe("Lending");
+    await expect(byRole.innerText()).resolves.toMatch(/Share Holds/);
+    const byText = await surface.locate({
+      strategies: [{ type: "visibleText", text: "Share Holds" }],
+    });
+    await expect(byText.innerText()).resolves.toMatch(/Share Holds/);
   });
 
   it("finds visible text on the lending page", async () => {

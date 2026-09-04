@@ -48,17 +48,20 @@ export async function resolveTarget(
  * Map a non-coordinate strategy to a Playwright locator.
  *
  * Coordinates are handled separately because `elementFromPoint` is not a
- * locator API. `exact: true` avoids substring matches on similar bank labels.
+ * locator API. `roleText` / `visibleText` use substring name matching so a
+ * catalog phrase like "Primary Share" still hits a tile whose accessible name
+ * concatenates share id and available balance. `label` and `relative` anchors
+ * stay exact so a short caption does not match a longer unrelated label.
  */
 function locatorFor(page: Page, strategy: TargetStrategy): Locator | undefined {
   switch (strategy.type) {
     case "roleText":
       return page.getByRole(strategy.role as Parameters<Page["getByRole"]>[0], {
         name: strategy.text,
-        exact: true,
+        exact: false,
       });
     case "visibleText":
-      return page.getByText(strategy.text, { exact: true });
+      return page.getByText(strategy.text, { exact: false });
     case "label":
       return page.getByLabel(strategy.label, { exact: true });
     case "css":
