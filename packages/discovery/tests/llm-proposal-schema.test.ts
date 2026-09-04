@@ -160,6 +160,38 @@ describe("llmProposalToCandidateProposal", () => {
     });
   });
 
+  it("ignores snapshot refs on success outputs so bind cannot stamp this-run amounts", () => {
+    const proposal = llmProposalToCandidateProposal({
+      status: "success",
+      rationale: "Statement visible",
+      result: {
+        successSignals: [{ type: "textVisible", value: "Statement ready", pattern: null }],
+        outputs: [
+          {
+            name: "principalBalance",
+            type: "money",
+            description: null,
+            source: {
+              ref: "f6e64",
+              strategies: [
+                { ...nullStrategyFields, type: "relative", text: "Principal Balance" },
+              ],
+            },
+          },
+        ],
+      },
+      candidates: [],
+    });
+    expect(proposal.result?.outputs[0]).toEqual({
+      name: "principalBalance",
+      type: "money",
+      extract: {
+        target: { strategies: [{ type: "relative", text: "Principal Balance" }] },
+      },
+    });
+    expect(proposal.result?.outputs[0]).not.toHaveProperty("snapshotRef");
+  });
+
   it("rejects success when result is null", () => {
     expect(() =>
       llmProposalToCandidateProposal({

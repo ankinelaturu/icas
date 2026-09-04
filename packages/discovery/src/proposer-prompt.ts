@@ -217,10 +217,12 @@ Do not invent chrome that is not in the snapshot.
 
 Do NOT put invocation-specific data in a success signal when a stable indicator exists:
 - this run's identifier,
+- a confirmation / hold / quote number generated for this run,
 - a customer/member name,
 - this run's date,
 - this run's monetary amount.
 
+Prefer a stable heading or sentence that remains after a different account or amount (for example a "statement is ready" line or "SHARE HOLD PLACED"). Do not copy a sentence that embeds HLD-… or the quoted total.
 Do not use possibleOutcomes as success signals.
 Do not emit controlPresent, valueEquals, or state here.
 successSignals must contain at least one assertion.
@@ -235,7 +237,7 @@ Each element:
   "type": "string" | "number" | "boolean" | "date" | "money",
   "description": "<short semantic description, or null>",
   "source": {
-    "ref": "<eN from the snapshot, or null when the value is not an interactable node>",
+    "ref": null,
     "strategies": [
       {
         "type": "relative" | "label" | "visibleText" | "roleText",
@@ -252,7 +254,7 @@ Each element:
   }
 }
 
-'source' is the same target descriptor as an action locator (see LOCATORS).
+'source' is a target descriptor (see LOCATORS) but ref MUST be null.
 Fill unused strategy fields with null when the schema requires every key.
 
 How to choose 'source.strategies[0]':
@@ -558,7 +560,7 @@ Locator requirements:
 - visibleText requires text
 - label requires label
 
-The same rules apply to result.outputs[].source.
+result.outputs[].source.ref must be null. ICAS does not bind output refs (a value cell's accessible name is this run's amount).
 For a value sitting beside a caption, relative + that caption locates the value for later extraction.
 Do not locate an output by clicking or by using the current extracted string as visibleText.
 

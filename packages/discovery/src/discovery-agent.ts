@@ -345,45 +345,28 @@ export class DiscoveryAgent {
   }
 
   /**
-   * Bind success-output extract locators when the model pointed at a ref.
+   * Drop discovery-only snapshot refs from success outputs.
    *
-   * Static confirmation values often have no ref; those keep mapped strategies.
-   * A failed bind keeps the model's locator rather than failing a completed goal.
+   * Do not bind output refs. `descriptorFromLocator` on a statement cell
+   * stamps this run's amount as `visibleText`, which then becomes a catalog
+   * locator and burns a full timeout on later replay with different inputs.
+   * Click/fill still bind; extracts keep the model's caption strategies.
    *
    * @param result - Proposer success result, or undefined on older traces
    */
-  private async bindResultSnapshotRefs(
+  private dropOutputSnapshotRefs(
     result: CandidateProposal["result"],
-  ): Promise<CandidateProposal["result"]> {
+  ): CandidateProposal["result"] {
     if (result === undefined) {
       return undefined;
     }
-    const outputs = [];
-    for (const output of result.outputs) {
-      if (output.snapshotRef === undefined) {
-        outputs.push(output);
-        continue;
-      }
-      try {
-        const durable = await this.surface.bindSnapshotRef(output.snapshotRef);
+    return {
+      ...result,
+      outputs: result.outputs.map((output) => {
         const { snapshotRef: _dropped, ...rest } = output;
-        outputs.push({
-          ...rest,
-          extract: {
-            target: {
-              strategies: [
-                ...durable.strategies,
-                ...output.extract.target.strategies,
-              ],
-            },
-          },
-        });
-      } catch {
-        const { snapshotRef: _dropped, ...rest } = output;
-        outputs.push(rest);
-      }
-    }
-    return { ...result, outputs };
+        return rest;
+      }),
+    };
   }
 
   /**
@@ -578,7 +561,7 @@ export class DiscoveryAgent {
       },
     });
     if (proposal.status === "success") {
-      const result = await this.bindResultSnapshotRefs(proposal.result);
+      const result = this.dropOutputSnapshotRefs(proposal.result);
       // Compiler reads `payload.result`. Empty object is only for traces that
       // omitted the field before this contract existed.
       await trace.record({

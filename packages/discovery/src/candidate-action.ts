@@ -87,7 +87,8 @@ export const DiscoverySuccessOutputSchema = z.strictObject({
   type: z.enum(["string", "number", "boolean", "date", "money"]),
   description: z.string().min(1).optional(),
   extract: z.strictObject({ target: TargetDescriptorSchema }),
-  // Discovery-only. Bound to durable extract.target before the success event.
+  // Discovery-only. Stripped before the success event. Never bound: a value
+  // cell's inner text is this run's data, not a reusable locator.
   snapshotRef: z.string().regex(SNAPSHOT_REF_PATTERN).optional(),
 });
 

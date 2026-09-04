@@ -28,10 +28,10 @@ describe("DISCOVERY_PROPOSER_INSTRUCTIONS", () => {
   });
 
   it("requires a compile-shaped success result, not a harvest read", () => {
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("successSignals");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("confirmation / hold / quote number");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain('"type": "textVisible"');
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain('"type": "urlMatches"');
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("result.outputs[].source");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("result.outputs[].source.ref must be null");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("Do not propose a 'read' action solely");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain(
       "you MUST declare them. Empty outputs is not allowed in that case.",

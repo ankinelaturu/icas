@@ -140,7 +140,7 @@ Outputs declare the calling contract and extraction target:
 
 The replay engine validates extracted values against declared output types before returning success.
 
-Discovery compiles `outputs` from the proposer’s success `result` (extract locators on the completed observation). `read` steps on the success path remain a fallback for traces that predate `result`. Replay does not infer fields from the goal; empty `outputs` yields `outputs: (none)` on `icas-play run`.
+Discovery compiles `outputs` from the proposer’s success `result` (caption locators on the completed observation). Discovery does not bind output snapshot refs — a value cell's inner text is this run's data. `read` steps on the success path remain a fallback for traces that predate `result`. Replay does not infer fields from the goal; empty `outputs` yields `outputs: (none)` on `icas-play run`.
 
 ## Step model
 
@@ -283,7 +283,7 @@ Do not persist the tenant's concrete base URL as the reusable capability identit
 
 ## Success condition
 
-The artifact declares an overall success condition in addition to per-step postconditions. For the payoff flow it may require a payoff-statement state plus successful extraction of declared fields.
+The artifact declares an overall success condition in addition to per-step postconditions. Compile reduces `textVisible` success signals that embed this run's dates, amounts, or confirmation ids to a stable heading (text before `·` / `:`), so replay with different inputs still matches chrome.
 
 ## Versioning
 

@@ -27,7 +27,7 @@ interface Surface {
 
 `close` is explicit teardown and must be safe to call twice. `peekDestination` exposes a known navigation URL (anchor href) before click so policy can deny off-origin destinations. `handoffToHuman` / `resumeFromHuman` flip `ControlOwner` on the same session; automation actions are rejected while a human owns control.
 
-`bindSnapshotRef` / `peekSnapshotRef` / `executeSnapshotRef` are **discovery-only**. They resolve a Playwright AI aria-ref from the last `observe()`. Replay never calls them. The capability artifact stores the durable `TargetDescriptor` returned by `bindSnapshotRef`, not the ref. Bind may throw when a node has no durable locator (empty unlabeled control with no `id` or `name`); discovery logs that and continues with the model's locators. Snapshot-ref execute falling through uses those same locators.
+`bindSnapshotRef` / `peekSnapshotRef` / `executeSnapshotRef` are **discovery-only**. They resolve a Playwright AI aria-ref from the last `observe()`. Replay never calls them. Click/fill catalog locators come from `bindSnapshotRef`; success **outputs** do not — compile keeps the model's caption strategies. Bind may throw when a node has no durable locator (empty unlabeled control with no `id` or `name`); discovery logs that and continues with the model's locators. Snapshot-ref execute falling through uses those same locators.
 
 ## Implemented surface
 

@@ -128,6 +128,9 @@ export function llmProposalToCandidateProposal(value: unknown): CandidateProposa
 /**
  * Map nullable flat `result` onto catalog {@link DiscoverySuccessResult}.
  *
+ * Output `source.ref` is ignored. Binding those refs would stamp this run's
+ * displayed amounts into extract locators.
+ *
  * @param raw - LLM result or null
  * @returns Catalog result, or undefined when the model sent null
  * @throws {CandidateValidationError} When a signal is missing its required field
@@ -141,7 +144,8 @@ function mapLlmDiscoveryResult(
   return {
     successSignals: raw.successSignals.map((signal, index) => mapLlmSuccessSignal(signal, index)),
     outputs: raw.outputs.map((output) => {
-      const snapshotRef = snapshotRefFromTarget(output.source);
+      // Ignore source.ref. Binding an output cell stamps this run's amount
+      // as visibleText; compile must keep the caption locator only.
       return {
         name: output.name,
         type: output.type,
@@ -149,7 +153,6 @@ function mapLlmDiscoveryResult(
           ? {}
           : { description: output.description }),
         extract: { target: llmTargetToDescriptor(output.source, "read") },
-        ...(snapshotRef === undefined ? {} : { snapshotRef }),
       };
     }),
   };

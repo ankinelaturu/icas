@@ -529,6 +529,61 @@ describe("DiscoveryAgent.run", () => {
       },
     });
   });
+
+  it("does not bind snapshot refs on success outputs", async () => {
+    const surface = new FakeSurface();
+    surface.observation = { id: "home", url: "http://localhost:4101/" };
+    surface.snapshotRefTarget = {
+      strategies: [{ type: "visibleText", text: "12450.00" }],
+    };
+    surface.executeHandler = () => {
+      surface.observation = { id: "statement", url: "http://localhost:4101/lending/payoff.htm" };
+      return { status: "ok" };
+    };
+    const agent = new DiscoveryAgent(surface, {
+      proposer: new FakeProposer([
+        clickLending,
+        {
+          status: "success",
+          candidates: [],
+          result: {
+            successSignals: [{ type: "textVisible", value: "Payoff Statement is ready" }],
+            outputs: [
+              {
+                name: "principalBalance",
+                type: "money" as const,
+                extract: {
+                  target: {
+                    strategies: [{ type: "relative" as const, text: "Principal Balance" }],
+                  },
+                },
+                snapshotRef: "f6e64",
+              },
+            ],
+          },
+        },
+      ]),
+    });
+    const result = await agent.run(request);
+    expect(result.status).toBe("success");
+    // Click had no ref; output ref must not be bound either.
+    expect(surface.boundRefs).toEqual([]);
+    const success = result.events.find((event) => event.type === "success");
+    expect(success?.payload).toMatchObject({
+      result: {
+        outputs: [
+          {
+            name: "principalBalance",
+            extract: {
+              target: { strategies: [{ type: "relative", text: "Principal Balance" }] },
+            },
+          },
+        ],
+      },
+    });
+    expect(JSON.stringify(success?.payload)).not.toMatch(/12450/);
+    expect(JSON.stringify(success?.payload)).not.toMatch(/f6e64/);
+  });
 });
 
 function clickOn(text: string, rank: number) {
