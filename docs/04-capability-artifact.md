@@ -283,7 +283,7 @@ Do not persist the tenant's concrete base URL as the reusable capability identit
 
 ## Success condition
 
-The artifact declares an overall success condition in addition to per-step postconditions. Compile reduces `textVisible` success signals that embed this run's dates, amounts, or confirmation ids to a stable heading (text before `·` / `:`), so replay with different inputs still matches chrome.
+The artifact declares an overall success condition in addition to per-step postconditions. Compile copies proposer `successSignals`. The discovery prompt requires replay-stable headings (no dates, amounts, or ids); compile does not rewrite or scan those strings.
 
 ## Versioning
 

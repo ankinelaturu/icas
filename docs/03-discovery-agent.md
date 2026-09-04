@@ -242,7 +242,7 @@ A capability must be decoupled from the raw model transcript. `CapabilityCompile
 6. derive preconditions and postconditions from meaningful observed state;
 7. copy this step’s `possibleOutcomes` (`error` and `hitl` only, same order) onto the compiled step;
 8. derive output extraction rules from the success-event `result.outputs` when present; otherwise from `read` actions on the success path;
-9. derive final success conditions from `result.successSignals` when present, reducing `textVisible` values that embed dates, amounts, or confirmation ids to a stable heading; otherwise from the last step’s expectation or URL;
+9. derive final success conditions from `result.successSignals` when present; otherwise from the last step’s expectation or URL;
 10. attach `schemaVersion` and Vendor+Product identity;
 11. write the base artifact through `CapabilityRegistry.save` (refuse if `id` already exists) and a header-only tenant override through `saveOverride` (`createdBy: "discovery"`). Tests use a temp registry root, never repo `capabilities/`.
 

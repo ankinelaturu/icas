@@ -3,10 +3,9 @@
  *
  * Failed exploration stays in the JSONL evidence. Checkpoints and
  * Vendor+Product identity come from the success-path stack. Outputs and
- * `success` prefer the proposer’s success-event `result`, reduced when
- * `textVisible` values embed dates, amounts, or confirmation ids. Older traces
- * fall back to `read` steps and last-step URL. The compiler reconstructs the
- * path as a stack: ok `chosen_action` pushes, `backtrack` pops.
+ * `success` prefer the proposer’s success-event `result`. Older traces fall
+ * back to `read` steps and last-step URL. The compiler reconstructs the path
+ * as a stack: ok `chosen_action` pushes, `backtrack` pops.
  */
 
 import { readFile } from "node:fs/promises";
@@ -21,7 +20,7 @@ import type {
 import {
   deriveCheckpoints,
   deriveOutputs,
-  durableSuccessSignals,
+  deriveSuccess,
   artifactOutputsFromResult,
   semanticAction,
   uniqueStepId,
@@ -125,10 +124,7 @@ export class CapabilityCompiler {
           ? deriveOutputs(steps)
           : artifactOutputsFromResult(declared.outputs),
       steps,
-      success: durableSuccessSignals(
-        declared === undefined ? [] : declared.successSignals,
-        path,
-      ),
+      success: declared === undefined ? deriveSuccess(path) : [...declared.successSignals],
     };
     if (request.registry !== undefined) {
       await persistDiscoveredCapability(request.registry, artifact, {

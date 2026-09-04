@@ -28,7 +28,7 @@ describe("DISCOVERY_PROPOSER_INSTRUCTIONS", () => {
   });
 
   it("requires a compile-shaped success result, not a harvest read", () => {
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("confirmation / hold / quote number");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("replay-stable");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain('"type": "textVisible"');
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain('"type": "urlMatches"');
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("result.outputs[].source.ref must be null");

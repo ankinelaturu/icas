@@ -202,27 +202,31 @@ outputs may be [] only when the completed state has no caller-useful values (see
 
 ## SUCCESS SIGNALS
 
-successSignals is a non-empty JSON array of replay assertions.
-Each element is ONE of these objects (same types as capability checkpoints):
+successSignals are replay assertions. A later replay uses different typed inputs than this discovery run. The signal must still match.
 
-{ "type": "textVisible", "value": "<exact visible string copied from the CURRENT snapshot>" }
-{ "type": "urlMatches", "pattern": "<distinctive path or fragment copied from the CURRENT url>" }
+Each element is ONE of:
 
-Prefer textVisible when a stable heading, form title, or confirmation sentence is visible.
-Add urlMatches only when that route itself distinguishes the completed state from the screen where the operation was requested.
-If the URL did not change when the result appeared, do not use URL alone.
+{ "type": "textVisible", "value": "<replay-stable substring that appears in the CURRENT snapshot>" }
+{ "type": "urlMatches", "pattern": "<path that still identifies the completed screen for any inputs>" }
 
-Copy 'value' and 'pattern' from the CURRENT observation. Do not paraphrase.
-Do not invent chrome that is not in the snapshot.
+Replay-stable means: the same heading or path is present after replay with a different account, amount, or date.
 
-Do NOT put invocation-specific data in a success signal when a stable indicator exists:
-- this run's identifier,
-- a confirmation / hold / quote number generated for this run,
-- a customer/member name,
-- this run's date,
-- this run's monetary amount.
+textVisible.value MUST be a contiguous substring of the current snapshot. Do not paraphrase. Do not invent chrome.
 
-Prefer a stable heading or sentence that remains after a different account or amount (for example a "statement is ready" line or "SHARE HOLD PLACED"). Do not copy a sentence that embeds HLD-… or the quoted total.
+If a snapshot line mixes a heading and instance data, copy ONLY the heading (status banner or form title) and omit the data.
+
+NEVER put any of the following in value or pattern:
+- identifiers or confirmation numbers generated for this run
+- customer or member names
+- calendar dates, including a processing date shown on the page
+- monetary amounts or balances
+- any literal typed into a field on this run
+
+Do not copy an entire snapshot node because it is visible. The capability is reused; instance chrome is not a validator.
+
+Prefer a form title, status heading, or ready banner that contains no data.
+urlMatches must not embed this run's ids.
+
 Do not use possibleOutcomes as success signals.
 Do not emit controlPresent, valueEquals, or state here.
 successSignals must contain at least one assertion.
@@ -535,17 +539,26 @@ Do not invent:
 
 The accessibility snapshot stamps interactable nodes with [ref=eN] (or iframe-prefixed f1e2).
 For click, fill, select, and read of an interactable control, set target.ref to that token.
-ICAS executes the ref on the live page. Do not copy the quoted accessible name as visibleText when a ref exists.
-Still fill strategies[0] from the same snapshot line (roleText with that role and quoted name) so the schema has a locator; ICAS replaces those strategies with durable locators after the click.
+ICAS executes the ref on the live page.
+
+strategies[0] must still be replay-stable. Do not copy a quoted accessible name that includes amounts, dates, balances, or ids. Use the control's stable name (link/button label or field caption). ICAS binds the ref for this session; the catalog locator must match on a later replay with different data.
 
 Static values that are not interactable (confirmation numbers beside a caption) often have no ref. For those, set ref to null and use relative / visibleText / label as below.
 
 Do not invent refs. Copy them exactly from [ref=eN] on the current snapshot.
 
+Locators identify controls, not this run's data.
+NEVER set roleText.text, visibleText.text, label, or relative.text to:
+- a value typed on this run,
+- a computed amount, balance, date, or confirmation number,
+- a list row whose accessible name concatenates live balances or ids.
+
+For a result row or tile, locate by the stable product or action name in the snapshot, not an available-balance or account-id suffix.
+
 For click:
 Prefer a snapshot ref when present.
-Otherwise prefer roleText when the accessibility snapshot provides a recognizable role and accessible name.
-Otherwise use visibleText when visible text uniquely identifies the intended control.
+Otherwise prefer roleText when the accessibility snapshot provides a recognizable role and a replay-stable accessible name.
+Otherwise use visibleText when that text uniquely identifies the intended control and contains no instance data.
 
 For fill/select:
 Prefer a snapshot ref on the input when present.
@@ -695,7 +708,7 @@ Search history:
 ${history}
 
 Respond with a CandidateProposal object.
-When status is "success", result must be non-null and must include successSignals and outputs as specified in the system contract.
+When status is "success", result must be non-null and must include successSignals and outputs as specified in the system contract. successSignals textVisible values must be replay-stable headings with no dates, amounts, ids, or typed field values.
 When status is "continue" or "stuck", result must be null.`;
 }
 
