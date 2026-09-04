@@ -24,6 +24,7 @@ import {
 import type { CandidateProposer } from "./candidate-proposer.js";
 import type { DiscoveryRequest, DiscoveryResult, DiscoveryTraceEvent } from "./discovery-types.js";
 import { DiscoveryTrace } from "./discovery-trace.js";
+import { mergeDurableTarget } from "./merge-durable-target.js";
 import {
   createSearchNode,
   resolveSearchBudget,
@@ -191,9 +192,12 @@ export class DiscoveryAgent {
         continue;
       }
 
-      const action = candidate.action;
+      const bound = await this.bindCandidate(candidate);
+      const action = bound.action;
       this.log(
-        `chosen rank=${String(candidate.rank)} ${summarizeAction(action)} — ${candidate.rationale}`,
+        `chosen rank=${String(candidate.rank)} ${summarizeAction(action)}${
+          candidate.snapshotRef === undefined ? "" : ` ref=${candidate.snapshotRef}`
+        } — ${candidate.rationale}`,
       );
       await trace.record({
         type: "chosen_action",
@@ -213,10 +217,16 @@ export class DiscoveryAgent {
             : { possibleOutcomes: candidate.possibleOutcomes }),
         },
       });
+      if (bound.error !== undefined) {
+        // The live node was used for execute; describing it is best-effort.
+        // Unlabeled inputs often have no aria name — keep the model's relative
+        // locator and still fill via the snapshot ref.
+        this.log(`bind snapshot ref skipped: ${bound.error}`);
+      }
 
       // Peek before execute so origin allowlists can deny a navigation
       // without clicking it. Missing policy = allow (tests without a guard).
-      const destinationUrl = await this.peekDestination(action);
+      const destinationUrl = await this.peekDestination(candidate, action);
       const decision = this.policy?.check(
         action,
         destinationUrl === undefined ? {} : { destinationUrl },
@@ -272,7 +282,7 @@ export class DiscoveryAgent {
       }
       current.triedCandidateIds.add(candidate.id);
 
-      const result = await this.executeAction(action);
+      const result = await this.executeCandidate(candidate, action);
       steps += 1;
       pathActions.push(action);
       await trace.record({ type: "action_result", payload: result });
@@ -308,6 +318,119 @@ export class DiscoveryAgent {
     }
   }
 
+  /**
+   * Stamp durable locators from a snapshot ref onto the catalog action.
+   *
+   * Execute still uses the ref. A describe miss (empty unlabeled input) is not
+   * fatal: the model's strategies stay on the action for compile and replay.
+   *
+   * @param candidate - Ranked sibling, possibly with `snapshotRef`
+   */
+  private async bindCandidate(
+    candidate: CandidateAction,
+  ): Promise<{ action: CapabilityAction; error?: string }> {
+    const ref = candidate.snapshotRef;
+    if (ref === undefined) {
+      return { action: candidate.action };
+    }
+    try {
+      const durable = await this.surface.bindSnapshotRef(ref);
+      const action = mergeDurableTarget(candidate.action, durable);
+      candidate.action = action;
+      return { action };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { action: candidate.action, error: message };
+    }
+  }
+
+  /**
+   * Bind success-output extract locators when the model pointed at a ref.
+   *
+   * Static confirmation values often have no ref; those keep mapped strategies.
+   * A failed bind keeps the model's locator rather than failing a completed goal.
+   *
+   * @param result - Proposer success result, or undefined on older traces
+   */
+  private async bindResultSnapshotRefs(
+    result: CandidateProposal["result"],
+  ): Promise<CandidateProposal["result"]> {
+    if (result === undefined) {
+      return undefined;
+    }
+    const outputs = [];
+    for (const output of result.outputs) {
+      if (output.snapshotRef === undefined) {
+        outputs.push(output);
+        continue;
+      }
+      try {
+        const durable = await this.surface.bindSnapshotRef(output.snapshotRef);
+        const { snapshotRef: _dropped, ...rest } = output;
+        outputs.push({
+          ...rest,
+          extract: {
+            target: {
+              strategies: [
+                ...durable.strategies,
+                ...output.extract.target.strategies,
+              ],
+            },
+          },
+        });
+      } catch {
+        const { snapshotRef: _dropped, ...rest } = output;
+        outputs.push(rest);
+      }
+    }
+    return { ...result, outputs };
+  }
+
+  /**
+   * Execute by snapshot ref when present so discover does not re-resolve the
+   * model's copied name. Replay later uses the bound durable target.
+   *
+   * A stale or unbound ref must not abort a fill the model already described
+   * with `relative` / `css`. Fall back to ranked locators after a ref miss.
+   *
+   * @param candidate - May carry `snapshotRef`
+   * @param action - Bound catalog action
+   */
+  private async executeCandidate(
+    candidate: CandidateAction,
+    action: CapabilityAction,
+  ): Promise<SurfaceActionResult> {
+    const ref = candidate.snapshotRef;
+    if (ref === undefined) {
+      return await this.executeAction(action);
+    }
+    const byRef = await this.executeBySnapshotRef(ref, action);
+    if (byRef.status === "ok") {
+      return byRef;
+    }
+    // Bind already kept model locators. A dead aria-ref still fills via relative.
+    const reason = failedActionReason(byRef);
+    this.log(`snapshot ref execute failed, falling back to locators: ${reason}`);
+    return await this.executeAction(action);
+  }
+
+  /**
+   * Click/fill/select/read the live `aria-ref` node.
+   *
+   * @param ref - Token from the last AI observe
+   * @param action - Semantic action; target is not consulted on the happy path
+   */
+  private async executeBySnapshotRef(
+    ref: string,
+    action: CapabilityAction,
+  ): Promise<SurfaceActionResult> {
+    try {
+      return await this.surface.executeSnapshotRef(ref, action);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { status: "failed", details: { error: message } };
+    }
+  }
   /**
    * Run one action. Playwright `locate` throws; turn that into a failed
    * result so the trace still gets `action_result` and `finish`.
@@ -455,11 +578,12 @@ export class DiscoveryAgent {
       },
     });
     if (proposal.status === "success") {
+      const result = await this.bindResultSnapshotRefs(proposal.result);
       // Compiler reads `payload.result`. Empty object is only for traces that
       // omitted the field before this contract existed.
       await trace.record({
         type: "success",
-        payload: proposal.result === undefined ? {} : { result: proposal.result },
+        payload: result === undefined ? {} : { result },
       });
       return { status: "success" };
     }
@@ -475,16 +599,23 @@ export class DiscoveryAgent {
   }
 
   /**
-   * Best-effort href for policy origin checks. Navigate/fill have no target
-   * peek; failures must not abort discovery.
+   * Best-effort href for policy origin checks. Prefer a snapshot ref so peek
+   * does not depend on the model's copied name. Failures must not abort discovery.
+   *
+   * @param candidate - May carry `snapshotRef`
+   * @param action - Bound catalog action
    */
   private async peekDestination(
+    candidate: CandidateAction,
     action: CapabilityAction,
   ): Promise<string | undefined> {
-    if (!("target" in action)) {
-      return undefined;
-    }
     try {
+      if (candidate.snapshotRef !== undefined) {
+        return await this.surface.peekSnapshotRef(candidate.snapshotRef);
+      }
+      if (!("target" in action)) {
+        return undefined;
+      }
       return await this.surface.peekDestination(action.target);
     } catch {
       return undefined;

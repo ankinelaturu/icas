@@ -17,12 +17,17 @@ interface Surface {
   visibleText(): Promise<string>;
   locate(target: TargetDescriptor): Promise<unknown>;
   peekDestination(target: TargetDescriptor): Promise<string | undefined>;
+  bindSnapshotRef(ref: string): Promise<TargetDescriptor>;
+  peekSnapshotRef(ref: string): Promise<string | undefined>;
+  executeSnapshotRef(ref: string, action: CapabilityAction): Promise<SurfaceActionResult>;
   handoffToHuman(): Promise<void>;
   resumeFromHuman(): Promise<void>;
 }
 ```
 
 `close` is explicit teardown and must be safe to call twice. `peekDestination` exposes a known navigation URL (anchor href) before click so policy can deny off-origin destinations. `handoffToHuman` / `resumeFromHuman` flip `ControlOwner` on the same session; automation actions are rejected while a human owns control.
+
+`bindSnapshotRef` / `peekSnapshotRef` / `executeSnapshotRef` are **discovery-only**. They resolve a Playwright AI aria-ref from the last `observe()`. Replay never calls them. The capability artifact stores the durable `TargetDescriptor` returned by `bindSnapshotRef`, not the ref. Bind may throw when a node has no durable locator (empty unlabeled control with no `id` or `name`); discovery logs that and continues with the model's locators. Snapshot-ref execute falling through uses those same locators.
 
 ## Implemented surface
 
@@ -45,7 +50,7 @@ Discovery may use full rendered page images with a vision-capable model because 
 
 ## Deterministic replay targeting
 
-Replay should prefer stable semantic locators derived during/after discovery rather than raw screen coordinates. TargetDescriptor can contain ranked strategies and fallbacks. `relative` without `xpath`/`role` binds to the nearest following form control, or a table cell that does not wrap one, so inquiry fills skip the wrapping `td` and statement-style caption|value rows can still be `read`.
+Replay should prefer stable semantic locators derived during/after discovery rather than raw screen coordinates. TargetDescriptor can contain ranked strategies and fallbacks. `relative` without `xpath`/`role` binds to the nearest following form control, or a table cell that does not wrap one, so inquiry fills skip the wrapping `td` and statement-style caption|value rows can still be `read`. Snapshot refs are a discovery binding, not a replay strategy.
 
 ## Desktop extension
 

@@ -47,6 +47,8 @@ interface Observation {
 
 `imagePath` is a file on disk (evidence). The discover user message currently includes that path as text, not image bytes (Pass 5.22). `httpStatus` is the main-document status when Playwright saw one. XHR, frames, and 200 error banners may omit it.
 
+Playwright `observe()` uses `ariaSnapshot({ mode: "ai" })` so interactable nodes include `[ref=eN]`. Those refs are discovery handles only. Replay never resolves them.
+
 ## Agent loop
 
 The discovery process is not a pre-programmed flow. At each state:
@@ -55,7 +57,7 @@ The discovery process is not a pre-programmed flow. At each state:
 2. send goal + observation + relevant search history + prompt policy to the model;
 3. receive structured candidate action(s);
 4. validate the proposed action through runtime policy;
-5. execute through the surface;
+5. execute through the surface (by snapshot ref when the candidate has one; otherwise by ranked locators);
 6. capture the resulting observation;
 7. assess progress / dead-end / completion;
 8. record evidence;
@@ -146,7 +148,7 @@ Optional `expectation` is not this catalog. It must not narrate success or embed
 
 A string transcript, an unknown `action.type`, or `continue` with zero candidates is a validation error. Numeric confidence may be recorded but is not a calibrated probability. Ranking is the useful property.
 
-OpenAI structured output cannot use `oneOf`, so generate uses a flat action schema and ICAS maps it onto catalog `CapabilityAction`. For fill/select/read, that map appends a `relative` fallback when the model used `label` or `visibleText` for a field caption: core banking screens often put the name in a table cell, not an associated `<label>`, so Playwright `getByLabel` misses the adjacent input.
+OpenAI structured output cannot use `oneOf`, so generate uses a flat action schema and ICAS maps it onto catalog `CapabilityAction`. `target.ref` is a Playwright AI snapshot token (`e12`) copied onto the **candidate**, never onto catalog `CapabilityAction`. Discovery executes that ref on the live page, then stamps durable `roleText` / `css` strategies from the node onto the action before compile. Bind is best-effort: empty unlabeled inputs often have no accessible name. Discover still fills via the ref (or the model's `relative` locators if the ref is stale) and keeps those strategies for compile. Incomplete `roleText` (`role: null`) maps to `visibleText` so catalog validation does not reject a ref-backed click. For fill/select/read, the mapper still appends a `relative` fallback when the model used a caption as `label` or `visibleText`: core banking screens often put the name in a table cell, not an associated `<label>`, so Playwright `getByLabel` misses the adjacent input.
 
 Fill/select `value` on the wire is a literal string (not a ValueRef `oneOf`). The same flat action includes `proposedInputParam` (nullable object so every key stays required). Click, navigate, read, and handoff set it to `null`. The mapper copies a non-null hint onto the **candidate**, not onto catalog `CapabilityAction`. Fill/select without a hint is a mapping error.
 

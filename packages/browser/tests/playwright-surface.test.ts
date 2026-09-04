@@ -102,6 +102,58 @@ describe("PlaywrightSurface locate (semantic)", () => {
   });
 });
 
+describe("PlaywrightSurface snapshot refs", () => {
+  const surface = new PlaywrightSurface({ headed: false, timeoutMs: 400 });
+
+  afterEach(async () => {
+    await surface.close();
+  });
+
+  it("clicks a concatenated-name tile by snapshot ref and binds roleText", async () => {
+    await surface.open(pageUrl("concatenated-name.html"));
+    const observation = await surface.observe();
+    const snapshot = String(observation.accessibilitySnapshot);
+    const match = snapshot.match(
+      /link "Share Holds Place a hold on available funds" \[ref=(e\d+)\]/,
+    );
+    expect(snapshot, "AI snapshot should stamp a ref on the tile").toMatch(/\[ref=e\d+\]/);
+    expect(match?.[1], snapshot).toBeDefined();
+    const ref = match?.[1] ?? "";
+    const durable = await surface.bindSnapshotRef(ref);
+    expect(durable.strategies[0]).toEqual({
+      type: "roleText",
+      role: "link",
+      text: "Share Holds Place a hold on available funds",
+    });
+    await expect(surface.peekSnapshotRef(ref)).resolves.toMatch(/#holds/);
+    const result = await surface.executeSnapshotRef(ref, {
+      type: "click",
+      target: { strategies: [{ type: "visibleText", text: "does-not-match" }] },
+    });
+    expect(result.status).toBe("ok");
+  });
+
+  it("binds an unlabeled named textbox to css [name=]", async () => {
+    await surface.open(pageUrl("unlabeled-named-input.html"));
+    const observation = await surface.observe();
+    const snapshot = String(observation.accessibilitySnapshot);
+    const match = snapshot.match(/textbox[^\n]*\[ref=((?:f\d+)?e\d+)\]/);
+    expect(match?.[1], snapshot).toBeDefined();
+    const ref = match?.[1] ?? "";
+    const durable = await surface.bindSnapshotRef(ref);
+    expect(durable.strategies).toContainEqual({
+      type: "css",
+      selector: 'input[name="txtMember"]',
+    });
+    const result = await surface.executeSnapshotRef(ref, {
+      type: "fill",
+      value: { literal: "441122" },
+      target: { strategies: [{ type: "visibleText", text: "does-not-match" }] },
+    });
+    expect(result.status).toBe("ok");
+  });
+});
+
 describe("PlaywrightSurface locate (fallbacks)", () => {
   const surface = new PlaywrightSurface({ headed: false, timeoutMs: 400 });
 
@@ -373,6 +425,7 @@ describe("PlaywrightSurface observe", () => {
     expect(observation.imagePath).toBeDefined();
     expect(existsSync(observation.imagePath ?? "")).toBe(true);
     expect(observation.accessibilitySnapshot).toBeDefined();
+    expect(String(observation.accessibilitySnapshot)).toMatch(/\[ref=e\d+\]/);
   });
 
   it("reports document HTTP 404 from a fixture server", async () => {

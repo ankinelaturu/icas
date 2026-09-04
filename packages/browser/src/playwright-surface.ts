@@ -27,7 +27,10 @@ import type {
 import { chromium, type Browser, type BrowserContext, type Locator, type Page, type Response } from "playwright";
 
 import { SurfaceError } from "./surface-error.js";
-
+import {
+  descriptorFromLocator,
+  locatorForSnapshotRef,
+} from "./snapshot-ref.js";
 import { resolveTarget } from "./target-resolver.js";
 
 /**
@@ -133,8 +136,9 @@ export class PlaywrightSurface implements Surface {
   /**
    * Capture a full-page screenshot plus optional accessibility tree.
    *
-   * Visual-first: legacy bank UIs often lack stable test ids. The a11y
-   * snapshot is a supplement for evidence, not a required locator source.
+   * Visual-first: legacy bank UIs often lack stable test ids. AI-mode aria
+   * snapshots add `[ref=eN]` so discovery can bind the node the model named.
+   * Replay never uses those refs.
    */
   async observe(): Promise<Observation> {
     const page = this.requirePage();
@@ -142,7 +146,12 @@ export class PlaywrightSurface implements Surface {
     await mkdir(this.screenshotDir, { recursive: true });
     const imagePath = join(this.screenshotDir, `${id}.png`);
     await page.screenshot({ path: imagePath, fullPage: true });
-    const accessibilitySnapshot = await page.locator("body").ariaSnapshot();
+    // AI mode stamps [ref=eN] on interactable nodes so discovery can click the
+    // same node the model saw. Replay never consumes those refs.
+    const accessibilitySnapshot = await page.locator("body").ariaSnapshot({
+      mode: "ai",
+      timeout: 5_000,
+    });
     return {
       id,
       url: page.url(),
@@ -172,36 +181,16 @@ export class PlaywrightSurface implements Surface {
         await this.handoffToHuman();
         return { status: "ok", details: { reason: action.reason } };
       }
-      case "click": {
-        const control = await this.locate(action.target);
-        // Record href before click; after navigation `page.url()` is the landing page.
-        const destinationUrl = await hrefOf(control, page.url());
-        await control.click();
-        return {
-          status: "ok",
-          details: { destinationUrl, resultingUrl: page.url() },
-        };
-      }
-      case "fill": {
-        const control = await this.locate(action.target);
-        await control.fill(literalString(action.value));
-        return { status: "ok" };
-      }
-      case "select": {
-        const control = await this.locate(action.target);
-        await control.selectOption(literalString(action.value));
-        return { status: "ok" };
-      }
       case "navigate": {
         const destination = new URL(action.path, page.url()).href;
         await page.goto(destination);
         return { status: "ok", details: { url: page.url() } };
       }
-      case "read": {
-        const control = await this.locate(action.target);
-        const value = await readControlValue(control);
-        return { status: "ok", details: { value } };
-      }
+      case "click":
+      case "fill":
+      case "select":
+      case "read":
+        return await this.performOnLocator(await this.locate(action.target), action);
       default: {
         const exhaustive: never = action;
         return exhaustive;
@@ -308,6 +297,113 @@ export class PlaywrightSurface implements Surface {
     this.assertAutomation();
     const control = await this.locate(target);
     return await hrefOf(control, this.requirePage().url());
+  }
+
+  /**
+   * Durable catalog locators for a snapshot ref from the last {@link observe}.
+   *
+   * Empty unlabeled inputs may still bind via `name=` CSS. When nothing
+   * durable can be derived, this throws; discovery treats that as a skip and
+   * keeps the model's locators.
+   *
+   * @param ref - `e12` from the AI aria snapshot
+   * @returns Ranked strategies (typically `roleText` from the accessible name)
+   */
+  async bindSnapshotRef(ref: string): Promise<TargetDescriptor> {
+    this.assertAutomation();
+    const control = await this.requireSnapshotRef(ref);
+    return await descriptorFromLocator(control);
+  }
+
+  /**
+   * Anchor href for a snapshot-ref node, when the control is a link.
+   *
+   * @param ref - `e12` from the AI aria snapshot
+   */
+  async peekSnapshotRef(ref: string): Promise<string | undefined> {
+    this.assertAutomation();
+    const control = await this.requireSnapshotRef(ref);
+    return await hrefOf(control, this.requirePage().url());
+  }
+
+  /**
+   * Execute click/fill/select/read on the live snapshot-ref node.
+   *
+   * Navigate and handoff ignore `ref` and use {@link execute}.
+   *
+   * @param ref - `e12` from the AI aria snapshot
+   * @param action - Semantic action; `target` is not consulted
+   */
+  async executeSnapshotRef(
+    ref: string,
+    action: CapabilityAction,
+  ): Promise<SurfaceActionResult> {
+    if (action.type === "navigate" || action.type === "handoff") {
+      return await this.execute(action);
+    }
+    this.assertAutomation();
+    const control = await this.requireSnapshotRef(ref);
+    return await this.performOnLocator(control, action);
+  }
+
+  /**
+   * Wait until the snapshot-ref node is visible, or throw TARGET_NOT_FOUND.
+   *
+   * @param ref - `e12` from the AI aria snapshot
+   */
+  private async requireSnapshotRef(ref: string): Promise<Locator> {
+    const locator = locatorForSnapshotRef(this.requirePage(), ref).first();
+    try {
+      await locator.waitFor({ state: "visible", timeout: this.timeoutMs });
+    } catch {
+      throw new SurfaceError(
+        `TARGET_NOT_FOUND: snapshot ref ${ref} is not visible`,
+        "TARGET_NOT_FOUND",
+      );
+    }
+    return locator;
+  }
+
+  /**
+   * Click, fill, select, or read an already-resolved locator.
+   *
+   * Shared by {@link execute} (ranked target) and {@link executeSnapshotRef}.
+   *
+   * @param control - Visible Playwright locator
+   * @param action - Click/fill/select/read
+   */
+  private async performOnLocator(
+    control: Locator,
+    action: Extract<CapabilityAction, { type: "click" | "fill" | "select" | "read" }>,
+  ): Promise<SurfaceActionResult> {
+    const page = this.requirePage();
+    switch (action.type) {
+      case "click": {
+        // Record href before click; after navigation `page.url()` is the landing page.
+        const destinationUrl = await hrefOf(control, page.url());
+        await control.click();
+        return {
+          status: "ok",
+          details: { destinationUrl, resultingUrl: page.url() },
+        };
+      }
+      case "fill": {
+        await control.fill(literalString(action.value));
+        return { status: "ok" };
+      }
+      case "select": {
+        await control.selectOption(literalString(action.value));
+        return { status: "ok" };
+      }
+      case "read": {
+        const value = await readControlValue(control);
+        return { status: "ok", details: { value } };
+      }
+      default: {
+        const exhaustive: never = action;
+        return exhaustive;
+      }
+    }
   }
 
   /**

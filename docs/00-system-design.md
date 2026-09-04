@@ -366,7 +366,7 @@ flowchart TB
   class desktop todo
 ```
 
-Target resolution is ranked: `roleText`, `visibleText`, `label`, then `relative` / `css` / `xpath`. Coordinates are last resort. Document HTTP status is an optional `Observation.httpStatus` when Playwright observed a main-frame document response. Details: [`10-surface-abstraction.md`](10-surface-abstraction.md).
+Target resolution is ranked: `roleText`, `visibleText`, `label`, then `relative` / `css` / `xpath`. Coordinates are last resort. Discovery may bind a Playwright snapshot `ref` (`e12`) on the live page; that token is not a catalog strategy. Replay uses the durable locators compile recorded from that node. Bind is best-effort: empty unlabeled inputs still execute via the ref or the model's `relative` locators. Document HTTP status is an optional `Observation.httpStatus` when Playwright observed a main-frame document response. Details: [`10-surface-abstraction.md`](10-surface-abstraction.md).
 
 ### 5.5 Safety
 

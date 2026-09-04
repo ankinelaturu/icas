@@ -339,6 +339,196 @@ describe("DiscoveryAgent.run", () => {
       candidates: [{ rank: 1, rationale: "Open lending" }],
     });
   });
+
+  it("executes a snapshot ref and records durable locators on chosen_action", async () => {
+    const surface = new FakeSurface();
+    surface.observation = { id: "home", url: "http://localhost:4103/" };
+    surface.snapshotRefTarget = {
+      strategies: [
+        {
+          type: "roleText",
+          role: "link",
+          text: "Share Holds Place a hold on available funds",
+        },
+      ],
+    };
+    surface.executeHandler = () => {
+      surface.observation = { id: "holds", url: "http://localhost:4103/holds.htm" };
+      return { status: "ok" };
+    };
+    const agent = new DiscoveryAgent(surface, {
+      proposer: new FakeProposer([
+        {
+          status: "continue",
+          candidates: [
+            {
+              action: {
+                type: "click" as const,
+                target: {
+                  strategies: [
+                    {
+                      type: "visibleText" as const,
+                      text: "Share Holds Place a hold on available funds",
+                    },
+                  ],
+                },
+                risk: "safe" as const,
+              },
+              snapshotRef: "e12",
+              rationale: "Open share holds",
+              rank: 1,
+            },
+          ],
+        },
+        { status: "success", candidates: [], result: MINIMAL_SUCCESS_RESULT },
+      ]),
+    });
+    const result = await agent.run({
+      ...request,
+      id: "share-hold",
+      target: { ...request.target, url: "http://localhost:4103/" },
+    });
+    expect(result.status).toBe("success");
+    expect(surface.boundRefs).toEqual(["e12"]);
+    expect(surface.executedRefs).toEqual(["e12"]);
+    const chosen = result.events.find((event) => event.type === "chosen_action");
+    expect(chosen?.payload).toMatchObject({
+      action: {
+        type: "click",
+        target: {
+          strategies: [
+            {
+              type: "roleText",
+              role: "link",
+              text: "Share Holds Place a hold on available funds",
+            },
+            {
+              type: "visibleText",
+              text: "Share Holds Place a hold on available funds",
+            },
+          ],
+        },
+      },
+    });
+    expect(JSON.stringify(chosen?.payload)).not.toMatch(/"e12"/);
+    expect(surface.executed[0]).toEqual({
+      type: "click",
+      risk: "safe",
+      target: {
+        strategies: [
+          {
+            type: "roleText",
+            role: "link",
+            text: "Share Holds Place a hold on available funds",
+          },
+          {
+            type: "visibleText",
+            text: "Share Holds Place a hold on available funds",
+          },
+        ],
+      },
+    });
+  });
+
+  it("still executes a snapshot ref when bind cannot describe the node", async () => {
+    const surface = new FakeSurface();
+    surface.observation = { id: "find", url: "http://localhost:4103/holds.htm" };
+    surface.bindError = new Error(
+      "TARGET_NOT_FOUND: snapshot ref bound to a node with no durable locator",
+    );
+    surface.executeHandler = () => {
+      surface.observation = { id: "shares", url: "http://localhost:4103/shares.htm" };
+      return { status: "ok" };
+    };
+    const agent = new DiscoveryAgent(surface, {
+      proposer: new FakeProposer([
+        {
+          status: "continue",
+          candidates: [
+            {
+              action: {
+                type: "fill" as const,
+                target: {
+                  strategies: [{ type: "relative" as const, text: "Member #" }],
+                },
+                value: { literal: "441122" },
+                risk: "safe" as const,
+              },
+              snapshotRef: "f1e18",
+              rationale: "Enter the member number",
+              rank: 1,
+              proposedInputParam: { name: "memberId", type: "string", required: true },
+            },
+          ],
+        },
+        { status: "success", candidates: [], result: MINIMAL_SUCCESS_RESULT },
+      ]),
+    });
+    const result = await agent.run({
+      ...request,
+      id: "share-hold",
+      target: { ...request.target, url: "http://localhost:4103/holds.htm" },
+    });
+    expect(result.status).toBe("success");
+    expect(surface.boundRefs).toEqual(["f1e18"]);
+    expect(surface.executedRefs).toEqual(["f1e18"]);
+    const chosen = result.events.find((event) => event.type === "chosen_action");
+    expect(chosen?.payload).toMatchObject({
+      action: {
+        type: "fill",
+        target: {
+          strategies: [{ type: "relative", text: "Member #" }],
+        },
+      },
+    });
+  });
+
+  it("falls back to ranked locators when snapshot-ref execute fails", async () => {
+    const surface = new FakeSurface();
+    surface.observation = { id: "home", url: "http://localhost:4101/" };
+    surface.executeSnapshotRefError = new Error(
+      "TARGET_NOT_FOUND: snapshot ref e12 is not visible",
+    );
+    surface.executeHandler = () => {
+      surface.observation = { id: "lending", url: "http://localhost:4101/lending.htm" };
+      return { status: "ok" };
+    };
+    const agent = new DiscoveryAgent(surface, {
+      proposer: new FakeProposer([
+        {
+          status: "continue",
+          candidates: [
+            {
+              action: {
+                type: "click" as const,
+                target: {
+                  strategies: [{ type: "visibleText" as const, text: "Lending" }],
+                },
+                risk: "safe" as const,
+              },
+              snapshotRef: "e12",
+              rationale: "Open lending",
+              rank: 1,
+            },
+          ],
+        },
+        { status: "success", candidates: [], result: MINIMAL_SUCCESS_RESULT },
+      ]),
+    });
+    const result = await agent.run(request);
+    expect(result.status).toBe("success");
+    expect(surface.executedRefs).toEqual(["e12"]);
+    expect(surface.executed).toHaveLength(1);
+    expect(surface.executed[0]).toMatchObject({
+      type: "click",
+      target: {
+        strategies: [
+          { type: "roleText", role: "link", text: "Lending" },
+          { type: "visibleText", text: "Lending" },
+        ],
+      },
+    });
+  });
 });
 
 function clickOn(text: string, rank: number) {

@@ -26,6 +26,7 @@ const validContinue = {
         value: null,
         proposedInputParam: null,
         target: {
+          ref: null,
           strategies: [
             {
               type: "visibleText" as const,

@@ -6,6 +6,12 @@
  * this flat shape; {@link llmActionToCapabilityAction} parses into the catalog type
  * and adds a `relative` fallback on fill/select/read when the model used a
  * caption as `label` or `visibleText`.
+ *
+ * `target.ref` is a Playwright AI snapshot handle (`e12`). It is discovery-only:
+ * the mapper does not copy it onto {@link CapabilityAction}. Discovery binds
+ * the live node and stamps durable strategies before compile. Incomplete
+ * `roleText` (null `role`) becomes `visibleText` when `text` is set; a valid
+ * `ref` with no usable strategy still maps so execute can use the ref.
  */
 
 import * as z from "zod";
@@ -42,9 +48,29 @@ export const LlmTargetStrategySchema = z.strictObject({
 });
 
 /**
+ * Playwright AI-mode snapshot ref (`e12`, or iframe-prefixed `f1e2`).
+ *
+ * Valid until the next navigation or DOM change. Never stored on a capability.
+ */
+export const SNAPSHOT_REF_PATTERN = /^(?:f\d+)?e\d+$/;
+
+/**
+ * True when `value` is a Playwright snapshot ref token.
+ *
+ * @param value - Candidate ref from the model
+ */
+export function isSnapshotRef(value: string): boolean {
+  return SNAPSHOT_REF_PATTERN.test(value);
+}
+
+/**
  * Target with ranked strategies. Nullable on navigate/handoff.
+ *
+ * `ref` is required-as-nullable for OpenAI strict JSON Schema. Discovery
+ * copies a non-null value onto the candidate, never onto catalog actions.
  */
 export const LlmTargetDescriptorSchema = z.strictObject({
+  ref: z.string().nullable(),
   strategies: z.array(LlmTargetStrategySchema).min(1),
 });
 
@@ -142,7 +168,8 @@ export function llmActionToCapabilityAction(raw: LlmCapabilityAction): Capabilit
  *
  * Fill/select/read also get a `relative` fallback. Core banking screens put
  * the caption in a table cell, so Playwright `getByLabel` / `getByText` miss
- * the adjacent input.
+ * the adjacent input. `roleText` with a null role maps to `visibleText`. A
+ * snapshot `ref` with no complete strategy still yields a placeholder locator.
  *
  * @param raw - Non-null LLM target
  * @param actionType - Semantic action; relative fallback is fill/select/read only
@@ -152,11 +179,24 @@ export function llmTargetToDescriptor(
   raw: z.infer<typeof LlmTargetDescriptorSchema>,
   actionType: LlmCapabilityAction["type"],
 ): TargetDescriptor {
-  return {
-    strategies: uniqueStrategies(
-      raw.strategies.flatMap((strategy) => expandLlmStrategy(strategy, actionType)),
-    ),
-  };
+  const expanded = uniqueStrategies(
+    raw.strategies.flatMap((strategy) => expandLlmStrategy(strategy, actionType)),
+  );
+  const complete = expanded.filter(isCompleteStrategy);
+  if (complete.length > 0) {
+    return { strategies: complete };
+  }
+  // OpenAI leaves unused strategy fields null. A snapshot ref is enough to
+  // execute; keep a schema-valid placeholder so mapping does not throw.
+  const ref = nonempty(raw.ref);
+  if (ref !== undefined && isSnapshotRef(ref)) {
+    const hint =
+      raw.strategies
+        .map((strategy) => nonempty(strategy.text) ?? nonempty(strategy.label))
+        .find((text) => text !== undefined) ?? ref;
+    return { strategies: [{ type: "visibleText", text: hint }] };
+  }
+  return { strategies: expanded };
 }
 
 /**
@@ -231,6 +271,32 @@ function nonempty(value: string | null | undefined): string | undefined {
 }
 
 /**
+ * True when a mapped strategy would pass {@link CapabilityActionSchema}.
+ *
+ * Empty strings are what the flat LLM schema produces for unused fields.
+ *
+ * @param strategy - Catalog locator after {@link llmStrategyToCatalog}
+ */
+function isCompleteStrategy(
+  strategy: TargetDescriptor["strategies"][number],
+): boolean {
+  switch (strategy.type) {
+    case "roleText":
+      return strategy.role.length > 0 && strategy.text.length > 0;
+    case "visibleText":
+    case "relative":
+      return strategy.text.length > 0;
+    case "label":
+      return strategy.label.length > 0;
+    case "css":
+    case "xpath":
+      return strategy.selector.length > 0;
+    case "coordinates":
+      return true;
+  }
+}
+
+/**
  * Keep only the fields that belong to `type`. Extra nulls are dropped.
  */
 function llmStrategyToCatalog(
@@ -238,13 +304,25 @@ function llmStrategyToCatalog(
 ): TargetDescriptor["strategies"][number] {
   const confidence = raw.confidence ?? undefined;
   switch (raw.type) {
-    case "roleText":
+    case "roleText": {
+      const role = nonempty(raw.role);
+      const text = nonempty(raw.text);
+      // Flat schema leaves `role` null. Catalog roleText cannot. Prefer
+      // visibleText over an empty role that fails CapabilityActionSchema.
+      if (role === undefined) {
+        return {
+          type: "visibleText",
+          text: text ?? "",
+          ...(confidence === undefined ? {} : { confidence }),
+        };
+      }
       return {
         type: "roleText",
-        role: raw.role ?? "",
-        text: raw.text ?? "",
+        role,
+        text: text ?? "",
         ...(confidence === undefined ? {} : { confidence }),
       };
+    }
     case "label":
       return {
         type: "label",

@@ -235,6 +235,7 @@ Each element:
   "type": "string" | "number" | "boolean" | "date" | "money",
   "description": "<short semantic description, or null>",
   "source": {
+    "ref": "<eN from the snapshot, or null when the value is not an interactable node>",
     "strategies": [
       {
         "type": "relative" | "label" | "visibleText" | "roleText",
@@ -527,18 +528,31 @@ Do not invent:
 - IDs,
 - selectors,
 - labels,
+- snapshot refs,
 - or visible text.
 
+The accessibility snapshot stamps interactable nodes with [ref=eN] (or iframe-prefixed f1e2).
+For click, fill, select, and read of an interactable control, set target.ref to that token.
+ICAS executes the ref on the live page. Do not copy the quoted accessible name as visibleText when a ref exists.
+Still fill strategies[0] from the same snapshot line (roleText with that role and quoted name) so the schema has a locator; ICAS replaces those strategies with durable locators after the click.
+
+Static values that are not interactable (confirmation numbers beside a caption) often have no ref. For those, set ref to null and use relative / visibleText / label as below.
+
+Do not invent refs. Copy them exactly from [ref=eN] on the current snapshot.
+
 For click:
-Prefer roleText when the accessibility snapshot provides a recognizable role and accessible name.
+Prefer a snapshot ref when present.
+Otherwise prefer roleText when the accessibility snapshot provides a recognizable role and accessible name.
 Otherwise use visibleText when visible text uniquely identifies the intended control.
 
 For fill/select:
-Prefer type "relative" with text equal to the adjacent field caption.
+Prefer a snapshot ref on the input when present.
+Otherwise prefer type "relative" with text equal to the adjacent field caption.
 Many legacy systems place field captions in table cells rather than using associated HTML labels.
 Use type "label" only when the accessibility snapshot indicates a genuine labelled input.
 
 Locator requirements:
+- ref must be an eN token from the current snapshot, or null
 - roleText requires role + text
 - relative requires text
 - visibleText requires text

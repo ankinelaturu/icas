@@ -36,6 +36,8 @@ describe("DISCOVERY_PROPOSER_INSTRUCTIONS", () => {
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain(
       "you MUST declare them. Empty outputs is not allowed in that case.",
     );
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("[ref=eN]");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("target.ref");
   });
 });
 

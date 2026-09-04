@@ -66,6 +66,21 @@ export class FakeSurface implements Surface {
     return undefined;
   }
 
+  async bindSnapshotRef(_ref: string): Promise<TargetDescriptor> {
+    return { strategies: [{ type: "visibleText", text: "unused" }] };
+  }
+
+  async peekSnapshotRef(_ref: string): Promise<string | undefined> {
+    return undefined;
+  }
+
+  async executeSnapshotRef(
+    _ref: string,
+    action: CapabilityAction,
+  ): Promise<SurfaceActionResult> {
+    return await this.execute(action);
+  }
+
   humanTakes = 0;
   automationResumes = 0;
 

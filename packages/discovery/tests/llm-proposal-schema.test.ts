@@ -36,6 +36,7 @@ describe("llmProposalToCandidateProposal", () => {
             value: "42",
             proposedInputParam: { name: "accountId", type: "string", required: true },
             target: {
+              ref: null,
               strategies: [{ ...nullStrategyFields, type: "label", label: "Account" }],
             },
           },
@@ -76,6 +77,7 @@ describe("llmProposalToCandidateProposal", () => {
             value: null,
             proposedInputParam: null,
             target: {
+              ref: null,
               strategies: [{ ...nullStrategyFields, type: "visibleText", text: "Inquire" }],
             },
           },
@@ -131,6 +133,7 @@ describe("llmProposalToCandidateProposal", () => {
             type: "money",
             description: "Quoted total",
             source: {
+              ref: null,
               strategies: [
                 {
                   ...nullStrategyFields,
@@ -189,6 +192,7 @@ describe("llmProposalToCandidateProposal", () => {
               value: null,
               proposedInputParam: null,
               target: {
+                ref: null,
                 strategies: [{ ...nullStrategyFields, type: "visibleText", text: "Lending" }],
               },
             },
@@ -221,10 +225,126 @@ describe("llmProposalToCandidateProposal", () => {
               value: "42",
               proposedInputParam: null,
               target: {
+                ref: null,
                 strategies: [{ ...nullStrategyFields, type: "label", label: "Account" }],
               },
             },
             rationale: "Enter the account",
+            rank: 1,
+            expectation: null,
+            risk: null,
+            possibleOutcomes: [],
+          },
+        ],
+      }),
+    ).toThrow(CandidateValidationError);
+  });
+
+  it("copies a snapshot ref onto the candidate, not the catalog action", () => {
+    const proposal = llmProposalToCandidateProposal({
+      status: "continue",
+      rationale: null,
+      result: null,
+      candidates: [
+        {
+          id: null,
+          action: {
+            type: "click",
+            intent: null,
+            risk: "safe",
+            path: null,
+            reason: null,
+            value: null,
+            proposedInputParam: null,
+            target: {
+              ref: "e12",
+              strategies: [
+                { ...nullStrategyFields, type: "visibleText", text: "Share Holds Place a hold on available funds" },
+              ],
+            },
+          },
+          rationale: "Open share holds",
+          rank: 1,
+          expectation: null,
+          risk: null,
+          possibleOutcomes: [],
+        },
+      ],
+    });
+    expect(proposal.candidates[0]?.snapshotRef).toBe("e12");
+    expect(proposal.candidates[0]?.action).toEqual({
+      type: "click",
+      target: {
+        strategies: [
+          { type: "visibleText", text: "Share Holds Place a hold on available funds" },
+        ],
+      },
+      risk: "safe",
+    });
+  });
+
+  it("maps roleText with a null role when a snapshot ref is present", () => {
+    const proposal = llmProposalToCandidateProposal({
+      status: "continue",
+      rationale: null,
+      result: null,
+      candidates: [
+        {
+          id: "1",
+          action: {
+            type: "click",
+            intent: null,
+            risk: "safe",
+            path: null,
+            reason: "Open share holds",
+            value: null,
+            proposedInputParam: null,
+            target: {
+              ref: "e15",
+              strategies: [
+                { ...nullStrategyFields, type: "roleText", text: "Share Holds" },
+              ],
+            },
+          },
+          rationale: "Clicking Share Holds is the hold path",
+          rank: 1,
+          expectation: null,
+          risk: "safe",
+          possibleOutcomes: [],
+        },
+      ],
+    });
+    expect(proposal.candidates[0]?.snapshotRef).toBe("e15");
+    expect(proposal.candidates[0]?.action).toEqual({
+      type: "click",
+      target: { strategies: [{ type: "visibleText", text: "Share Holds" }] },
+      risk: "safe",
+    });
+  });
+
+  it("rejects a snapshot ref that is not an eN token", () => {
+    expect(() =>
+      llmProposalToCandidateProposal({
+        status: "continue",
+        rationale: null,
+        result: null,
+        candidates: [
+          {
+            id: null,
+            action: {
+              type: "click",
+              intent: null,
+              risk: "safe",
+              path: null,
+              reason: null,
+              value: null,
+              proposedInputParam: null,
+              target: {
+                ref: "Share Holds",
+                strategies: [{ ...nullStrategyFields, type: "visibleText", text: "Share Holds" }],
+              },
+            },
+            rationale: "Open share holds",
             rank: 1,
             expectation: null,
             risk: null,

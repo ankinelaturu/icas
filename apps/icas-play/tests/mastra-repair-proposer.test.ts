@@ -69,6 +69,7 @@ describe("MastraRepairProposer", () => {
               value: null,
               proposedInputParam: null,
               target: {
+                ref: null,
                 strategies: [
                   {
                     type: "visibleText",
@@ -112,6 +113,7 @@ describe("MastraRepairProposer", () => {
                   value: null,
                   proposedInputParam: null,
                   target: {
+                    ref: null,
                     strategies: [
                       {
                         type: "visibleText",

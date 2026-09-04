@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isSnapshotRef,
   llmActionToCapabilityAction,
   LlmCapabilityActionSchema,
 } from "../src/llm-action-schema.js";
@@ -35,6 +36,7 @@ describe("llmActionToCapabilityAction", () => {
       type: "click",
       ...clickBase,
       target: {
+        ref: null,
         strategies: [{ ...nullStrategyFields, type: "visibleText", text: "Lending" }],
       },
     });
@@ -55,6 +57,7 @@ describe("llmActionToCapabilityAction", () => {
       value: "987654",
       proposedInputParam: { name: "accountId", type: "string", required: true },
       target: {
+        ref: null,
         strategies: [{ ...nullStrategyFields, type: "label", label: "LN Acct #" }],
       },
     });
@@ -80,6 +83,7 @@ describe("llmActionToCapabilityAction", () => {
       value: "987654",
       proposedInputParam: { name: "accountId", type: "string", required: true },
       target: {
+        ref: null,
         strategies: [
           {
             ...nullStrategyFields,
@@ -109,6 +113,7 @@ describe("llmActionToCapabilityAction", () => {
       type: "click",
       ...clickBase,
       target: {
+        ref: null,
         strategies: [{ ...nullStrategyFields, type: "visibleText", text: "Inquire" }],
       },
     });
@@ -127,6 +132,7 @@ describe("llmActionToCapabilityAction", () => {
       value: "42",
       proposedInputParam: { name: "amount", type: "money", required: true },
       target: {
+        ref: null,
         strategies: [{ ...nullStrategyFields, type: "label", label: "Amount" }],
       },
     });
@@ -149,9 +155,72 @@ describe("llmActionToCapabilityAction", () => {
         value: "42",
         proposedInputParam: { name: "Account-Id", type: "string", required: true },
         target: {
+          ref: null,
           strategies: [{ ...nullStrategyFields, type: "label", label: "Account" }],
         },
       }),
     ).toThrow(/camelCase/);
+  });
+
+  it("does not copy a snapshot ref onto the catalog action", () => {
+    const raw = LlmCapabilityActionSchema.parse({
+      type: "click",
+      ...clickBase,
+      target: {
+        ref: "e12",
+        strategies: [{ ...nullStrategyFields, type: "visibleText", text: "Share Holds" }],
+      },
+    });
+    const action = llmActionToCapabilityAction(raw);
+    expect(action).toEqual({
+      type: "click",
+      target: { strategies: [{ type: "visibleText", text: "Share Holds" }] },
+      risk: "safe",
+    });
+    expect(JSON.stringify(action)).not.toContain("e12");
+  });
+
+  it("maps roleText with a null role to visibleText so a snapshot ref can execute", () => {
+    const raw = LlmCapabilityActionSchema.parse({
+      type: "click",
+      ...clickBase,
+      target: {
+        ref: "e15",
+        strategies: [
+          { ...nullStrategyFields, type: "roleText", text: "Share Holds" },
+        ],
+      },
+    });
+    const action = llmActionToCapabilityAction(raw);
+    expect(action).toEqual({
+      type: "click",
+      target: { strategies: [{ type: "visibleText", text: "Share Holds" }] },
+      risk: "safe",
+    });
+  });
+
+  it("maps a snapshot ref with empty strategy fields to a placeholder locator", () => {
+    const raw = LlmCapabilityActionSchema.parse({
+      type: "click",
+      ...clickBase,
+      target: {
+        ref: "e15",
+        strategies: [{ ...nullStrategyFields, type: "roleText" }],
+      },
+    });
+    expect(llmActionToCapabilityAction(raw)).toEqual({
+      type: "click",
+      target: { strategies: [{ type: "visibleText", text: "e15" }] },
+      risk: "safe",
+    });
+  });
+});
+
+describe("isSnapshotRef", () => {
+  it("accepts Playwright AI-mode tokens", () => {
+    expect(isSnapshotRef("e12")).toBe(true);
+    expect(isSnapshotRef("f1e2")).toBe(true);
+    expect(isSnapshotRef("Share Holds")).toBe(false);
+    expect(isSnapshotRef("e")).toBe(false);
   });
 });

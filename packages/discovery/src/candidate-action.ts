@@ -10,6 +10,7 @@ import {
   CapabilityActionSchema,
   PossibleOutcomeSchema,
   ProposedInputParamSchema,
+  SNAPSHOT_REF_PATTERN,
   TargetDescriptorSchema,
   type CapabilityAction,
 } from "@icas/capability";
@@ -37,6 +38,9 @@ export const CandidateActionSchema = z.strictObject({
   possibleOutcomes: z.array(PossibleOutcomeSchema).optional(),
   // Fill/select only. Compiler aggregates these into artifact inputs.
   proposedInputParam: ProposedInputParamSchema.optional(),
+  // Discovery-only Playwright snapshot ref (`e12`). Bind/execute use this;
+  // compile copies `action.target` after bind, never this field.
+  snapshotRef: z.string().regex(SNAPSHOT_REF_PATTERN).optional(),
 })
   .superRefine((candidate, ctx) => {
     const needsHint =
@@ -83,6 +87,8 @@ export const DiscoverySuccessOutputSchema = z.strictObject({
   type: z.enum(["string", "number", "boolean", "date", "money"]),
   description: z.string().min(1).optional(),
   extract: z.strictObject({ target: TargetDescriptorSchema }),
+  // Discovery-only. Bound to durable extract.target before the success event.
+  snapshotRef: z.string().regex(SNAPSHOT_REF_PATTERN).optional(),
 });
 
 /**

@@ -8,6 +8,7 @@
  */
 
 import {
+  isSnapshotRef,
   llmActionToCapabilityAction,
   llmTargetToDescriptor,
   LlmCapabilityActionSchema,
@@ -100,6 +101,7 @@ export function llmProposalToCandidateProposal(value: unknown): CandidateProposa
     candidates: llm.candidates.map((candidate) => {
       const action = llmActionToCapabilityAction(candidate.action);
       const hint = candidate.action.proposedInputParam;
+      const snapshotRef = snapshotRefFromTarget(candidate.action.target);
       return {
         ...(candidate.id === null || candidate.id.length === 0 ? {} : { id: candidate.id }),
         action,
@@ -112,6 +114,7 @@ export function llmProposalToCandidateProposal(value: unknown): CandidateProposa
         possibleOutcomes: candidate.possibleOutcomes,
         // Catalog actions never carry the hint; it stays on the candidate.
         ...(hint === null ? {} : { proposedInputParam: hint }),
+        ...(snapshotRef === undefined ? {} : { snapshotRef }),
       };
     }),
     ...(llm.rationale === null || llm.rationale.length === 0
@@ -137,14 +140,18 @@ function mapLlmDiscoveryResult(
   }
   return {
     successSignals: raw.successSignals.map((signal, index) => mapLlmSuccessSignal(signal, index)),
-    outputs: raw.outputs.map((output) => ({
-      name: output.name,
-      type: output.type,
-      ...(output.description === null || output.description.length === 0
-        ? {}
-        : { description: output.description }),
-      extract: { target: llmTargetToDescriptor(output.source, "read") },
-    })),
+    outputs: raw.outputs.map((output) => {
+      const snapshotRef = snapshotRefFromTarget(output.source);
+      return {
+        name: output.name,
+        type: output.type,
+        ...(output.description === null || output.description.length === 0
+          ? {}
+          : { description: output.description }),
+        extract: { target: llmTargetToDescriptor(output.source, "read") },
+        ...(snapshotRef === undefined ? {} : { snapshotRef }),
+      };
+    }),
   };
 }
 
@@ -172,6 +179,34 @@ function mapLlmSuccessSignal(
     );
   }
   return { type: "urlMatches", pattern: signal.pattern };
+}
+
+/**
+ * Copy a non-null snapshot ref off an LLM target. Invalid tokens fail mapping
+ * so a hallucinated ref never reaches execute.
+ *
+ * @param target - Flat LLM target, or null on navigate/handoff
+ * @returns Ref token, or undefined when absent
+ * @throws {CandidateValidationError} When `ref` is set but not a snapshot token
+ */
+function snapshotRefFromTarget(
+  target: z.infer<typeof LlmTargetDescriptorSchema> | null,
+): string | undefined {
+  if (target === null || target.ref === null || target.ref.length === 0) {
+    return undefined;
+  }
+  if (!isSnapshotRef(target.ref)) {
+    throw new CandidateValidationError(
+      new z.ZodError([
+        {
+          code: "custom",
+          path: ["target", "ref"],
+          message: `snapshot ref must match eN (got ${target.ref})`,
+        },
+      ]),
+    );
+  }
+  return target.ref;
 }
 
 /**

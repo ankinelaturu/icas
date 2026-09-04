@@ -58,6 +58,48 @@ export class FakeSurface implements Surface {
     return undefined;
   }
 
+  /**
+   * Tests set {@link snapshotRefTarget} when a candidate carries `snapshotRef`.
+   */
+  snapshotRefTarget: TargetDescriptor = {
+    strategies: [{ type: "roleText", role: "link", text: "Lending" }],
+  };
+  /**
+   * When set, {@link bindSnapshotRef} throws so tests can cover describe-miss.
+   */
+  bindError: Error | undefined;
+  /**
+   * When set, {@link executeSnapshotRef} throws so tests can cover locator fallback.
+   */
+  executeSnapshotRefError: Error | undefined;
+  readonly boundRefs: string[] = [];
+  readonly executedRefs: string[] = [];
+  readonly peekedRefs: string[] = [];
+
+  async bindSnapshotRef(ref: string): Promise<TargetDescriptor> {
+    this.boundRefs.push(ref);
+    if (this.bindError !== undefined) {
+      throw this.bindError;
+    }
+    return this.snapshotRefTarget;
+  }
+
+  async peekSnapshotRef(ref: string): Promise<string | undefined> {
+    this.peekedRefs.push(ref);
+    return undefined;
+  }
+
+  async executeSnapshotRef(
+    ref: string,
+    action: CapabilityAction,
+  ): Promise<SurfaceActionResult> {
+    this.executedRefs.push(ref);
+    if (this.executeSnapshotRefError !== undefined) {
+      throw this.executeSnapshotRefError;
+    }
+    return await this.execute(action);
+  }
+
   async handoffToHuman(): Promise<void> {}
 
   async resumeFromHuman(): Promise<void> {}

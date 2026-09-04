@@ -103,6 +103,28 @@ export interface Surface {
    */
   peekDestination(target: TargetDescriptor): Promise<string | undefined>;
   /**
+   * Discovery-only: durable locators for a snapshot ref from the last observe().
+   *
+   * Replay never calls this. Refs are session-scoped; the returned descriptor
+   * is what compile writes to the catalog.
+   */
+  bindSnapshotRef(ref: string): Promise<TargetDescriptor>;
+  /**
+   * Discovery-only: href for the node a snapshot ref currently points at.
+   */
+  peekSnapshotRef(ref: string): Promise<string | undefined>;
+  /**
+   * Discovery-only: click/fill/select/read the live snapshot-ref node.
+   *
+   * Uses the same semantic `action` as {@link execute} but does not re-resolve
+   * `action.target`. After this succeeds, discovery replaces that target with
+   * {@link bindSnapshotRef} so backtrack and replay use durable locators.
+   */
+  executeSnapshotRef(
+    ref: string,
+    action: CapabilityAction,
+  ): Promise<SurfaceActionResult>;
+  /**
    * Pause automation and leave the same session open for a human.
    */
   handoffToHuman(): Promise<void>;

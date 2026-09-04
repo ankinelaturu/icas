@@ -30,12 +30,14 @@ export {
 } from "./artifact-schema.js";
 
 export {
+  isSnapshotRef,
   llmActionToCapabilityAction,
   llmTargetToDescriptor,
   LlmCapabilityActionSchema,
   LlmTargetDescriptorSchema,
   LlmTargetStrategySchema,
   ProposedInputParamSchema,
+  SNAPSHOT_REF_PATTERN,
 } from "./llm-action-schema.js";
 export type {
   LlmCapabilityAction,
