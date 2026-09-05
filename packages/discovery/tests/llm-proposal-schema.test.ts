@@ -192,6 +192,38 @@ describe("llmProposalToCandidateProposal", () => {
     expect(proposal.result?.outputs[0]).not.toHaveProperty("snapshotRef");
   });
 
+  it("accepts textVisible without pattern and missing outputs", () => {
+    const proposal = llmProposalToCandidateProposal({
+      status: "success",
+      rationale: "done",
+      result: {
+        successSignals: [{ type: "textVisible", value: "Hold Confirmation" }],
+      },
+      candidates: [],
+    });
+    expect(proposal.result?.successSignals).toEqual([
+      { type: "textVisible", value: "Hold Confirmation" },
+    ]);
+    expect(proposal.result?.outputs).toEqual([]);
+  });
+
+  it("keeps the first line of a repeated multiline textVisible dump", () => {
+    const dump = Array.from({ length: 8 }, () =>
+      "Hold Confirmation\nSHARE HOLD PLACED · As of processing date 2026-09-03",
+    ).join("\n");
+    const proposal = llmProposalToCandidateProposal({
+      status: "success",
+      rationale: "done",
+      result: {
+        successSignals: [{ type: "textVisible", value: dump }],
+      },
+      candidates: [],
+    });
+    expect(proposal.result?.successSignals).toEqual([
+      { type: "textVisible", value: "Hold Confirmation" },
+    ]);
+  });
+
   it("rejects success when result is null", () => {
     expect(() =>
       llmProposalToCandidateProposal({

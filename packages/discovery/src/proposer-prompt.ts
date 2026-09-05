@@ -166,23 +166,42 @@ They are NOT:
 - output extracted values (those are this run's results; only the output locator is a matcher)
 - proposedInputParam.name (a parameter name, not a look-for string)
 
-A matcher must be generic UI chrome: a heading, button name, field caption, status label, or product/share name that is still on screen after a later run.
+A matcher must be generic UI chrome: a heading, button name, field caption, status label, or product/action name that is still on screen after a later run.
 
-Do not copy a quoted snapshot accessible name when it concatenates chrome with this run's data. If a line or node mixes a heading with instance data, keep ONLY the heading or caption. Do not paste a parent, card, or page's combined text.
+Do not return snapshot text as-is. The accessibility snapshot is dirty. The quoted name on a node (the string in quotes after link, button, or heading) is the full accessible name. It often concatenates chrome with this run's data. Check that string for instance tokens, then emit a substring. Do not copy the quoted name wholesale. Do not paste a parent, card, or page's combined text.
 
-The following MUST NOT appear in any replay matcher. This list is examples, not exhaustive:
+Instance tokens include the list below and anything that looks like PII or other person-identifying or account-identifying data. The list is examples, not exhaustive:
 - values typed into a field on this run
 - values carried from an earlier page or step (search history)
 - dates, times, processing dates, expiry dates, and "as of" timestamps
 - monetary amounts, balances, and values computed from other fields
 - confirmation numbers, reference ids, and other ids minted for this invocation
 - looked-up record values (member or account numbers as values, displayed names, addresses, masks)
+- names, member or customer numbers, account numbers, government ids, phones, emails, addresses, and any other token that would identify a specific person, account, or this invocation's result
 
-Also exclude anything that looks like PII or other person-identifying or account-identifying data, even if it is not in the list above: names, member or customer numbers, account numbers, government ids, phones, emails, addresses, and any other token that would identify a specific person, account, or this invocation's result.
-When unsure whether a token is chrome or identifying data, omit it.
+When unsure whether a token is chrome or identifying data, treat it as instance data.
 
-Captions are chrome. Values beside captions are not.
-"Member #" and "Hold Amount" are valid locators. The member number and hold amount themselves are not.
+Do not delete instance tokens and glue the leftover words. That is not a substring of the page.
+
+A matcher must be one contiguous span of the snapshot string that contains no instance tokens. Prefer the longest such span.
+
+For illustration only (not application copy to reuse):
+  "your age is 40 years old"
+    → "your age is"
+    not "your age is years old"
+    not the snapshot string as-is
+  "40 members are there in the group of age 29"
+    → "members are there in the group of age"
+    not the empty prefix before 40
+    not a string that still contains 40 or 29
+
+If every span contains instance data, do not use that string. Pick other chrome or another node.
+
+Keep the snapshot ref so ICAS can act on this node now. Catalog strategy text and success textVisible values are that substring only.
+
+Do not emit [MASK], placeholders, or regex. Replay looks for your string as a substring of the live page. A mask token will not be present.
+
+Captions are chrome. Values beside captions are not. Use the field caption as a locator, never the value shown next to it.
 
 Outputs still declare those values. Locate them with the caption, never with the current displayed string.
 
@@ -231,7 +250,7 @@ Shape (this is the object to emit, not prose):
   "outputs": [ /* zero or more output declarations, see below */ ]
 }
 
-Do not return result as a string. Do not omit either key.
+Do not return result as a string. Do not omit either key. successSignals entries must include both value and pattern (null the unused one). outputs is always an array (use [] only when OUTPUTS allows empty).
 successSignals is never empty.
 outputs may be [] only when the completed state has no caller-useful values (see OUTPUTS).
 
@@ -239,12 +258,13 @@ outputs may be [] only when the completed state has no caller-useful values (see
 
 successSignals are replay assertions. Follow REPLAY MATCHERS.
 
-Each element is ONE of:
+Each element MUST include type, value, and pattern. Unused string is null (not omitted):
 
-{ "type": "textVisible", "value": "<chrome heading or status phrase from the CURRENT snapshot>" }
-{ "type": "urlMatches", "pattern": "<path that still identifies the completed screen for any inputs>" }
+{ "type": "textVisible", "value": "<one-line chrome substring from the CURRENT snapshot>", "pattern": null }
+{ "type": "urlMatches", "value": null, "pattern": "<path that still identifies the completed screen for any inputs>" }
 
-textVisible.value must appear in the current snapshot as chrome. Do not paraphrase. Do not invent chrome.
+textVisible.value is a single line. Do not concatenate headings. Do not repeat the same phrase. Do not include newlines.
+Follow REPLAY MATCHERS.
 Prefer a form title, status heading, or ready banner.
 urlMatches must not embed this run's ids.
 
@@ -716,7 +736,8 @@ Search history:
 ${history}
 
 Respond with a CandidateProposal object.
-When status is "success", result must be non-null and must include successSignals and outputs as specified in the system contract. Replay matchers (locators, successSignals, outcome phrases) must follow REPLAY MATCHERS: generic chrome only, no this-run values, no PII-style identifying data.
+Do not return snapshot text as-is. Check quoted names and visible strings for instance tokens. Emit the longest contiguous chrome substring with no instance tokens. Do not glue across a hole. Do not copy the full quoted name. Do not emit masks or regex.
+When status is "success", result must be non-null and must include successSignals and outputs. Each successSignals item includes value and pattern (null the unused one). outputs is an array. textVisible value is one chrome line, not a repeated dump.
 When status is "continue" or "stuck", result must be null.`;
 }
 

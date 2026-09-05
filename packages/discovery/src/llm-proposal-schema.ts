@@ -43,11 +43,15 @@ export const LlmCandidateActionSchema = z.strictObject({
 
 /**
  * One success signal without assertion `oneOf`. Unused field is null.
+ *
+ * Models often omit `pattern` on `textVisible` (or `value` on `urlMatches`).
+ * OpenAI strict schemas ask for both keys; generate still drops them. Default
+ * the missing side to null so a finished discovery is not rejected at parse.
  */
 export const LlmSuccessSignalSchema = z.strictObject({
   type: z.enum(["textVisible", "urlMatches"]),
-  value: z.string().nullable(),
-  pattern: z.string().nullable(),
+  value: z.string().nullable().optional().default(null),
+  pattern: z.string().nullable().optional().default(null),
 });
 
 /**
@@ -62,11 +66,14 @@ export const LlmDeclaredOutputSchema = z.strictObject({
 
 /**
  * Success-turn contract. Null when status is continue or stuck.
+ *
+ * `outputs` is required in the prompt but generate sometimes drops the key.
+ * Default to [] so parse does not fail after a complete UI path.
  */
 export const LlmDiscoveryResultSchema = z
   .strictObject({
     successSignals: z.array(LlmSuccessSignalSchema),
-    outputs: z.array(LlmDeclaredOutputSchema),
+    outputs: z.array(LlmDeclaredOutputSchema).optional().default([]),
   })
   .nullable();
 
@@ -159,6 +166,25 @@ function mapLlmDiscoveryResult(
 }
 
 /**
+ * First non-empty line of a textVisible value.
+ *
+ * Generate sometimes concatenates or repeats the confirmation screen. Replay
+ * needs one chrome phrase. Later lines often mix dates and amounts.
+ *
+ * @param value - Model-emitted textVisible string
+ * @returns Trimmed first line
+ */
+function firstVisibleLine(value: string): string {
+  for (const line of value.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (trimmed.length > 0) {
+      return trimmed;
+    }
+  }
+  return "";
+}
+
+/**
  * Require `value` for textVisible and `pattern` for urlMatches.
  *
  * @param signal - Flat signal
@@ -169,12 +195,13 @@ function mapLlmSuccessSignal(
   index: number,
 ): DiscoverySuccessResult["successSignals"][number] {
   if (signal.type === "textVisible") {
-    if (signal.value === null || signal.value.length === 0) {
+    const line = firstVisibleLine(signal.value ?? "");
+    if (line.length === 0) {
       throw new CandidateValidationError(
         issue("successSignals", index, "textVisible requires value"),
       );
     }
-    return { type: "textVisible", value: signal.value };
+    return { type: "textVisible", value: line };
   }
   if (signal.pattern === null || signal.pattern.length === 0) {
     throw new CandidateValidationError(

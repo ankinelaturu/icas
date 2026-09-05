@@ -30,9 +30,12 @@ describe("DISCOVERY_PROPOSER_INSTRUCTIONS", () => {
   it("requires a compile-shaped success result, not a harvest read", () => {
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("REPLAY MATCHERS");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("looks like PII");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("Do not return snapshot text as-is");
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("longest such span");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("Captions are chrome");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain('"type": "textVisible"');
-    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain('"type": "urlMatches"');
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain('"pattern": null');
+    expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("single line");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("result.outputs[].source.ref must be null");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain("Do not propose a 'read' action solely");
     expect(DISCOVERY_PROPOSER_INSTRUCTIONS).toContain(
@@ -64,8 +67,9 @@ describe("formatProposePrompt", () => {
     expect(prompt).toContain("/tmp/a.png");
     expect(prompt).toContain("accessibilitySnapshot:");
     expect(prompt).toContain("Search history:");
-    expect(prompt).toContain("result must be non-null");
-    expect(prompt).toContain("REPLAY MATCHERS");
+    expect(prompt).toContain("one chrome line");
+    expect(prompt).toContain("Do not return snapshot text as-is");
+    expect(prompt).toContain("longest contiguous chrome substring");
     expect(prompt).not.toContain("ICAS");
   });
 

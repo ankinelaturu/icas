@@ -283,7 +283,7 @@ Do not persist the tenant's concrete base URL as the reusable capability identit
 
 ## Success condition
 
-The artifact declares an overall success condition in addition to per-step postconditions. Compile copies proposer `successSignals`. The discovery prompt (`REPLAY MATCHERS`) requires generic chrome only (no this-run values, no PII-style identifying data); compile does not rewrite or scan those strings.
+The artifact declares an overall success condition in addition to per-step postconditions. Compile copies proposer `successSignals`. The discovery prompt (`REPLAY MATCHERS`) requires the longest contiguous snapshot substring with no instance tokens (not the quoted name as-is); compile does not rewrite or scan those strings.
 
 ## Versioning
 
