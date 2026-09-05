@@ -65,11 +65,39 @@ Line and subgraph conventions:
 
 An operator runs ICAS against synthetic tenant apps. An agent host is an optional second caller through MCP. There is no production co-browsing console, no worker queue, and no real bank.
 
+`capabilities/` is the persistent catalog on the ICAS boundary: discover and adapt write it; replay and MCP read it. `evidence/` is run-scoped output only (traces, logs, screenshots). It is not an input to the next run.
+
 ```mermaid
-flowchart LR
+flowchart TB
   operator((operator))
   host([agent host])
-  icas[ICAS]
+
+  subgraph icas["ICAS"]
+    direction LR
+
+    subgraph colL["catalog"]
+      caps[(capabilities/)]
+    end
+
+    subgraph colM["apps"]
+      direction TB
+      discover["discover"]
+      play["  play  "]
+      adapt[" adapt  "]
+      mcp["  MCP   "]
+      discover --> play
+      play --> adapt
+      adapt --> mcp
+    end
+
+    subgraph colR["runs"]
+      evid[/evidence/]
+    end
+
+    colL --> colM
+    colM --> colR
+  end
+
   bank[["icas-bank :4101"]]
   loki[["loki-bank :4102"]]
 
@@ -79,7 +107,12 @@ flowchart LR
   icas --> loki
 
   classDef optional stroke-dasharray: 6 4
+  classDef icasBox fill:#f8fafc,stroke:#334155,stroke-width:2px
+  classDef appBox fill:#ffffff,stroke:#334155
   class host optional
+  class icas icasBox
+  class discover,play,adapt,mcp appBox
+  linkStyle 0,1,2 stroke:none
 ```
 
 Both icas-bank and Loki Bank are the same fictional Vendor+Product (`icas-bank` / `icas-bank`). Loki Bank is a second install with small label/nav drift, not a second product. Helix CU (`tenants/helix-cu`) is a separate vendor/product with a share-hold workflow. See [`01-system-overview.md`](01-system-overview.md) and [`06-multi-tenant-and-adaptation.md`](06-multi-tenant-and-adaptation.md).
