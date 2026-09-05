@@ -1,6 +1,8 @@
 # 00 — System Design (visual)
 
-This note is the visual companion to the numbered design documents. It does not replace them. Contracts, schemas, and failure rules live in [`01`](01-system-overview.md)–[`12`](12-testing-and-demo.md). This file shows how those pieces sit together.
+This note is the visual companion to the numbered design documents. It does not replace them. Contracts, schemas, and failure rules live in [`01`](01-system-overview.md)–[`12`](12-testing-and-demo.md).
+
+The high-level picture is [`archdiagram.png`](archdiagram.png). Later sections add package-level Mermaid where a sequence or loop helps. Implementation status is in [`TODO.md`](../TODO.md) and in [§8 Scope](#8-scope-map).
 
 ICAS is a computer-use runtime for legacy banking UIs that do not expose useful APIs. The model spends reasoning only while a workflow is unknown. A successful discovery compiles into a reusable capability. Production execution is deterministic.
 
@@ -10,36 +12,15 @@ The artifact becomes the reusable capability.
 Replay executes the known capability.
 ```
 
-Unless a diagram is marked **stretch** or **not done**, it describes the designed system. Implementation status is in [`TODO.md`](../TODO.md) and in [§8 Scope](#8-scope-map).
-
 ---
 
 ## 1. How to read this file
 
-Each section is one concern: a short paragraph, one or two Mermaid diagrams, and a link to the detailed note. Shapes are a locked legend. Color is secondary; GitHub dark mode may wash fills. Shape plus label carry the meaning.
+§2 is the system context. Read the PNG first, then the keyed notes under it. Do not treat a box as demo-proven unless §8 says so. Phase 8 still requires real discovery/replay artifacts; do not hand-author `capabilities/` to fake that proof.
 
-Do not treat a box as “implemented and demo-proven” unless §8 says so. Phase 8 still requires real discovery/replay artifacts; do not hand-author `capabilities/` to fake that proof.
+Dashed outlines in the PNG are in-repo stretch (MCP, optional LLM repair). Solid red is the must-have discover / adapt / replay path.
 
-### Shape legend
-
-```mermaid
-flowchart LR
-  subgraph legend["Legend"]
-    direction TB
-    app([thin app / CLI])
-    mod[runtime module]
-    seam(interface / seam)
-    art[(on-disk artifact)]
-    ev[/run evidence/]
-    llm{{LLM / model}}
-    gate{gate / decision}
-    human((human))
-    ext[[external UI / tenant]]
-  end
-
-  classDef optional stroke-dasharray: 6 4
-  classDef todo stroke-dasharray: 2 2
-```
+Later Mermaid diagrams use this legend:
 
 | Kind | Shape | Examples |
 |---|---|---|
@@ -51,155 +32,56 @@ flowchart LR
 | LLM / model | hexagon | `CandidateProposer`, `RepairProposer` |
 | Gate / decision | diamond | `PolicyGuard`, locator found?, enrolled? |
 | Human | circle | operator, CLI prompt, browser takeover |
-| External UI | subroutine | `icas-bank`, `loki-bank`, headed browser |
-
-Line and subgraph conventions:
+| External UI | subroutine | tenant apps, headed browser |
 
 - **solid** — must-have path
-- **dashed** (`-.->`, dashed subgraph) — in-repo stretch (`--assist`, `icas-adapt`, MCP)
+- **dashed** — stretch (`--assist`, `icas-adapt`, MCP)
 - **dotted** + `TODO` in the label — designed, not done (see §8)
 
 ---
 
 ## 2. System context
 
+![ICAS system context](archdiagram.png)
+
 An operator runs ICAS against synthetic tenant apps. An agent host is an optional second caller through MCP. There is no production co-browsing console, no worker queue, and no real bank.
 
-`capabilities/` is the persistent catalog on the ICAS boundary: discover and adapt write it; replay and MCP read it. `evidence/` is run-scoped output only (traces, logs, screenshots). It is not an input to the next run.
+**Callers.** The operator CLI (top) issues discover, play, or adapt. Play is `icas-play`; the picture labels the same path **replay** because that CLI only runs `ReplayEngine`. The agent host is dashed: it does not drive the browser itself. It calls MCP tools on `icas-mcp`. `.env` is model transport (`ICAS_DISCOVERY_LLM_*` / `ICAS_ASSIST_LLM_*`: `MODEL`, `API_KEY`, optional `BASE_URL` and sampling). It is not a second runtime.
 
-```mermaid
-flowchart TB
-  operator((operator))
-  host([agent host])
+**ICAS (white box).** Three columns:
 
-  subgraph icas["ICAS"]
-    direction LR
+- **Capabilities** (green) — persistent catalog. Discover and adapt write it. Replay and MCP read it.
+- **Apps** (middle, red) — `MCP server/CLI` is dashed (stretch). Under it: **replay**, **adapt**, **discover**. Discover is the only path that must use an LLM.
+- **Evidence** (blue) — run-scoped traces, logs, screenshots. Every discover / adapt / replay writes it. It is not an input to the next run.
 
-    subgraph colL["catalog"]
-      caps[(capabilities/)]
-    end
+**Agent and model (yellow).** Discover talks to **Agent**, which talks to **Mastra Proposer**. Mastra is the LLM/tool layer only; search state stays in ICAS. The dashed **LLM proposer** is the `--assist` / repair seam (`RepairProposer`). Strict replay does not use it. The default hosted model in the picture is **gpt-4o**; a local OpenAI-compatible server is the same seam with `BASE_URL`.
 
-    subgraph colM["apps"]
-      direction TB
-      discover["discover"]
-      play["  play  "]
-      adapt[" adapt  "]
-      mcp["  MCP   "]
-      discover --> play
-      play --> adapt
-      adapt --> mcp
-    end
+**Surface.** The green **Playwright** bar is the implemented `Surface`, not the artifact model. It opens the three synthetic tenants: `icas-bank` (`:4101`), `loki-bank` (`:4102`), and `helix-cu` (`:4103`). icas-bank and Loki Bank are the same fictional Vendor+Product (`icas-bank` / `icas-bank`); Loki is a second install with label/nav drift. Helix CU is a different vendor/product with a share-hold workflow.
 
-    subgraph colR["runs"]
-      evid[/evidence/]
-    end
-
-    colL --> colM
-    colM --> colR
-  end
-
-  bank[["icas-bank :4101"]]
-  loki[["loki-bank :4102"]]
-  helix[["helix-cu :4103"]]
-
-  operator -->|"discover / play / adapt"| icas
-  host -.->|"MCP tools"| icas
-  icas --> bank
-  icas --> loki
-  icas --> helix
-
-  classDef optional stroke-dasharray: 6 4
-  classDef icasBox fill:#f8fafc,stroke:#334155,stroke-width:2px
-  classDef appBox fill:#ffffff,stroke:#334155
-  class host optional
-  class icas icasBox
-  class discover,play,adapt,mcp appBox
-  linkStyle 0,1,2 stroke:none
-```
-
-Both icas-bank and Loki Bank are the same fictional Vendor+Product (`icas-bank` / `icas-bank`). Loki Bank is a second install with small label/nav drift, not a second product. Helix CU (`tenants/helix-cu`) is a separate vendor/product with a share-hold workflow. See [`01-system-overview.md`](01-system-overview.md) and [`06-multi-tenant-and-adaptation.md`](06-multi-tenant-and-adaptation.md).
+See [`01-system-overview.md`](01-system-overview.md) and [`06-multi-tenant-and-adaptation.md`](06-multi-tenant-and-adaptation.md).
 
 ---
 
 ## 3. High-level architecture
 
-Apps stay thin. Behavior lives in packages. The catalog is the join between authoring and execution. Replay never reads `capabilities/` itself; it receives an **effective** capability from `CapabilityResolver`. Playwright is the first `Surface` implementation, not the artifact model.
+The PNG is the architecture. This table maps its boxes onto repo packages. Apps stay thin. Behavior lives in packages. Replay never reads `capabilities/` itself; it receives an **effective** capability from `CapabilityResolver`.
 
-```mermaid
-flowchart TB
-  subgraph apps["Apps"]
-    direction LR
-    agent([icas-agent])
-    play([icas-play])
-    adapt([icas-adapt])
-    mcp([icas-mcp])
-  end
+| In the picture | In the repo |
+|---|---|
+| operator CLI | `apps/icas-agent`, `icas-play`, `icas-adapt` |
+| agent host → MCP tools | `apps/icas-mcp` (stretch) |
+| capabilities | `@icas/capability`: `FileSystemCapabilityRegistry`, `CapabilityResolver` |
+| discover | `@icas/discovery`: `DiscoveryAgent`, `CapabilityCompiler` |
+| replay | `@icas/replay`: `ReplayEngine` |
+| adapt | `apps/icas-adapt` over replay + bounded discover |
+| Agent / Mastra proposer | discovery LLM adapter (`CandidateProposer`) |
+| dashed LLM proposer | `--assist` `RepairProposer`; `@icas/replay` stays model-free |
+| evidence | `@icas/evidence` (redact, then persist) |
+| Playwright | `@icas/surface` + `@icas/browser` (`PlaywrightSurface`) |
+| gpt-4o / `.env` | `ICAS_DISCOVERY_LLM_*` and `ICAS_ASSIST_LLM_*` |
+| tenant UIs | `tenants/icas-bank`, `loki-bank`, `helix-cu` |
 
-  subgraph authoring["Authoring"]
-    disc[DiscoveryAgent]
-    llmDisc{{CandidateProposer}}
-    compiler[CapabilityCompiler]
-    disc --> llmDisc
-    disc --> compiler
-  end
-
-  subgraph catalog["Catalog"]
-    registry(CapabilityRegistry)
-    resolver[CapabilityResolver]
-    base[("capabilities/id/capability.json")]
-    ov[("overrides/tenant.json")]
-    registry --> base
-    registry --> ov
-    resolver --> registry
-  end
-
-  subgraph execution["Execution"]
-    engine[ReplayEngine]
-    assist{{RepairProposer}}
-    engine -.-> assist
-  end
-
-  subgraph shared["Shared runtime"]
-    policy[PolicyGuard]
-    redactor[Redactor]
-    handoff[HandoffController]
-    evidence[EvidenceWriter]
-  end
-
-  subgraph surfaceBox["Surface"]
-    seam(Surface)
-    pw[PlaywrightSurface]
-    seam --> pw
-  end
-
-  subgraph tenants["Tenants"]
-    bank[["icas-bank"]]
-    loki[["loki-bank"]]
-    helix[["helix-cu"]]
-  end
-
-  agent --> disc
-  compiler --> registry
-  play --> resolver
-  mcp -.-> resolver
-  adapt -.-> resolver
-  adapt -.-> disc
-  resolver --> engine
-  engine --> policy
-  disc --> policy
-  policy --> seam
-  engine --> handoff
-  disc --> handoff
-  disc --> evidence
-  engine --> evidence
-  evidence --> redactor
-  pw --> bank
-  pw --> loki
-  pw --> helix
-
-  classDef optional stroke-dasharray: 6 4
-  class mcp,adapt,assist optional
-```
+Shared runtime that the picture folds into the white box: `PolicyGuard`, `Redactor`, `HandoffController`. Prompt policy instructs the model; the guard enforces execute; the redactor runs before evidence leaves memory.
 
 `FileSystemCapabilityRegistry({ root })` is the only catalog backend. The `CapabilityRegistry` interface stays; a REST/DB backend is out of scope. See [`02-repository-structure.md`](02-repository-structure.md).
 
