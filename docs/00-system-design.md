@@ -100,11 +100,13 @@ flowchart TB
 
   bank[["icas-bank :4101"]]
   loki[["loki-bank :4102"]]
+  helix[["helix-cu :4103"]]
 
   operator -->|"discover / play / adapt"| icas
   host -.->|"MCP tools"| icas
   icas --> bank
   icas --> loki
+  icas --> helix
 
   classDef optional stroke-dasharray: 6 4
   classDef icasBox fill:#f8fafc,stroke:#334155,stroke-width:2px
@@ -173,6 +175,7 @@ flowchart TB
   subgraph tenants["Tenants"]
     bank[["icas-bank"]]
     loki[["loki-bank"]]
+    helix[["helix-cu"]]
   end
 
   agent --> disc
@@ -192,6 +195,7 @@ flowchart TB
   evidence --> redactor
   pw --> bank
   pw --> loki
+  pw --> helix
 
   classDef optional stroke-dasharray: 6 4
   class mcp,adapt,assist optional
@@ -303,6 +307,7 @@ flowchart TB
   base[("capability.json")]
   icasOv[("overrides/icas-bank.json")]
   lokiOv[("overrides/loki-bank.json")]
+  helixOv[("overrides/helix-cu.json")]
   resolver[CapabilityResolver]
   enrolled{override exists?}
   effective["effective capability"]
@@ -386,6 +391,7 @@ flowchart TB
   browser[["headed browser session"]]
   bank[["icas-bank"]]
   loki[["loki-bank"]]
+  helix[["helix-cu"]]
   desktop["desktop / a11y driver"]
 
   callers --> seam
