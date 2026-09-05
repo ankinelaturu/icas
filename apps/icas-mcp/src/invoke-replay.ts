@@ -95,6 +95,7 @@ async function executePlaywrightReplay(
     const result = await engine.run(capability, request.inputs, { runId });
     return result;
   } finally {
+    // Close Chromium even when invoke fails. Stdio MCP must not leak the process.
     await surface.close();
   }
 }

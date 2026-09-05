@@ -128,6 +128,7 @@ async function executeLiveDiscovery(
   const proposer =
     deps.proposer ??
     (await createLiveProposer(env, log));
+  // Create evidence first with this id so JSONL and agent.run share one folder.
   const runId = randomUUID();
   const evidence = new FileSystemEvidenceWriter({
     root: deps.evidenceRoot ?? evidenceRoot(env),
@@ -153,6 +154,7 @@ async function executeLiveDiscovery(
     });
     return await agent.run({ ...discoveryRequest, runId });
   } finally {
+    // Close Chromium even when search fails. A stuck run must not leak the process.
     await surface.close();
   }
 }

@@ -75,6 +75,8 @@ export function parameterizeAction(
 export function inputsFromHints(
   steps: readonly ParameterizeStep[],
 ): Record<string, { type: PrimitiveType; required: boolean }> {
+  // byName becomes artifact.inputs. literalToName detects one discovery value
+  // bound to two param names (a compile clash, not a replay concern).
   const byName = new Map<string, { type: PrimitiveType; required: boolean }>();
   const literalToName = new Map<string, string>();
 

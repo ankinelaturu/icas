@@ -133,6 +133,7 @@ export class MastraCandidateProposer implements CandidateProposer {
     try {
       result = await this.agent.generate(userPrompt, {
         structuredOutput: { schema: LlmCandidateProposalSchema },
+        // Omit an empty object so Mastra keeps provider sampling defaults.
         ...(Object.keys(this.modelSettings).length === 0
           ? {}
           : { modelSettings: this.modelSettings }),

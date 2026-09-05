@@ -306,6 +306,7 @@ export class ReplayEngine {
     runId: string,
     capabilityId: string,
   ): Promise<ExecutionResult | undefined> {
+    // Resolve ValueRefs before peek/policy/execute. The surface never sees the input map.
     const action = hydrateAction(step.action, inputs);
     const destinationUrl = await this.peekDestination(action);
     // Policy sees the destination before click so origin allowlists can deny

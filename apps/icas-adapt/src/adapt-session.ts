@@ -109,6 +109,8 @@ export async function runGuardedAdapt(
     ...(deps.specializer === undefined ? {} : { specializer: deps.specializer }),
   });
   await deps.registry.saveOverride(override);
+  // Second replay of the resolved effective capability. Failure rolls back
+  // so icas-play cannot run an unverified tenant.
   const verified = await reverifyOverride(request, base, deps);
   if (!verified) {
     await deps.registry.removeOverride(

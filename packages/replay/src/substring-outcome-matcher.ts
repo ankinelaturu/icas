@@ -43,6 +43,8 @@ export class SubstringOutcomeMatcher implements OutcomeMatcher {
     outcomes: readonly PossibleOutcome[],
   ): MatchedPossibleOutcome | undefined {
     for (const outcome of outcomes) {
+      // Compiler strips success, but skip anyway so a stale catalog entry
+      // cannot look like an error hit.
       if (outcome.kind === "success") {
         continue;
       }

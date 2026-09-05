@@ -130,11 +130,14 @@ export class DiscoveryAgent {
     this.log(`open ${entryUrl}`);
     await this.surface.open(request.target.url);
     let current = createSearchNode({ observation: await this.surface.observe() });
+    // Cycle detector. A later observe with the same stateId stays on this node
+    // and tries the next sibling instead of pushing a duplicate vertex.
     const seen = new Set<string>([current.stateId]);
     this.logObservation(current.observation);
     await trace.record(observationEvent(current.observation));
 
     while (true) {
+      // Stop before another propose/execute so a slow LLM call cannot overshoot.
       if (this.now() - startedAt >= budget.timeoutMs) {
         this.log("stop: timeout");
         return await finishStuck(trace, runId, "timeout");
@@ -170,6 +173,7 @@ export class DiscoveryAgent {
         continue;
       }
 
+      // Check depth after propose so a node at the cap can still declare success.
       if (current.depth >= budget.maxDepth) {
         this.log("stop: maxDepth");
         return await finishStuck(trace, runId, "maxDepth");
@@ -192,6 +196,8 @@ export class DiscoveryAgent {
         continue;
       }
 
+      // Bind before tracing so chosen_action stores durable locators. Execute
+      // still prefers the live snapshot ref (see executeCandidate).
       const bound = await this.bindCandidate(candidate);
       const action = bound.action;
       this.log(
@@ -280,10 +286,14 @@ export class DiscoveryAgent {
           };
         }
       }
+      // Mark tried before execute so a cycle that stays on this node does not
+      // pick the same sibling again.
       current.triedCandidateIds.add(candidate.id);
 
       const result = await this.executeCandidate(candidate, action);
       steps += 1;
+      // This action is now on the DFS path. Backtrack pops it, then replays
+      // whatever remains to restore the parent screen.
       pathActions.push(action);
       await trace.record({ type: "action_result", payload: result });
       if (result.status !== "ok") {
@@ -308,6 +318,7 @@ export class DiscoveryAgent {
         await trace.record({ type: "dead_end", payload: { stateId: nextId, reason: "repeated_state" } });
         continue;
       }
+      // New vertex. The parent link is how backtrack returns here to try siblings.
       seen.add(nextId);
       current = createSearchNode({
         observation: nextObservation,
@@ -337,6 +348,7 @@ export class DiscoveryAgent {
     try {
       const durable = await this.surface.bindSnapshotRef(ref);
       const action = mergeDurableTarget(candidate.action, durable);
+      // Write back so a later locator fallback uses the merged strategies.
       candidate.action = action;
       return { action };
     } catch (error) {
@@ -497,6 +509,7 @@ export class DiscoveryAgent {
     if (this.handoff === undefined) {
       return false;
     }
+    // Flip ownership, pause the page, then block. Resume reverses that order.
     await this.handoff.request({
       runId: args.runId,
       capabilityId: args.capabilityId,
@@ -522,6 +535,7 @@ export class DiscoveryAgent {
     pathActions: readonly CapabilityAction[],
   ): Promise<void> {
     await this.surface.open(entryUrl);
+    // Re-open invalidates snapshot refs. Replay the bound catalog locators.
     for (const action of pathActions) {
       await this.surface.execute(action);
     }
@@ -537,6 +551,7 @@ export class DiscoveryAgent {
     budget: SearchBudget,
     trace: DiscoveryTrace,
   ): Promise<{ status: "success" } | { status: "stuck"; reason?: string } | undefined> {
+    // Later visits already have ranked siblings. Skip a second generate.
     if (node.candidates.length > 0) {
       return undefined;
     }
@@ -576,6 +591,7 @@ export class DiscoveryAgent {
         ? { status: "stuck" }
         : { status: "stuck", reason: proposal.rationale };
     }
+    // Cap the stored frontier. Extra model ranks must not expand DFS.
     node.candidates = sortCandidatesByRank(
       assignCandidateIds(proposal.candidates),
     ).slice(0, budget.maxCandidatesPerState);
@@ -602,6 +618,7 @@ export class DiscoveryAgent {
       }
       return await this.surface.peekDestination(action.target);
     } catch {
+      // Peek is advisory. A locator miss must not abort the search.
       return undefined;
     }
   }

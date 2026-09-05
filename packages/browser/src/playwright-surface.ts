@@ -101,6 +101,7 @@ export class PlaywrightSurface implements Surface {
     this.context = await this.browser.newContext();
     this.page = await this.context.newPage();
     this.lastDocumentHttpStatus = undefined;
+    // Listener covers later in-page navigations. goto's return covers the first load.
     this.watchDocumentResponses(this.page);
     const response = await this.page.goto(url);
     this.recordDocumentResponse(response);

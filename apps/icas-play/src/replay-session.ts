@@ -190,6 +190,7 @@ async function executePlaywrightReplay(
     // ReplayEngine writes log.jsonl + summary.json for every terminal status.
     return result;
   } finally {
+    // Close Chromium even when replay fails. A blocked run must not leak the process.
     await surface.close();
   }
 }

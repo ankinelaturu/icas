@@ -84,6 +84,7 @@ export class CapabilityCompiler {
     // Aggregate names before rewriting so literal clash detection still sees
     // discovery-time values.
     const inputs = inputsFromHints(path);
+    // Shared by inserted handoff steps and compiled actions so ids stay unique.
     const usedIds = new Set<string>();
     const steps: CapabilityStep[] = [];
     for (const [index, step] of path.entries()) {

@@ -124,6 +124,8 @@ export function llmActionToCapabilityAction(raw: LlmCapabilityAction): Capabilit
   const risk = raw.risk ?? undefined;
   const target =
     raw.target === null ? undefined : llmTargetToDescriptor(raw.target, raw.type);
+  // Build a catalog-shaped object, then Zod-parse. Incomplete LLM fields fail
+  // with a catalog error instead of a silent partial action.
   let candidate: unknown;
   switch (raw.type) {
     case "click":

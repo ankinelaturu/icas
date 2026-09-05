@@ -106,6 +106,7 @@ export function extractSuccessfulPath(
     }
     if (event.type === "backtrack") {
       stack.pop();
+      // Drop an unexecuted chosen_action so backtrack-before-result cannot compile.
       pending = undefined;
       const restored = restoreObservation(event.payload);
       // Parent stateId is a coarse lastObservation so the next chosen_action
@@ -119,6 +120,11 @@ export function extractSuccessfulPath(
   return stack;
 }
 
+/**
+ * Read `id` and optional `url` from an observation payload.
+ *
+ * Missing or empty id is not a usable checkpoint, so the event is skipped.
+ */
 function parseObservation(payload: unknown): PathObservation | undefined {
   if (payload === null || typeof payload !== "object") {
     return undefined;
@@ -149,6 +155,12 @@ function restoreObservation(payload: unknown): PathObservation | undefined {
   return { id: to, url: to };
 }
 
+/**
+ * Parse a chosen_action payload into a path step.
+ *
+ * Invalid actions are skipped rather than failing compile; they never entered
+ * the stack because execute never ran them.
+ */
 function parseChosenAction(payload: unknown): SuccessfulPathStep | undefined {
   if (payload === null || typeof payload !== "object") {
     return undefined;
@@ -183,6 +195,7 @@ function parseChosenAction(payload: unknown): SuccessfulPathStep | undefined {
   return step;
 }
 
+/** Intervention `reason` string, or undefined when the payload is unusable. */
 function interventionReason(payload: unknown): string | undefined {
   if (payload === null || typeof payload !== "object") {
     return undefined;
