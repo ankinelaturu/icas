@@ -29,7 +29,8 @@ resolve the *next* step’s action locator
                  an outcome hits when *any* match.phrases entry is visible (OR)
                  first hitting outcome wins:
                    error → business_outcome (heading, summary, match in details)
-                   hitl  → same message + handoff on this session
+                   hitl  → same message + handoff on this session; after resume,
+                           probe the next locator again (found → continue)
     ↓ none    → walk the runtime generic phrase list (same shape, not on the artifact)
     ↓ none    → failure (or HITL only if this run already treats unknown as stuck)
 ```
@@ -251,7 +252,7 @@ If `kind: "hitl"` fires but no `HandoffController` is available, fail closed wit
 
 `kind: "error"` must not pause for a human. The application already answered.
 
-The same browser session remains alive during handoff.
+The same browser session remains alive during handoff. After a `kind: "hitl"` resume, replay probes the next step’s locator again. Found means continue; still missing is `UNEXPECTED_STATE`.
 
 ## Evidence
 

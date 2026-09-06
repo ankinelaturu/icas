@@ -413,8 +413,9 @@ export class ReplayEngine {
    * This step's own target miss is handled before this method. When a next
    * step exists, its locator is the happy-path gate: found → postconditions;
    * missing → dismiss a known interstitial (200 overlay) then probe again;
-   * still missing → this step's `possibleOutcomes`. Last step uses
-   * postconditions then overall success (caller).
+   * still missing → this step's `possibleOutcomes`. HITL resume is not a stop
+   * result (`undefined`); probe the next locator again before failing. Last
+   * step uses postconditions then overall success (caller).
    *
    * @returns `undefined` to continue the step loop; otherwise a structured stop
    */
@@ -449,6 +450,12 @@ export class ReplayEngine {
       );
       if (classified !== undefined) {
         return classified;
+      }
+      // HITL that finds the next control returns undefined (continue), same as
+      // "no phrase matched". Re-probe so a dismissed overlay is not an
+      // unclassified miss.
+      if (await this.nextActionTargetPresent(nextStep)) {
+        return await this.evaluatePostconditions(step, inputs, runId, capabilityId);
       }
       return {
         status: "failure",

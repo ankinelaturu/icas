@@ -428,6 +428,52 @@ describe("ReplayEngine possibleOutcomes", () => {
     const result = await run;
     expect(result.status).toBe("failure");
     expect(surface.automationResumes).toBe(1);
+    expect(result).toMatchObject({
+      observed: "next action target still missing after HITL",
+    });
+  });
+
+  it("continues the next step after HITL when the locator is present on resume", async () => {
+    const surface = new FakeSurface();
+    surface.locateHandler = () => {
+      // Overlay hides Payoff until the human dismisses it (handoffToHuman).
+      if (surface.humanTakes === 0) {
+        throw targetMiss();
+      }
+      return { ok: true };
+    };
+    surface.visibleTextContent = "Call member services to continue this inquiry.";
+    const handoff = new SessionHandoffController();
+    const engine = new ReplayEngine(surface, { handoff });
+    const run = engine.run(
+      testCapability({
+        steps: [
+          clickStep("inquire-loan", {
+            possibleOutcomes: [
+              {
+                kind: "hitl",
+                match: { phrases: ["Call member services"] },
+                heading: "Need assistance",
+                summary: "A person must continue this session.",
+              },
+            ],
+          }),
+          payoffStep(),
+        ],
+      }),
+      {},
+      { runId: "run-hitl-resume" },
+    );
+    await vi.waitFor(() => {
+      expect(handoff.owner()).toBe("human");
+    });
+    expect(surface.executed).toHaveLength(1);
+    surface.visibleTextContent = "Payoff";
+    handoff.signalResume();
+    const result = await run;
+    expect(result.status).toBe("success");
+    expect(surface.executed).toHaveLength(2);
+    expect(surface.automationResumes).toBe(1);
   });
 
   it("does not classify this step's possibleOutcomes when this step's target is missing", async () => {
