@@ -733,7 +733,7 @@ Same fictional Vendor+Product: `icas-bank` / `icas-bank`. Tenant catalog id for 
 
 ## Phase 8 — End-to-end demo and submission evidence
 
-Discover needs `ICAS_DISCOVERY_LLM_*` in `.env`. Strict replay does not. Each ICAS block exports `ICAS_CAPABILITIES_ROOT` and `ICAS_EVIDENCE_ROOT` so the catalog and traces are not the default-hidden scratch dirs. Evidence lands under `$ICAS_EVIDENCE_ROOT/<capability-id>/<run-id>/`. Console captures are `$PWD/phase8-*.log` (`*.log` is gitignored). Catalog files are gitignored; force-add the generated trees when committing.
+Discover needs `ICAS_DISCOVERY_LLM_*` in `.env`. Strict replay does not. Each ICAS block exports `ICAS_CAPABILITIES_ROOT` and `ICAS_EVIDENCE_ROOT` so the catalog and traces are not the default-hidden scratch dirs. Evidence lands under `$ICAS_EVIDENCE_ROOT/<capability-id>/<run-id>/`. Catalog files are gitignored; force-add the generated trees when committing. Add `2>&1 | tee …` on the console later if you need a transcript.
 
 ### Pass 8.0 — Start servers
 
@@ -743,24 +743,29 @@ Discover needs `ICAS_DISCOVERY_LLM_*` in `.env`. Strict replay does not. Each IC
 One tenant per terminal. Leave all four up for the rest of Phase 8. 8.1–8.5 use icas-bank (`:4101`). 8.6 uses icas-bank **enrollment** against icas-banc (`:4104`). 8.7 enrolls icas-banc. 8.8–8.9 use loki-bank (`:4102`). 8.10 uses helix-cu (`:4103`). 8.11–8.12 use icas-bank MCP.
 
 ```bash
+# Staff payoff UI. Discover, replay, HITL, and MCP default.
 pnpm icas-bank
 ```
 
 ```bash
+# Same vendor/product as icas-bank; several label/nav changes. Adapt will fail.
 pnpm loki-bank
 ```
 
 ```bash
+# Different vendor/product. Share-hold, not loan payoff.
 pnpm helix-cu
 ```
 
 ```bash
+# Same product as icas-bank; Inquire is renamed Look Up.
 pnpm icas-banc
 ```
 
 Check they are listening (expect HTTP 200 from each):
 
 ```bash
+# Expect HTTP 200 from each tenant before discover.
 curl -s -o /dev/null -w 'icas-bank 4101 %{http_code}\n' http://127.0.0.1:4101/
 curl -s -o /dev/null -w 'loki-bank 4102 %{http_code}\n' http://127.0.0.1:4102/
 curl -s -o /dev/null -w 'helix-cu 4103 %{http_code}\n' http://127.0.0.1:4103/
@@ -778,28 +783,29 @@ If a check is `000` or connection refused, that app is not running. Do not start
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
 export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
+# LLM discovers loan-payoff on icas-bank.
+# Writes the catalog plus a header-only enrollment.
 pnpm icas-agent \
   discover \
   --id loan-payoff \
   --url http://localhost:4101 \
-  --goal "Generate a payoff statement for loan 987654 for 2026-09-30" \
-  2>&1 | tee $PWD/phase8-01-discover.log
+  --goal "Generate a payoff statement for loan 987654 for 2026-09-30"
 ```
 
 ```bash
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
 export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
-pnpm icas-play list \
-  2>&1 | tee $PWD/phase8-01-list.log
+# List saved capabilities after discover.
+pnpm icas-play list
 ```
 
 ```bash
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
 export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
-pnpm icas-play describe loan-payoff \
-  2>&1 | tee $PWD/phase8-01-describe.log
+# Typed replay flags for loan-payoff. Later run commands must match these names.
+pnpm icas-play describe loan-payoff
 ```
 
 ### Pass 8.2 — Deterministic replay, different inputs
@@ -813,12 +819,13 @@ Replay flags are **not** a fixed CLI contract. Discover does not take typed invo
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
 export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
+# Deterministic replay with a different loan than discover.
+# No LLM.
 pnpm icas-play \
   run loan-payoff \
   --url http://localhost:4101 \
   --loanAccountNumber 112233 \
-  --payoffDate 2026-09-30 \
-  2>&1 | tee $PWD/phase8-02-replay.log
+  --payoffDate 2026-09-30
 ```
 
 ### Pass 8.3 — Business outcome evidence
@@ -834,12 +841,13 @@ Use the same `--` input names as 8.2 / describe, not a hardcoded `loanAccountId`
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
 export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
+# Unknown loan id. Replay may stop as business_outcome if compiled phrases match,
+# or as an error / UNEXPECTED_STATE if they do not. Not a crash.
 pnpm icas-play \
   run loan-payoff \
   --url http://localhost:4101 \
   --loanAccountNumber 000000 \
-  --payoffDate 2026-09-30 \
-  2>&1 | tee $PWD/phase8-03-not-found.log
+  --payoffDate 2026-09-30
 ```
 
 ### Pass 8.4 — Recoverable interstitial evidence
@@ -852,12 +860,13 @@ pnpm icas-play \
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
 export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
+# Session-warning overlay on Loan Details.
+# Replay dismisses Continue on its own, then finishes payoff. Do not click the overlay.
 pnpm icas-play \
   run loan-payoff \
   --url "http://localhost:4101/?inject=wait" \
   --loanAccountNumber 112233 \
-  --payoffDate 2026-09-30 \
-  2>&1 | tee $PWD/phase8-04-wait.log
+  --payoffDate 2026-09-30
 ```
 
 ### Pass 8.5 — HITL evidence
@@ -873,12 +882,13 @@ Do not click **Continue**. In the same headed window click **human interacted**,
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
 export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
+# HITL overlay whose copy matches a compiled hitl phrase.
+# In the same headed window click "human interacted", then press ENTER here.
 pnpm icas-play \
   run loan-payoff \
   --url "http://localhost:4101/?inject=hitl&message=Permission%20required%20to%20access%20loan%20details" \
   --loanAccountNumber 112233 \
-  --payoffDate 2026-09-30 \
-  2>&1 | tee $PWD/phase8-05-hitl.log
+  --payoffDate 2026-09-30
 ```
 
 ### Pass 8.6 — `--assist` on icas-banc URL (no catalog write)
@@ -896,14 +906,15 @@ Do **not** use `--tenant icas-banc` here (that enrollment is 8.7). Overlay unuse
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
 export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
+# icas-banc URL, still enrolled as icas-bank.
+# Assist repairs Inquire → Look Up for this run only. Does not write an override.
 pnpm icas-play \
   run loan-payoff \
   --assist \
   --tenant icas-bank \
   --url http://localhost:4104 \
   --loanAccountNumber 112233 \
-  --payoffDate 2026-09-30 \
-  2>&1 | tee $PWD/phase8-06-assist.log
+  --payoffDate 2026-09-30
 ```
 
 ### Pass 8.7 — icas-banc adaptation evidence
@@ -921,13 +932,14 @@ Mismatch patches need `ICAS_ADAPT_LLM_*`. Compatible enrollments skip the model;
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
 export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
+# Persist the Look Up rename as an icas-banc override.
+# Re-verify with ReplayEngine (no LLM).
 pnpm icas-adapt \
   loan-payoff \
   --tenant icas-banc \
   --url http://localhost:4104 \
   --loanAccountNumber 112233 \
-  --payoffDate 2026-09-30 \
-  2>&1 | tee $PWD/phase8-07-adapt.log
+  --payoffDate 2026-09-30
 ```
 
 ### Pass 8.8 — Loki adapt expected fail
@@ -943,13 +955,14 @@ Same Vendor+Product as icas-bank, but Loki has **several** label/nav renames (Le
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
 export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
+# Loki has several drifted labels. Adapt patches one step, then re-verify fails.
+# Enrollment rolls back; loan-payoff catalog is unchanged.
 pnpm icas-adapt \
   loan-payoff \
   --tenant loki-bank \
   --url http://localhost:4102 \
   --loanAccountNumber 112233 \
-  --payoffDate 2026-09-30 \
-  2>&1 | tee $PWD/phase8-08-adapt-loki.log
+  --payoffDate 2026-09-30
 ```
 
 Expect stderr `failed re-verify; enrollment was rolled back`. `capabilities/loan-payoff/overrides/loki-bank.json` must not remain.
@@ -969,6 +982,8 @@ Pass vendor/product/tenant explicitly. Defaults are all `icas-bank`; a Loki URL 
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
 export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
+# New catalog id on loki-bank after adapt was not enough.
+# Same vendor/product and payoff goal. Do not reuse id loan-payoff.
 pnpm icas-agent \
   discover \
   --id payoff-statement \
@@ -976,16 +991,15 @@ pnpm icas-agent \
   --vendor icas-bank \
   --product icas-bank \
   --tenant loki-bank \
-  --goal "Generate a payoff statement for loan 987654 for 2026-09-30" \
-  2>&1 | tee $PWD/phase8-09-discover-loki.log
+  --goal "Generate a payoff statement for loan 987654 for 2026-09-30"
 ```
 
 ```bash
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
 export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
-pnpm icas-play describe payoff-statement \
-  2>&1 | tee $PWD/phase8-09-describe-loki.log
+# Replay flags for payoff-statement. Names may differ from loan-payoff.
+pnpm icas-play describe payoff-statement
 ```
 
 Replay `--` flags come from that describe (names may differ from 8.1). This discover named `loanNumber` and `payoffDate`. `--tenant loki-bank` is required: omitted tenant defaults to `icas-bank`, which is not enrolled on this id. `--url` only opens `:4102`.
@@ -994,13 +1008,14 @@ Replay `--` flags come from that describe (names may differ from 8.1). This disc
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
 export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
+# Replay the new Loki capability.
+# Tenant must be loki-bank; default icas-bank is not enrolled on this id.
 pnpm icas-play \
   run payoff-statement \
   --tenant loki-bank \
   --url http://localhost:4102 \
   --loanNumber 112233 \
-  --payoffDate 2026-09-30 \
-  2>&1 | tee $PWD/phase8-09-replay-loki.log
+  --payoffDate 2026-09-30
 ```
 
 ### Pass 8.10 — Helix CU second product
@@ -1015,6 +1030,8 @@ Different vendor/product and a different goal (share hold, div layout). Not an o
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
 export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
+# Discover share-hold on helix-cu.
+# Different vendor/product and a different goal than payoff.
 pnpm icas-agent \
   discover \
   --id share-hold \
@@ -1022,16 +1039,15 @@ pnpm icas-agent \
   --vendor helix \
   --product helix \
   --tenant helix-cu \
-  --goal "Place a \$250.00 hold on member 441122 share 01 for pending debit card authorization. Extract the hold confirmation number, available balance after the hold, and the hold expiry date." \
-  2>&1 | tee $PWD/phase8-10-discover-helix.log
+  --goal "Place a \$250.00 hold on member 441122 share 01 for pending debit card authorization. Extract the hold confirmation number, available balance after the hold, and the hold expiry date."
 ```
 
 ```bash
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
 export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
-pnpm icas-play describe share-hold \
-  2>&1 | tee $PWD/phase8-10-describe-helix.log
+# Replay flags for share-hold. Share 01 is a compiled click, not a CLI input.
+pnpm icas-play describe share-hold
 ```
 
 Replay `--` flags come from that describe. This discover named `memberNumber`, `holdAmount`, and `holdReason`. `--tenant helix-cu` plus `--vendor helix --product helix` are required (omitted identity defaults to `icas-bank`). `--url` only opens `:4103`. Share `01` is a compiled click, not a CLI input — leave it. A second-member replay is `--memberNumber 330198` (same share click). Do not copy loan flags onto this capability.
@@ -1042,6 +1058,8 @@ The compiled share-row locator copies the snapshot accessible name (`Primary Sha
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
 export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
+# Replay share-hold. Assist repairs the share-row locator miss for this run.
+# Does not persist an override.
 pnpm icas-play \
   run share-hold \
   --assist \
@@ -1051,8 +1069,7 @@ pnpm icas-play \
   --url http://localhost:4103 \
   --memberNumber 441122 \
   --holdAmount 250.00 \
-  --holdReason "pending debit card authorization" \
-  2>&1 | tee $PWD/phase8-10-replay-helix.log
+  --holdReason "pending debit card authorization"
 ```
 
 ### Pass 8.11 — MCP Inspector
@@ -1065,6 +1082,8 @@ Stdio server (`loan-payoff` → tool `loan_payoff`). Tenant must already be enro
 Inspector starts the web UI and **spawns** `pnpm icas-mcp` as a stdio child. Do not also run `pnpm icas-mcp` in another terminal. Do not `tee` this command — stdout is the Inspector/MCP pipe. After a tool call, inspect `$ICAS_EVIDENCE_ROOT`. Run from the repo root.
 
 ```bash
+# MCP Inspector UI. Spawns icas-mcp as a stdio child.
+# Invoke loan_payoff with assist off. Do not tee — stdout is the protocol pipe.
 npx -y @modelcontextprotocol/inspector \
   -e ICAS_CAPABILITIES_ROOT=$PWD/capabilities \
   -e ICAS_EVIDENCE_ROOT=$PWD/evidence \
