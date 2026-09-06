@@ -87,7 +87,8 @@ export interface Surface {
    * Visible text of the current view, with no wait.
    *
    * Replay uses this to classify `possibleOutcomes` after the next locator
-   * already missed. Do not wait for phrases to appear here.
+   * already missed. Implementations must include `input type=submit` values
+   * (not present in `innerText`). Do not wait for phrases to appear here.
    */
   visibleText(): Promise<string>;
 

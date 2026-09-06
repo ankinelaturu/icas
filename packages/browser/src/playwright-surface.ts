@@ -272,10 +272,28 @@ export class PlaywrightSurface implements Surface {
    *
    * Used to classify exceptional chrome after a locator miss. `innerText`
    * skips hidden nodes so banner copy matches what the operator sees.
+   * Submit/reset/button **input values** are not in `innerText`; append those
+   * so adapt can see Inquire vs Look Up on a search form.
    */
   async visibleText(): Promise<string> {
     this.assertAutomation();
-    return await this.requirePage().locator("body").innerText();
+    return await this.requirePage().evaluate(() => {
+      const body = document.body.innerText;
+      const extras: string[] = [];
+      const nodes = document.querySelectorAll(
+        'input[type="submit"], input[type="button"], input[type="reset"]',
+      );
+      for (const node of nodes) {
+        const value = (node as HTMLInputElement).value.trim();
+        if (value.length > 0 && !body.includes(value)) {
+          extras.push(value);
+        }
+      }
+      if (extras.length === 0) {
+        return body;
+      }
+      return `${body}\n${extras.join("\n")}`;
+    });
   }
 
   /**

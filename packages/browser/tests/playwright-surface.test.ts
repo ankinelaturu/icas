@@ -40,6 +40,13 @@ describe("PlaywrightSurface lifecycle", () => {
     expect(text).toContain("Payoff Statement");
     expect(text).toContain("Statement total");
   });
+
+  it("includes input submit values that innerText omits", async () => {
+    await surface.open(pageUrl("submit-value.html"));
+    const text = await surface.visibleText();
+    expect(text).toContain("Search Loan Account");
+    expect(text).toContain("Look Up");
+  });
 });
 
 describe("PlaywrightSurface locate (semantic)", () => {
