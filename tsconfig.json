@@ -1,18 +1,14 @@
 {
+  // Packages and apps typecheck via their own tsconfig. This file is the
+  // repo-root project so the editor is not left pointing at a deleted scratch
+  // script (`replay-loan-payoff.ts`).
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
     "rootDir": ".",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["node"],
-    "paths": {
-      "@icas/capability": ["./packages/capability/src/index.ts"],
-      "@icas/evidence": ["./packages/evidence/src/index.ts"],
-      "@icas/handoff": ["./packages/handoff/src/index.ts"],
-      "@icas/policy": ["./packages/policy/src/index.ts"],
-      "@icas/surface": ["./packages/surface/src/index.ts"]
-    }
+    "types": ["node"]
   },
-  "include": ["replay-loan-payoff.ts"]
+  "include": ["tests/integration/vitest.config.ts"]
 }
