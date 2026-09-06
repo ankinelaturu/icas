@@ -1,8 +1,4 @@
-# 00 — System Design (visual)
-
-This note is the visual companion to the numbered design documents. It does not replace them. Contracts, schemas, and failure rules live in [`01`](01-system-overview.md)–[`12`](12-testing-and-demo.md).
-
-The high-level picture is [`archdiagram.png`](archdiagram.png). Later sections add package-level Mermaid where a sequence or loop helps. Implementation status is in [`TODO.md`](../TODO.md) and in [§8 Scope](#8-scope-map).
+# 00 — System Design
 
 ICAS is a computer-use runtime for legacy banking UIs that do not expose useful APIs. The model spends reasoning only while a workflow is unknown. A successful discovery compiles into a reusable capability. Production execution is deterministic.
 
@@ -12,82 +8,42 @@ The artifact becomes the reusable capability.
 Replay executes the known capability.
 ```
 
----
-
-## 1. How to read this file
-
-§2 is the system context. Read the PNG first, then the keyed notes under it. Do not treat a box as demo-proven unless §8 says so. Phase 8 still requires real discovery/replay artifacts; do not hand-author `capabilities/` to fake that proof.
-
-Dashed outlines in the PNG are in-repo stretch (MCP, optional LLM repair). Solid red is the must-have discover / adapt / replay path.
-
-Later Mermaid diagrams use this legend:
-
-| Kind | Shape | Examples |
-|---|---|---|
-| Thin app / CLI | stadium | `icas-agent`, `icas-play`, `icas-adapt`, `icas-mcp` |
-| Runtime module | rectangle | `ReplayEngine`, `CapabilityCompiler`, `PolicyGuard` |
-| Interface / seam | rounded | `Surface`, `CapabilityRegistry` |
-| On-disk artifact | cylinder | `capability.json`, tenant override |
-| Run evidence | parallelogram | `trace.jsonl`, `log.jsonl`, screenshots |
-| LLM / model | hexagon | `CandidateProposer`, `RepairProposer` |
-| Gate / decision | diamond | `PolicyGuard`, locator found?, enrolled? |
-| Human | circle | operator, CLI prompt, browser takeover |
-| External UI | subroutine | tenant apps, headed browser |
-
-- **solid** — must-have path
-- **dashed** — stretch (`--assist`, `icas-adapt`, MCP)
-- **dotted** + `TODO` in the label — designed, not done (see §8)
+Contracts and failure rules: [`01`](01-system-overview.md)–[`12`](12-testing-and-demo.md). Implementation status: [`TODO.md`](../TODO.md).
 
 ---
 
-## 2. System context
+## 1. Architecture
 
-![ICAS system context](archdiagram.png)
+![ICAS architecture](icas.excalidraw.svg)
 
-An operator runs ICAS against synthetic tenant apps. An agent host is an optional second caller through MCP. There is no production co-browsing console, no worker queue, and no real bank.
+An operator drives ICAS with `icas-agent` (discover), `icas-play` (replay), and `icas-adapt`. An agent host may invoke the same catalog through `icas-mcp`. There is no co-browsing console, worker queue, or real bank.
 
-**Callers.** The operator CLI (top) issues discover, play, or adapt. Play is `icas-play`; the picture labels the same path **replay** because that CLI only runs `ReplayEngine`. The agent host is dashed: it does not drive the browser itself. It calls MCP tools on `icas-mcp`. `.env` is model transport (`ICAS_DISCOVERY_LLM_*` / `ICAS_ASSIST_LLM_*`: `MODEL`, `API_KEY`, optional `BASE_URL` and sampling). It is not a second runtime.
+Discover and adapt write the `capabilities/` catalog. Replay and MCP read it through `CapabilityResolver` and never glob the tree. `ReplayEngine` receives only the **effective** capability. Every run writes `evidence/` (traces, logs, screenshots). Evidence is not an input to the next run.
 
-**ICAS (white box).** Three columns:
+Discover is the LLM path: `DiscoveryAgent` → `CandidateProposer` (Mastra) → the configured model (`ICAS_DISCOVERY_LLM_*`; default `openai/gpt-4o`). Search state stays in ICAS, not in Mastra memory. Strict replay has no LLM. `--assist` uses a separate `RepairProposer` and `ICAS_ASSIST_LLM_*`. `.env` is model transport only (`MODEL`, `API_KEY`, optional `BASE_URL` and sampling).
 
-- **Capabilities** (green) — persistent catalog. Discover and adapt write it. Replay and MCP read it.
-- **Apps** (middle, red) — `MCP server/CLI` is dashed (stretch). Under it: **replay**, **adapt**, **discover**. Discover is the only path that must use an LLM.
-- **Evidence** (blue) — run-scoped traces, logs, screenshots. Every discover / adapt / replay writes it. It is not an input to the next run.
+`PlaywrightSurface` is the implemented `Surface`. It opens the synthetic tenants: `icas-bank` (`:4101`), `loki-bank` (`:4102`), `helix-cu` (`:4103`). icas-bank and Loki Bank share Vendor+Product `icas-bank` / `icas-bank`; Loki has label/nav drift. Helix CU is a different vendor/product (share hold).
 
-**Agent and model (yellow).** Discover talks to **Agent**, which talks to **Mastra Proposer**. Mastra is the LLM/tool layer only; search state stays in ICAS. The dashed **LLM proposer** is the `--assist` / repair seam (`RepairProposer`). Strict replay does not use it. The default hosted model in the picture is **gpt-4o**; a local OpenAI-compatible server is the same seam with `BASE_URL`.
-
-**Surface.** The green **Playwright** bar is the implemented `Surface`, not the artifact model. It opens the three synthetic tenants: `icas-bank` (`:4101`), `loki-bank` (`:4102`), and `helix-cu` (`:4103`). icas-bank and Loki Bank are the same fictional Vendor+Product (`icas-bank` / `icas-bank`); Loki is a second install with label/nav drift. Helix CU is a different vendor/product with a share-hold workflow.
-
-See [`01-system-overview.md`](01-system-overview.md) and [`06-multi-tenant-and-adaptation.md`](06-multi-tenant-and-adaptation.md).
-
----
-
-## 3. High-level architecture
-
-The PNG is the architecture. This table maps its boxes onto repo packages. Apps stay thin. Behavior lives in packages. Replay never reads `capabilities/` itself; it receives an **effective** capability from `CapabilityResolver`.
-
-| In the picture | In the repo |
+| Component | Package / app |
 |---|---|
-| operator CLI | `apps/icas-agent`, `icas-play`, `icas-adapt` |
-| agent host → MCP tools | `apps/icas-mcp` (stretch) |
-| capabilities | `@icas/capability`: `FileSystemCapabilityRegistry`, `CapabilityResolver` |
-| discover | `@icas/discovery`: `DiscoveryAgent`, `CapabilityCompiler` |
-| replay | `@icas/replay`: `ReplayEngine` |
-| adapt | `apps/icas-adapt` over replay + bounded discover |
-| Agent / Mastra proposer | discovery LLM adapter (`CandidateProposer`) |
-| dashed LLM proposer | `--assist` `RepairProposer`; `@icas/replay` stays model-free |
-| evidence | `@icas/evidence` (redact, then persist) |
-| Playwright | `@icas/surface` + `@icas/browser` (`PlaywrightSurface`) |
-| gpt-4o / `.env` | `ICAS_DISCOVERY_LLM_*` and `ICAS_ASSIST_LLM_*` |
-| tenant UIs | `tenants/icas-bank`, `loki-bank`, `helix-cu` |
+| Discover CLI | `apps/icas-agent` |
+| Replay CLI | `apps/icas-play` |
+| Adapt CLI | `apps/icas-adapt` |
+| MCP server | `apps/icas-mcp` |
+| Catalog, resolve | `@icas/capability` (`FileSystemCapabilityRegistry`, `CapabilityResolver`) |
+| Discover, compile | `@icas/discovery` (`DiscoveryAgent`, `CapabilityCompiler`) |
+| Replay | `@icas/replay` (`ReplayEngine`) |
+| Policy, redact, HITL, evidence | `@icas/policy`, `@icas/redactor`, `@icas/handoff`, `@icas/evidence` |
+| Browser | `@icas/surface`, `@icas/browser` |
+| Tenants | `tenants/icas-bank`, `loki-bank`, `helix-cu` |
 
-Shared runtime that the picture folds into the white box: `PolicyGuard`, `Redactor`, `HandoffController`. Prompt policy instructs the model; the guard enforces execute; the redactor runs before evidence leaves memory.
+Prompt policy instructs the model. `PolicyGuard` enforces execute. `Redactor` runs before evidence is persisted. The catalog backend is `FileSystemCapabilityRegistry({ root })` only; REST/DB registries are out of scope.
 
-`FileSystemCapabilityRegistry({ root })` is the only catalog backend. The `CapabilityRegistry` interface stays; a REST/DB backend is out of scope. See [`02-repository-structure.md`](02-repository-structure.md).
+See [`01-system-overview.md`](01-system-overview.md), [`02-repository-structure.md`](02-repository-structure.md), [`06-multi-tenant-and-adaptation.md`](06-multi-tenant-and-adaptation.md).
 
 ---
 
-## 4. Core invariant / lifecycle
+## 2. Lifecycle
 
 Discovery always discovers. It does not silently replay. Replay selects by **capability id**. `--url` only opens the surface. Vendor, product, and tenant default to `icas-bank`; ICAS does not infer them from the URL.
 
@@ -126,13 +82,13 @@ flowchart LR
   class assist optional
 ```
 
-`icas-adapt` is a third lifecycle, not a second discover: guarded replay against another tenant, then header-only enrollment or a small declarative patch. See [§5.8](#58-multi-tenant--adapt).
+`icas-adapt` is a third lifecycle, not a second discover: guarded replay against another tenant, then header-only enrollment or a small declarative patch. See [§3.8](#38-multi-tenant--adapt).
 
 ---
 
-## 5. Subsystems
+## 3. Subsystems
 
-### 5.1 Discovery and compiler
+### 3.1 Discovery and compiler
 
 `icas-agent` observes the live surface, asks the model for ranked structured candidates, executes only what policy allows, and searches with an explicit ICAS-owned graph (budgets, backtrack, repeated-state). Mastra is the LLM/tool layer. Search state does not live in Mastra memory.
 
@@ -177,7 +133,7 @@ flowchart TB
 
 Vision-capable default is `openai/gpt-4o`. Today `generate` still embeds `imagePath` as text (Pass 5.22). Compile copies `error` and `hitl` `possibleOutcomes` onto the step and drops `kind: "success"` (Pass 5.19). Replay classification is Pass 4.14. Details: [`03-discovery-agent.md`](03-discovery-agent.md).
 
-### 5.2 Catalog and resolve
+### 3.2 Catalog and resolve
 
 Identity is catalog `id` only (for example `loan-payoff`). Vendor+Product is the app family. Tenant identity lives on the override, not on every route in the base.
 
@@ -209,7 +165,7 @@ flowchart TB
 
 Header-only `overrides: {}` is valid enrollment. `ReplayEngine` stays tenant-agnostic: no tenant `if/else`, no hardcoded product error table. Details: [`04-capability-artifact.md`](04-capability-artifact.md).
 
-### 5.3 Replay
+### 3.3 Replay
 
 `ReplayEngine` is the production path shared by `icas-play`, `icas-mcp`, and `icas-adapt` verification. Strict replay has no LLM. Every action still goes through `PolicyGuard`.
 
@@ -261,7 +217,7 @@ flowchart TB
 
 Until Passes 1.10 / 4.14 / 4.16 land, replay still uses the earlier hardcoded loan-copy table. Phrase embeddings (Pass 4.15) are deferred: same `match.phrases` field, no vectors on the artifact, still no LLM on strict replay. Details: [`05-replay-engine.md`](05-replay-engine.md).
 
-### 5.4 Surface
+### 3.4 Surface
 
 The artifact speaks semantic actions, targets, assertions, and outputs. `PlaywrightSurface` is the implemented driver. Desktop/accessibility stays a future mapping behind the same seam; this prototype does not implement a second driver.
 
@@ -289,7 +245,7 @@ flowchart TB
 
 Target resolution is ranked: `roleText`, `visibleText`, `label`, then `relative` / `css` / `xpath`. Coordinates are last resort. `roleText` / `visibleText` match a substring of the accessible name so catalog chrome still hits concatenated tiles. Discovery may bind a Playwright snapshot `ref` (`e12`) on the live page for click/fill; that token is not a catalog strategy. Replay uses the model's locator phrases plus optional bind CSS/`label`, never the ref and never the live innerText name. Success outputs are not bound — extract locators stay the model's captions. Bind is best-effort: empty unlabeled inputs still execute via the ref or the model's `relative` locators. Document HTTP status is an optional `Observation.httpStatus` when Playwright observed a main-frame document response. Details: [`10-surface-abstraction.md`](10-surface-abstraction.md).
 
-### 5.5 Safety
+### 3.5 Safety
 
 Three independent layers. Prompt text influences what the model proposes. `PolicyGuard` enforces what may execute. `Redactor` controls what may leave memory or be persisted. Prompt policy is not enforcement.
 
@@ -321,7 +277,7 @@ flowchart LR
 
 Runtime checks include action allowlist, in-origin vs off-origin (peek destination before click, then resulting navigation), and independent risky-control text (do not trust model self-classification). Saved artifacts must not contain credentials, tokens, or raw sensitive data. Details: [`08-safety-policy.md`](08-safety-policy.md).
 
-### 5.6 Handoff
+### 3.6 Handoff
 
 Handoff is control transfer of the **same** headed session. It is not a yes/no modal alone and not a co-browsing console.
 
@@ -338,7 +294,7 @@ stateDiagram-v2
 
 Discovery requests HITL when stuck, ambiguous, risky, or policy-blocked. Replay requests HITL when policy requires it, state is unrecoverable, assist is disabled/exhausted, or a compiled `possibleOutcomes` entry with `kind: "hitl"` matches. Details: [`07-human-handoff.md`](07-human-handoff.md).
 
-### 5.7 Evidence
+### 3.7 Evidence
 
 A capability is persistent knowledge. Every discovery, replay, or adaptation is a **run** with its own directory. Persist only after `Redactor`.
 
@@ -360,7 +316,7 @@ flowchart TB
 
 Discovery traces are the richest (observations, ranked candidates, policy, backtrack, intervention). Replay writes checkpoint JSONL on every terminal status; screenshots on failure, HITL, and business-outcome stops — not on success. Details: [`09-evidence-observability.md`](09-evidence-observability.md).
 
-### 5.8 Multi-tenant / adapt
+### 3.8 Multi-tenant / adapt
 
 ```text
 Vendor → Product → Tenant
@@ -399,15 +355,15 @@ flowchart TB
 
 `icas-play` / MCP must not silently use the bare base for an unenrolled tenant. Details: [`06-multi-tenant-and-adaptation.md`](06-multi-tenant-and-adaptation.md).
 
-### 5.9 MCP (stretch)
+### 3.9 MCP (stretch)
 
 `icas-play` is the human CLI. `icas-mcp` is the agent-facing adapter over the **same** registry, resolver, and `ReplayEngine`. Stdio transport for the local demo. One tool per saved capability; typed args from compiled `inputs`. Tenant must already be enrolled (default `icas-bank`).
 
-No separate MCP diagram: it is the dashed `icas-mcp` node on [§3](#3-high-level-architecture). On `business_outcome`, MCP surfaces `heading` / `summary` / `message` from replay `details` (Pass 6.13). Details: [`11-agent-facing-mcp.md`](11-agent-facing-mcp.md).
+On `business_outcome`, MCP surfaces `heading` / `summary` / `message` from replay `details` (Pass 6.13). Details: [`11-agent-facing-mcp.md`](11-agent-facing-mcp.md).
 
 ---
 
-## 6. Cross-cutting sequences
+## 4. Cross-cutting sequences
 
 ### Discover (must)
 
@@ -496,7 +452,7 @@ sequenceDiagram
 
 ---
 
-## 7. Package dependency direction
+## 5. Package dependency direction
 
 Dependencies flow inward toward reusable contracts. Core packages do not import CLIs.
 
@@ -548,7 +504,7 @@ Workspace layout and naming: [`02-repository-structure.md`](02-repository-struct
 
 ---
 
-## 8. Scope map
+## 6. Scope
 
 The must-have slice is the vertical path a reviewer can defend: real LLM discovery, compiled artifact, enrolled tenant, deterministic replay with structured errors, same-session HITL, redacted evidence. Stretch is in-repo by design. Do not skip the must-have slice to polish extras.
 
