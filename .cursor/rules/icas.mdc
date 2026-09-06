@@ -7,7 +7,7 @@ alwaysApply: true
 
 Follow the user's request to the letter. Before editing, restate the objective in one short summary. Do not implement the next `TODO.md` pass unasked.
 
-Design source of truth is `docs/`. If an architectural decision changes, update the relevant design note in the same change. `REPORT.md` stays short (seven Interface.AI headings). Do not commit `docs/brief.pdf`.
+Design source of truth is `docs/`. If an architectural decision changes, update the relevant design note in the same change. When Phase 8 demo commands in `TODO.md` change, update the root `README.md` Demo path in the same change (reviewer steps, not the operator checklist). `REPORT.md` stays short (seven Interface.AI headings). Do not commit `docs/brief.pdf`.
 
 ## Shortcuts
 

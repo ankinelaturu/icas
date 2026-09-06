@@ -37,13 +37,45 @@ Callers must not glob `capabilities/`. CLIs use `FileSystemCapabilityRegistry` (
 
 ## Demo path
 
-Start the synthetic bank, then discover against it. `--vendor` / `--product` / `--tenant` default to `icas-bank` and are never inferred from `--url`.
+Four synthetic **staff** UIs (no login, no real PII). Three of them are the same fictional Vendor+Product (`icas-bank` / `icas-bank`) so ICAS can reuse one payoff capability and still prove tenant drift. Helix is a **different** vendor/product so a second goal is not a loan-payoff clone.
+
+| Tenant | Port | Role |
+|---|---|---|
+| `icas-bank` | `:4101` | Discover `loan-payoff`. Replay, not-found, wait overlay, HITL, MCP default. |
+| `icas-banc` | `:4104` | Same product, one rename (Inquire → Look Up). Bounded `icas-adapt` success. |
+| `loki-bank` | `:4102` | Same product, several label/nav changes. Adapt of `loan-payoff` fails; rediscover as `payoff-statement`. |
+| `helix-cu` | `:4103` | Vendor/product `helix` / `helix`. Discover `share-hold` (div layout). |
+
+`--vendor` / `--product` / `--tenant` are never inferred from `--url`. Replay `--` flags come from `icas-play describe`.
 
 ```bash
-pnpm icas-bank
+export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
+export ICAS_EVIDENCE_ROOT=$PWD/evidence
+```
 
-# Required: --id (unique), --url, --goal. Put values to type in the goal.
-# Discover refuses an existing --id. The model names params; do not pass --loanAccountId here.
+### 0. Start servers
+
+One tenant per terminal. Leave all four up.
+
+```bash
+pnpm icas-bank    # :4101
+pnpm loki-bank    # :4102
+pnpm helix-cu     # :4103
+pnpm icas-banc    # :4104
+```
+
+```bash
+curl -s -o /dev/null -w 'icas-bank 4101 %{http_code}\n' http://127.0.0.1:4101/
+curl -s -o /dev/null -w 'loki-bank 4102 %{http_code}\n' http://127.0.0.1:4102/
+curl -s -o /dev/null -w 'helix-cu 4103 %{http_code}\n' http://127.0.0.1:4103/
+curl -s -o /dev/null -w 'icas-banc 4104 %{http_code}\n' http://127.0.0.1:4104/
+```
+
+### 1. Discover loan-payoff
+
+Required: `--id` (unique), `--url`, `--goal`. Put values to type in the goal. Discover refuses an existing `--id`. Do not pass typed fill flags here.
+
+```bash
 pnpm icas-agent \
   discover \
   --id loan-payoff \
@@ -52,46 +84,188 @@ pnpm icas-agent \
 
 pnpm icas-play list
 pnpm icas-play describe loan-payoff
+```
 
-# Deterministic replay (no LLM). Tenant must be enrolled. Different loan than discovery:
+### 2. Deterministic replay (no LLM)
+
+Tenant must be enrolled. Use a different loan than discovery.
+
+```bash
 pnpm icas-play \
   run loan-payoff \
   --url http://localhost:4101 \
-  --loanAccountId 112233 \
+  --loanAccountNumber 112233 \
   --payoffDate 2026-09-30
+```
 
-# Unknown loan → business_outcome from compiled possibleOutcomes (not an engine enum)
+Optional `--assist` (`ICAS_ASSIST_LLM_*`) is a bounded repair on replay. It is not a Phase 8 step and does not persist an override.
+
+### 3. Business outcome
+
+Unknown loan → `business_outcome` from compiled `possibleOutcomes` (not an engine enum).
+
+```bash
 pnpm icas-play \
   run loan-payoff \
   --url http://localhost:4101 \
-  --loanAccountId 000000 \
+  --loanAccountNumber 000000 \
   --payoffDate 2026-09-30
+```
 
-# Optional one-step assisted fallback (ICAS_ASSIST_LLM_*)
+### 4. Recoverable interstitial
+
+`?inject=wait` on Loan Details. Replay dismisses **Continue**, then finishes. Do not use `?inject=hitl` here.
+
+```bash
 pnpm icas-play \
   run loan-payoff \
-  --assist \
-  --url http://localhost:4101 \
-  --loanAccountId 112233 \
+  --url "http://localhost:4101/?inject=wait" \
+  --loanAccountNumber 112233 \
   --payoffDate 2026-09-30
+```
 
-# Loki Bank: same vendor/product, label drift. Keep icas-bank running on 4101.
-# Mismatch patches need ICAS_ADAPT_LLM_* (compatible enrollments skip the model).
-pnpm loki-bank
+### 5. HITL
+
+Same headed session. Do not click **Continue**. Click **human interacted**, then ENTER in the CLI. `message=` must match a compiled HITL phrase (this artifact: `Permission required to access loan details`).
+
+```bash
+pnpm icas-play \
+  run loan-payoff \
+  --url "http://localhost:4101/?inject=hitl&message=Permission%20required%20to%20access%20loan%20details" \
+  --loanAccountNumber 112233 \
+  --payoffDate 2026-09-30
+```
+
+HITL is control transfer of the **same** headed browser session (not a co-browsing console).
+
+### 6. icas-banc adapt (one-step success)
+
+Same Vendor+Product; Inquire → Look Up. Needs `ICAS_ADAPT_LLM_*`. Re-verify is `ReplayEngine` with no LLM.
+
+```bash
+pnpm icas-adapt \
+  loan-payoff \
+  --tenant icas-banc \
+  --url http://localhost:4104 \
+  --loanAccountNumber 112233 \
+  --payoffDate 2026-09-30
+```
+
+### 7. Loki adapt (expected fail)
+
+Several label/nav renames. One-step patch, then re-verify rolls back. `loan-payoff` stays enrolled for icas-bank / icas-banc only.
+
+```bash
 pnpm icas-adapt \
   loan-payoff \
   --tenant loki-bank \
   --url http://localhost:4102 \
-  --loanAccountId 112233 \
+  --loanAccountNumber 112233 \
   --payoffDate 2026-09-30
+```
 
-# Stdio MCP server. Hosts see tool loan_payoff (hyphens → underscores).
-pnpm icas-mcp
+### 8. Loki rediscover (`payoff-statement`)
+
+New catalog id for the same goal. Pass identity explicitly. Do not reuse `--id loan-payoff`.
+
+```bash
+pnpm icas-agent \
+  discover \
+  --id payoff-statement \
+  --url http://localhost:4102 \
+  --vendor icas-bank \
+  --product icas-bank \
+  --tenant loki-bank \
+  --goal "Generate a payoff statement for loan 987654 for 2026-09-30"
+
+pnpm icas-play describe payoff-statement
+
+pnpm icas-play \
+  run payoff-statement \
+  --url http://localhost:4102 \
+  --loanAccountNumber 112233 \
+  --payoffDate 2026-09-30
+```
+
+Replay flags after this discover come from that describe (names may differ).
+
+### 9. Helix CU (`share-hold`)
+
+Different vendor/product and goal. Pass identity explicitly.
+
+```bash
+pnpm icas-agent \
+  discover \
+  --id share-hold \
+  --url http://localhost:4103 \
+  --vendor helix \
+  --product helix \
+  --tenant helix-cu \
+  --goal "Place a \$250.00 hold on member 441122 share 01 for pending debit card authorization. Extract the hold confirmation number, available balance after the hold, and the hold expiry date."
+
+pnpm icas-play describe share-hold
+```
+
+Replay `--` flags come from that describe. Do not copy loan-payoff flags onto this capability. Known member `441122` / `$250.00` / share `01`.
+
+### 10. MCP Inspector
+
+Inspector starts the web UI and spawns `pnpm icas-mcp`. Do not also run `pnpm icas-mcp` in another terminal. Do not `tee`. icas-bank must be running. This step is `loan_payoff` only.
+
+```bash
+npx -y @modelcontextprotocol/inspector \
+  -e ICAS_CAPABILITIES_ROOT=$PWD/capabilities \
+  -e ICAS_EVIDENCE_ROOT=$PWD/evidence \
+  --cwd $PWD \
+  pnpm icas-mcp
+```
+
+### 11. MCP in Cursor
+
+Project `.cursor/mcp.json` (so `${workspaceFolder}` works). User-global `~/.cursor/mcp.json` needs absolute paths.
+
+```json
+{
+  "mcpServers": {
+    "icas": {
+      "command": "pnpm",
+      "args": ["icas-mcp"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "ICAS_CAPABILITIES_ROOT": "${workspaceFolder}/capabilities",
+        "ICAS_EVIDENCE_ROOT": "${workspaceFolder}/evidence"
+      }
+    }
+  }
+}
+```
+
+Pass `url` and `tenant` on the tool call. Omitted `tenant` defaults to `icas-bank`. Do not call `loan_payoff` with `tenant: loki-bank`.
+
+| Ask about | Tool | `tenant` | `url` |
+|---|---|---|---|
+| icas-bank payoff | `loan_payoff` | `icas-bank` (or omit) | `http://localhost:4101` |
+| icas-banc payoff | `loan_payoff` | `icas-banc` | `http://localhost:4104` |
+| Loki payoff | `payoff_statement` | `loki-bank` | `http://localhost:4102` |
+| Helix hold | `share_hold` | `helix-cu` | `http://localhost:4103` |
+
+```text
+How much principal balance on loan 112233 as of 2026-09-30 on tenant icas-bank at http://localhost:4101.
+```
+
+```text
+Generate a payoff statement for loan 112233 as of 2026-09-30 on tenant icas-banc at http://localhost:4104.
+```
+
+```text
+Payoff for loan 112233 as of 2026-09-30 on tenant loki-bank at http://localhost:4102. Use payoff-statement, not loan-payoff.
+```
+
+```text
+Place a $250.00 hold on member 441122 share 01 for pending debit card authorization on tenant helix-cu at http://localhost:4103. Return confirmation id, available after hold, and expiry.
 ```
 
 Known-good icas-bank loans: `987654` (primary), `112233` (second active). Missing ids show `No loan record found`. See `tenants/icas-bank/README.md`.
-
-HITL is control transfer of the **same** headed browser session (not a co-browsing console). Policy-risky actions and compiled `kind: "hitl"` outcomes pause that session.
 
 ## Design principles
 
