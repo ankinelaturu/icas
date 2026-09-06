@@ -90,4 +90,53 @@ describe("invokeMcpCapability", () => {
     );
     expect(result.status).toBe("success");
   });
+
+  it("defaults omitted vendor and product to icas-bank", async () => {
+    await registry.save(loadLoanPayoff());
+    await registry.saveOverride(loadIcasBankOverride());
+    await invokeMcpCapability(
+      {
+        capabilityId: "loan-payoff",
+        url: "https://bank.example/home",
+        tenant: "icas-bank",
+        inputs: { loanAccountId: "987654", payoffDate: "2026-09-30" },
+      },
+      {
+        registry,
+        executeReplay: async ({ request }) => {
+          expect(request.vendor).toBe("icas-bank");
+          expect(request.product).toBe("icas-bank");
+          return {
+            status: "success",
+            capabilityId: "loan-payoff",
+            outputs: { totalPayoffAmount: "1.00" },
+            runId: "run-mcp-identity",
+          };
+        },
+      },
+    );
+  });
+
+  it("rejects a vendor/product that does not match the artifact target", async () => {
+    await registry.save(loadLoanPayoff());
+    await registry.saveOverride(loadIcasBankOverride());
+    await expect(
+      invokeMcpCapability(
+        {
+          capabilityId: "loan-payoff",
+          url: "https://bank.example/home",
+          tenant: "icas-bank",
+          vendor: "helix",
+          product: "helix",
+          inputs: { loanAccountId: "987654", payoffDate: "2026-09-30" },
+        },
+        {
+          registry,
+          executeReplay: async () => {
+            throw new Error("replay must not run on identity mismatch");
+          },
+        },
+      ),
+    ).rejects.toThrow(/helix\/helix/);
+  });
 });

@@ -264,14 +264,14 @@ Project `.cursor/mcp.json` (so `${workspaceFolder}` works). User-global `~/.curs
 }
 ```
 
-Pass `url` and `tenant` on the tool call. Omitted `tenant` defaults to `icas-bank`. Do not call `loan_payoff` with `tenant: loki-bank`.
+Pass `url` on the tool call. Omitted `tenant` / `vendor` / `product` default to `icas-bank` and must match the artifact target. Do not call `loan_payoff` with `tenant: loki-bank`.
 
-| Ask about | Tool | `tenant` | `url` |
-|---|---|---|---|
-| icas-bank payoff | `loan_payoff` | `icas-bank` (or omit) | `http://localhost:4101` |
-| icas-banc payoff | `loan_payoff` | `icas-banc` | `http://localhost:4104` |
-| Loki payoff | `payoff_statement` | `loki-bank` | `http://localhost:4102` |
-| Helix hold | `share_hold` | `helix-cu` | `http://localhost:4103` |
+| Ask about | Tool | `tenant` | `vendor` / `product` | `url` |
+|---|---|---|---|---|
+| icas-bank payoff | `loan_payoff` | `icas-bank` (or omit) | omit | `http://localhost:4101` |
+| icas-banc payoff | `loan_payoff` | `icas-banc` | omit | `http://localhost:4104` |
+| Loki payoff | `payoff_statement` | `loki-bank` | omit | `http://localhost:4102` |
+| Helix hold | `share_hold` | `helix-cu` | `helix` / `helix` | `http://localhost:4103` |
 
 ```text
 How much principal balance on loan 112233 as of 2026-09-30 on tenant icas-bank at http://localhost:4101.
@@ -286,7 +286,7 @@ Payoff for loan 112233 as of 2026-09-30 on tenant loki-bank at http://localhost:
 ```
 
 ```text
-Place a $250.00 hold on member 441122 share 01 for pending debit card authorization on tenant helix-cu at http://localhost:4103. Return confirmation id, available after hold, and expiry.
+Place a $250.00 hold on member 441122 share 01 for pending debit card authorization on tenant helix-cu (vendor helix, product helix) at http://localhost:4103. Return confirmation id, available after hold, and expiry.
 ```
 
 Known-good icas-bank loans: `987654` (primary), `112233` (second active). Missing ids show `No loan record found`. See `tenants/icas-bank/README.md`.

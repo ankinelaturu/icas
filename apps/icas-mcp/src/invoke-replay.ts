@@ -31,6 +31,10 @@ export interface McpInvokeRequest {
   capabilityId: string;
   url: string;
   tenant: string;
+  /** Must match `capability.target.vendor`. Defaults to `icas-bank`. */
+  vendor?: string;
+  /** Must match `capability.target.product`. Defaults to `icas-bank`. */
+  product?: string;
   inputs: Record<string, unknown>;
   headed?: boolean;
 }
@@ -47,8 +51,9 @@ export interface McpInvokeDeps {
 /**
  * Resolve the enrolled tenant and run ReplayEngine.
  *
- * Missing override throws from {@link CapabilityResolver}. `--url` only opens
- * the surface.
+ * Missing override throws from {@link CapabilityResolver}. `url` only opens
+ * the surface. `vendor` / `product` must match the artifact target; they are
+ * not inferred from `url`.
  *
  * @param request - Tool args after Zod parse
  * @param deps - Catalog and optional test double
@@ -57,18 +62,37 @@ export async function invokeMcpCapability(
   request: McpInvokeRequest,
   deps: McpInvokeDeps,
 ): Promise<ExecutionResult> {
-  const tenant = request.tenant.length > 0 ? request.tenant : DEFAULT_ICAS_IDENTITY;
+  const tenant = nonemptyIdentity(request.tenant);
+  const vendor = nonemptyIdentity(request.vendor);
+  const product = nonemptyIdentity(request.product);
   const resolver = new CapabilityResolver(deps.registry);
   const capability = await resolver.resolve({
     id: request.capabilityId,
     tenant,
   });
+  if (
+    capability.target.vendor !== vendor ||
+    capability.target.product !== product
+  ) {
+    throw new Error(
+      `capability target is ${capability.target.vendor}/${capability.target.product}, not ${vendor}/${product}`,
+    );
+  }
   validateInputValues(capability.inputs, request.inputs);
-  const normalized: McpInvokeRequest = { ...request, tenant };
+  const normalized: McpInvokeRequest = { ...request, tenant, vendor, product };
   if (deps.executeReplay !== undefined) {
     return await deps.executeReplay({ capability, request: normalized });
   }
   return await executePlaywrightReplay(capability, normalized, deps);
+}
+
+/**
+ * Treat missing or empty identity the same as the catalog default.
+ *
+ * @param value - Tool arg or omitted field
+ */
+function nonemptyIdentity(value: string | undefined): string {
+  return value !== undefined && value.length > 0 ? value : DEFAULT_ICAS_IDENTITY;
 }
 
 async function executePlaywrightReplay(

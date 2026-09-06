@@ -14,7 +14,7 @@ import {
   invokeMcpCapability,
   type McpInvokeDeps,
 } from "./invoke-replay.js";
-import { capabilityIdToToolName, mcpInputShape } from "./tool-schema.js";
+import { capabilityIdToToolName, mcpInputShape, MCP_TRANSPORT_FIELDS } from "./tool-schema.js";
 
 /**
  * One MCP tool descriptor derived from a catalog artifact.
@@ -90,24 +90,23 @@ export async function createIcasMcpServer(
         inputSchema: mcpInputShape(artifact),
       },
       async (rawArgs) => {
-        // Zod already validated the shape. url/tenant are MCP transport fields,
-        // not capability inputs, and tenant is never inferred from url.
+        // Zod already validated the shape. url/tenant/vendor/product are MCP
+        // transport fields, not capability inputs, and never inferred from url.
         const parsed = rawArgs as Record<string, unknown>;
         const url = String(parsed.url ?? "");
-        const tenant =
-          parsed.tenant === undefined || parsed.tenant === ""
-            ? DEFAULT_ICAS_IDENTITY
-            : String(parsed.tenant);
+        const tenant = identityArg(parsed.tenant);
+        const vendor = identityArg(parsed.vendor);
+        const product = identityArg(parsed.product);
         const inputs: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(parsed)) {
-          if (key === "url" || key === "tenant") {
+          if ((MCP_TRANSPORT_FIELDS as readonly string[]).includes(key)) {
             continue;
           }
           inputs[key] = value;
         }
         try {
           const result = await invokeMcpCapability(
-            { capabilityId, url, tenant, inputs },
+            { capabilityId, url, tenant, vendor, product, inputs },
             {
               registry,
               ...(deps.executeReplay === undefined
@@ -128,3 +127,15 @@ export async function createIcasMcpServer(
   }
   return server;
 }
+
+/**
+ * Optional identity tool arg. Empty or omitted means {@link DEFAULT_ICAS_IDENTITY}.
+ *
+ * @param value - Raw Zod field
+ */
+function identityArg(value: unknown): string {
+  return typeof value === "string" && value.length > 0
+    ? value
+    : DEFAULT_ICAS_IDENTITY;
+}
+

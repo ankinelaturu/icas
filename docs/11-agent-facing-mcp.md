@@ -32,7 +32,7 @@ CapabilityRegistry
    └── icas-mcp   → agent-facing protocol
 ```
 
-`icas-play` may list/describe/run capabilities for humans. That is not by itself the agent-facing stretch goal. `icas-mcp` makes the catalog machine-discoverable as tools. Both must go through `CapabilityRegistry` / `CapabilityResolver` rather than reading files directly. Invocation uses capability id + tenant (MCP host should pass tenant or accept the `icas-bank` default) + runtime URL + typed args. The tenant must already be enrolled. Catalog API and on-disk layout are specified in [`04-capability-artifact.md`](04-capability-artifact.md).
+`icas-play` may list/describe/run capabilities for humans. That is not by itself the agent-facing stretch goal. `icas-mcp` makes the catalog machine-discoverable as tools. Both must go through `CapabilityRegistry` / `CapabilityResolver` rather than reading files directly. Invocation uses capability id + tenant + vendor + product (MCP host should pass them or accept the `icas-bank` default) + runtime URL + typed args. Vendor and product must match the artifact target. The tenant must already be enrolled. Identity is never inferred from the URL. Catalog API and on-disk layout are specified in [`04-capability-artifact.md`](04-capability-artifact.md).
 
 ## MCP server shape
 
@@ -60,10 +60,16 @@ becomes an MCP tool conceptually equivalent to:
 
 ```ts
 loan_payoff({
+  url: "http://localhost:4101",
+  tenant: "icas-bank",
+  vendor: "icas-bank",
+  product: "icas-bank",
   loanAccountId: "987654",
   payoffDate: "2026-09-30"
 })
 ```
+
+`url` is required. `tenant`, `vendor`, and `product` are optional and default to `icas-bank`. A Helix tool call must pass `helix` / `helix` (and enrolled `helix-cu`); omitted identity does not match that artifact target.
 
 Invocation delegates to:
 

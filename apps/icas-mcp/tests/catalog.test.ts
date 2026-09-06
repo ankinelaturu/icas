@@ -40,11 +40,11 @@ describe("MCP tool catalog", () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  it("maps loan-payoff to loan_payoff with typed inputs plus url and tenant", () => {
+  it("maps loan-payoff to loan_payoff with typed inputs plus url and identity", () => {
     expect(capabilityIdToToolName("loan-payoff")).toBe("loan_payoff");
     const shape = mcpInputShape(loadLoanPayoff());
     expect(Object.keys(shape).sort()).toEqual(
-      ["loanAccountId", "payoffDate", "tenant", "url"].sort(),
+      ["loanAccountId", "payoffDate", "product", "tenant", "url", "vendor"].sort(),
     );
   });
 

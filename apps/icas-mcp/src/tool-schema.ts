@@ -42,10 +42,17 @@ export function zodForPrimitive(type: PrimitiveType): ZodTypeAny {
 }
 
 /**
- * MCP input shape: surface `url`, optional `tenant`, then capability inputs.
+ * Transport fields on every tool. Not capability inputs. Never inferred from
+ * `url`. Omitted tenant / vendor / product default to `icas-bank` at invoke.
+ */
+export const MCP_TRANSPORT_FIELDS = ["url", "tenant", "vendor", "product"] as const;
+
+/**
+ * MCP input shape: surface `url`, optional identity, then capability inputs.
  *
- * `url` is where to open the browser, not tenant identity. `tenant` defaults
- * at invoke time to `icas-bank` when omitted.
+ * `url` is where to open the browser, not identity. `tenant` / `vendor` /
+ * `product` default at invoke time to `icas-bank` when omitted. Vendor and
+ * product must match the artifact target (same gate as `icas-play run`).
  *
  * @param artifact - Catalog row
  */
@@ -53,6 +60,16 @@ export function mcpInputShape(artifact: CapabilityArtifact): Record<string, ZodT
   const shape: Record<string, ZodTypeAny> = {
     url: z.string().min(1).describe("Surface entry URL (not tenant identity)"),
     tenant: z.string().min(1).optional().describe("Enrolled tenant id"),
+    vendor: z
+      .string()
+      .min(1)
+      .optional()
+      .describe("Vendor identity; must match the capability target"),
+    product: z
+      .string()
+      .min(1)
+      .optional()
+      .describe("Product identity; must match the capability target"),
   };
   for (const [name, spec] of Object.entries(artifact.inputs)) {
     let field = zodForPrimitive(spec.type);
