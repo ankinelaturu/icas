@@ -18,7 +18,10 @@ execute action through PolicyGuard + Surface
     ↓        recover interstitial / assist / stop
 resolve the *next* step’s action locator
     ↓ found → continue to that step (do not scan outcomes)
-    ↓ missing → if the surface reported a document HTTP 403 / 404 / 5xx
+    ↓ missing → if a known interstitial is visible (session warning /
+                 Please wait), dismiss **Continue**, probe the next locator
+                 again. This is recoverable, not a `possibleOutcomes` hit.
+    ↓ still missing → if the surface reported a document HTTP 403 / 404 / 5xx
                  for this navigation, stop as failure (5xx may retry first;
                  see recoverable waits). Do not scan phrases yet.
     ↓         → walk the *just-executed* step’s possibleOutcomes in order
@@ -92,10 +95,11 @@ Step `possibleOutcomes` are goal-specific guesses. Infrastructure failures are a
 
 Walk order when the next locator is missing (or last-step `success` misses):
 
-1. **Document HTTP status** (when the surface actually observed it): 403 / 404 → `failure`; 5xx → recoverable wait first, then `failure` if it persists. Staff UIs often return **200** with an error banner; a missing status is not a miss of this step — continue to phrases.
-2. **This step’s `possibleOutcomes`** (skip `success`). First phrase hit wins.
-3. **Runtime generic phrase list** — a tiny fixed set of distinctive *visible* chrome (`Internal Server Error`, `Access Denied`, `404 Not Found` as page text). Same `PossibleOutcome` shape (`kind` `error` or `hitl`). Not stored on the capability. Not a closed enum of domain results.
-4. **None** → `failure`.
+1. **Known interstitial** (when visible): dismiss **Continue**, probe the next locator again. A 200 session-warning overlay is recoverable, not a compiled `possibleOutcomes` hit.
+2. **Document HTTP status** (when the surface actually observed it): 403 / 404 → `failure`; 5xx → recoverable wait first, then `failure` if it persists. Staff UIs often return **200** with an error banner; a missing status is not a miss of this step — continue to phrases.
+3. **This step’s `possibleOutcomes`** (skip `success`). First phrase hit wins.
+4. **Runtime generic phrase list** — a tiny fixed set of distinctive *visible* chrome (`Internal Server Error`, `Access Denied`, `404 Not Found` as page text). Same `PossibleOutcome` shape (`kind` `error` or `hitl`). Not stored on the capability. Not a closed enum of domain results.
+5. **None** → `failure`.
 
 Specific step guesses always beat generic 500 copy. Do not put status codes or this generic list in proposer **instructions**. Do not add HTTP fields to `CapabilityStep`.
 

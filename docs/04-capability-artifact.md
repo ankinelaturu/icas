@@ -175,7 +175,7 @@ Compiled steps keep `error` and `hitl` entries from the kept candidate, in the s
 
 A capability is **one** happy-path step list. It does not encode a decision tree of error flows.
 
-`possibleOutcomes` are guessed matchers for when that path **cannot continue**. Replay uses them only after the **next** step’s action locator misses (or after last-step `success` assertions miss). HTTP 403/404/5xx and generic server chrome are **runtime** catalogs in [`05-replay-engine.md`](05-replay-engine.md). They are not fields on this schema and are not merged into compiled steps.
+`possibleOutcomes` are guessed matchers for when that path **cannot continue**. Replay uses them only after the **next** step’s action locator misses (or after last-step `success` assertions miss) **and** a known interstitial was not dismissed. HTTP 403/404/5xx and generic server chrome are **runtime** catalogs in [`05-replay-engine.md`](05-replay-engine.md). They are not fields on this schema and are not merged into compiled steps.
 
 `match.phrases` is the only field that touches the page. An outcome hits when **any** phrase is visible (OR). `heading` and `summary` are the formatted result for the calling tool and for HITL context. A screenshot still goes to evidence on that stop.
 

@@ -29,6 +29,7 @@ import { hydrateAction, hydrateAssertion } from "./hydrate.js";
 import {
   matchPossibleOutcomes,
   outcomeSlug,
+  pageTextContainsPhrase,
   type MatchedPossibleOutcome,
 } from "./match-possible-outcomes.js";
 import { INTERSTITIAL_CONTINUE, INTERSTITIAL_TEXTS } from "./recoverable.js";
@@ -411,8 +412,9 @@ export class ReplayEngine {
    *
    * This step's own target miss is handled before this method. When a next
    * step exists, its locator is the happy-path gate: found → postconditions;
-   * missing → this step's `possibleOutcomes`. Last step uses postconditions
-   * then overall success (caller).
+   * missing → dismiss a known interstitial (200 overlay) then probe again;
+   * still missing → this step's `possibleOutcomes`. Last step uses
+   * postconditions then overall success (caller).
    *
    * @returns `undefined` to continue the step loop; otherwise a structured stop
    */
@@ -426,6 +428,17 @@ export class ReplayEngine {
     if (nextStep !== undefined) {
       if (await this.nextActionTargetPresent(nextStep)) {
         return await this.evaluatePostconditions(step, inputs, runId, capabilityId);
+      }
+      // 200 session-warning overlays hide the next control. Recover before
+      // possibleOutcomes so "Session warning" is Continue+retry, not a
+      // business_outcome. Bounded: one dismiss, then classify if still missing.
+      for (let attempt = 1; attempt < this.maxAttempts; attempt++) {
+        if (!(await this.recoverInterstitial(runId, attempt))) {
+          break;
+        }
+        if (await this.nextActionTargetPresent(nextStep)) {
+          return await this.evaluatePostconditions(step, inputs, runId, capabilityId);
+        }
       }
       const classified = await this.classifyExceptionalState(
         step,
@@ -464,9 +477,10 @@ export class ReplayEngine {
   /**
    * HTTP status, then this step's possibleOutcomes, then runtime generic chrome.
    *
-   * Call only after the next locator missed (or last-step success/post missed).
-   * Missing `httpStatus` is normal and continues to phrases. 403/404 fail
-   * before phrases. 5xx retries a known interstitial then fails if still stuck.
+   * Call only after the next locator missed (or last-step success/post missed)
+   * and interstitial recovery did not reveal that locator. Missing
+   * `httpStatus` is normal and continues to phrases. 403/404 fail before
+   * phrases. 5xx retries a known interstitial then fails if still stuck.
    * Phrase matching uses the ordered matcher pipeline (cheap ranks first).
    *
    * @returns A structured stop, or `undefined` when nothing matched
@@ -787,13 +801,13 @@ export class ReplayEngine {
   /**
    * Dismiss a known interstitial and log recovery. Returns false when none match.
    *
-   * Only the known copy is treated as recoverable. Arbitrary sleeps are not
-   * the primary sync mechanism — assertions already bound-wait.
+   * Scan `visibleText()` (no per-phrase wait) so a miss is cheap on the
+   * not-found path. Only the known copy is treated as recoverable.
    */
   private async recoverInterstitial(runId: string, attempt: number): Promise<boolean> {
+    const pageText = await this.surface.visibleText();
     for (const text of INTERSTITIAL_TEXTS) {
-      const visible = await this.surface.assert({ type: "textVisible", value: text });
-      if (!visible) {
+      if (!pageTextContainsPhrase(pageText, text)) {
         continue;
       }
       const decision = this.policy?.check(INTERSTITIAL_CONTINUE) ?? { decision: "allow" as const };

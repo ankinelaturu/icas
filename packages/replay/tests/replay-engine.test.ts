@@ -619,10 +619,8 @@ describe("ReplayEngine recoverable retries", () => {
   it("dismisses a known interstitial, logs recovery, then succeeds", async () => {
     const surface = new FakeSurface();
     let dismissed = false;
+    surface.visibleTextContent = "Please wait. The host is restoring your operator session.";
     surface.assertHandler = (assertion) => {
-      if (assertion.type === "textVisible" && assertion.value === "Please wait") {
-        return !dismissed;
-      }
       if (assertion.type === "textVisible" && assertion.value === "Home") {
         return dismissed;
       }
@@ -636,6 +634,7 @@ describe("ReplayEngine recoverable retries", () => {
         )
       ) {
         dismissed = true;
+        surface.visibleTextContent = "";
       }
       return { status: "ok" };
     };
@@ -684,6 +683,71 @@ describe("ReplayEngine recoverable retries", () => {
       stepId: "open-lending",
     });
     expect(homeChecks).toBe(1);
+  });
+
+  it("dismisses a 200 session-warning overlay when the next locator is missing, then continues", async () => {
+    const surface = new FakeSurface();
+    let dismissed = false;
+    const targetMiss = (): Error => {
+      const error = new Error("no matching control");
+      (error as Error & { code: string }).code = "TARGET_NOT_FOUND";
+      return error;
+    };
+    surface.locateHandler = (target) => {
+      const first = target.strategies[0];
+      if (first !== undefined && "text" in first && first.text === "Payoff" && !dismissed) {
+        throw targetMiss();
+      }
+      return { ok: true };
+    };
+    surface.visibleTextContent =
+      "Session warning\nPlease wait. The host is restoring your operator session.";
+    surface.executeHandler = (action) => {
+      if (
+        action.type === "click" &&
+        action.target.strategies.some(
+          (strategy) => strategy.type === "visibleText" && strategy.text === "Continue",
+        )
+      ) {
+        dismissed = true;
+        surface.visibleTextContent = "Loan Details";
+      }
+      return { status: "ok" };
+    };
+    const { events, evidence } = memoryEvidence();
+    const engine = new ReplayEngine(surface, { evidence });
+    const result = await engine.run(
+      testCapability({
+        steps: [
+          clickStep("click-inquire", {
+            action: {
+              type: "click",
+              target: { strategies: [{ type: "visibleText", text: "Inquire" }] },
+              risk: "safe",
+            },
+          }),
+          clickStep("click-payoff", {
+            action: {
+              type: "click",
+              target: { strategies: [{ type: "visibleText", text: "Payoff" }] },
+              risk: "safe",
+            },
+          }),
+        ],
+      }),
+      {},
+      { runId: "run-wait-overlay" },
+    );
+    expect(result.status).toBe("success");
+    expect(events.some((event) => event.type === "recovery")).toBe(true);
+    const continueClicks = surface.executed.filter(
+      (action) =>
+        action.type === "click" &&
+        action.target.strategies.some(
+          (strategy) => strategy.type === "visibleText" && strategy.text === "Continue",
+        ),
+    );
+    expect(continueClicks).toHaveLength(1);
   });
 });
 
