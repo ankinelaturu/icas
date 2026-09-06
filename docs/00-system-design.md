@@ -14,80 +14,9 @@ Contracts and failure rules: [`01`](01-system-overview.md)–[`12`](12-testing-a
 
 ## 1. Architecture
 
+![ICAS architecture](icas.excalidraw.svg)
+
 An operator drives ICAS with `icas-agent` (discover), `icas-play` (replay), and `icas-adapt`. An agent host may invoke the same catalog through `icas-mcp`. There is no co-browsing console, worker queue, or real bank.
-
-```mermaid
----
-config:
-  layout: fixed
----
-flowchart TB
- subgraph colM["apps"]
-    direction TB
-        discover["play"]
-        play["adapt"]
-        adapt["agent"]
-  end
- subgraph icas["**ICAS**"]
-    direction LR
-        colM
-        n4["capabilities/"]
-        n5["evidence/"]
-        n1["MCP"]
-        n10["`**LLM Proposer**`"]
-  end
-    discover --> play & n5
-    play --> adapt & n4
-    operator(["`**operator**`"]) <-- discover / play / adapt --> icas
-    host(["`**agent host**`"]) <-. MCP tools .-> n1
-    adapt --> n4 & n5 & n11["`**Mastra Proposer**`"]
-    adapt -.-> n10
-    n4 --> discover
-    play -.-> discover
-    n1 --> discover
-    n8["`**Playwright**`"] <--> n6["`**loki-bank :4102**`"] & bank["`**icas-bank :4101**`"] & n7["`**helix-cu :4103**`"]
-    icas <--> n8
-    n11 -.-> n10
-    n11 <--> n12["`**gpt-4o**`"]
-    n13["`**.env**<br><br>API_KEY<br>MODEL<br>etc.,`"] --> icas
-
-    n4@{ shape: docs}
-    n5@{ shape: docs}
-    n1@{ shape: proc}
-    n10@{ shape: rect}
-    n11@{ shape: rect}
-    n8@{ shape: subproc}
-    n6@{ shape: div-proc}
-    bank@{ shape: div-proc}
-    n7@{ shape: div-proc}
-    n12@{ shape: hex}
-    n13@{ shape: tag-doc}
-     discover:::appBox
-     play:::appBox
-     adapt:::appBox
-     icas:::icasBox
-     host:::optional
-    classDef optional stroke-dasharray: 6 4
-    classDef icasBox fill:#f8fafc,stroke:#334155,stroke-width:2px
-    classDef appBox fill:#ffffff,stroke:#334155
-    style discover font-size:24px
-    style play font-size:24px
-    style adapt font-size:24px
-    style n4 fill:#BBDEFB,stroke-width:4px,stroke-dasharray: 0,font-size:24px
-    style n5 fill:#FFD600,stroke-width:4px,stroke-dasharray: 0,font-size:24px
-    style n1 font-size:24px
-    style n10 font-size:24px
-    style operator font-size:24px,stroke-width:4px,stroke-dasharray: 0
-    style host font-size:24px,stroke-width:4px,stroke-dasharray: 0
-    style n11 font-size:24px
-    style n6 font-size:24px
-    style bank font-size:24px
-    style n7 font-size:24px
-    style n12 font-size:24px
-    style n13 font-size:14px
-    linkStyle 0 stroke:none,fill:none
-    linkStyle 2 stroke:none,fill:none
-```
 
 Discover and adapt write the `capabilities/` catalog. Replay and MCP read it through `CapabilityResolver` and never glob the tree. `ReplayEngine` receives only the **effective** capability. Every run writes `evidence/` (traces, logs, screenshots). Evidence is not an input to the next run.
 
