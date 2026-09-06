@@ -47,7 +47,13 @@ export function zodForPrimitive(type: PrimitiveType): ZodTypeAny {
  * Transport fields on every tool. Not capability inputs. Never inferred from
  * `url`. Omitted tenant / vendor / product default from this capability.
  */
-export const MCP_TRANSPORT_FIELDS = ["url", "tenant", "vendor", "product"] as const;
+export const MCP_TRANSPORT_FIELDS = [
+  "url",
+  "tenant",
+  "vendor",
+  "product",
+  "assist",
+] as const;
 
 /**
  * Identity defaults copied from the catalog row at tool registration.
@@ -85,8 +91,8 @@ function identityField(description: string, defaultValue: string): ZodTypeAny {
  *
  * `url` is where to open the browser, not identity. Zod `.default` on tenant /
  * vendor / product is this capability's identity so MCP Inspector / hosts can
- * show it. An explicit value still wins. Vendor and product must match the
- * artifact target (same gate as `icas-play run`).
+ * show it. `assist` defaults false. An explicit value still wins. Vendor and
+ * product must match the artifact target (same gate as `icas-play run`).
  *
  * @param artifact - Catalog row
  */
@@ -103,6 +109,12 @@ export function mcpInputShape(artifact: CapabilityArtifact): Record<string, ZodT
       "Product identity; must match the capability target",
       identity.product,
     ),
+    assist: z
+      .boolean()
+      .default(false)
+      .describe(
+        "One bounded LLM repair on a locator miss. Uses ICAS_ASSIST_LLM_*. Does not persist an override.",
+      ),
   };
   for (const [name, spec] of Object.entries(artifact.inputs)) {
     let field = zodForPrimitive(spec.type);

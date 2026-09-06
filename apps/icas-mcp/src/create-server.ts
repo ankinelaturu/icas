@@ -89,14 +89,16 @@ export async function createIcasMcpServer(
         inputSchema: mcpInputShape(artifact),
       },
       async (rawArgs) => {
-        // Zod already validated the shape. url/tenant/vendor/product are MCP
-        // transport fields, not capability inputs, and never inferred from url.
+        // Zod already validated the shape. url/tenant/vendor/product/assist
+        // are MCP transport fields, not capability inputs. Identity is never
+        // inferred from url. assist uses ICAS_ASSIST_LLM_* from the process.
         const identity = mcpIdentityDefaults(artifact);
         const parsed = rawArgs as Record<string, unknown>;
         const url = String(parsed.url ?? "");
         const tenant = identityArg(parsed.tenant, identity.tenant);
         const vendor = identityArg(parsed.vendor, identity.vendor);
         const product = identityArg(parsed.product, identity.product);
+        const assist = parsed.assist === true;
         const inputs: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(parsed)) {
           if ((MCP_TRANSPORT_FIELDS as readonly string[]).includes(key)) {
@@ -106,7 +108,7 @@ export async function createIcasMcpServer(
         }
         try {
           const result = await invokeMcpCapability(
-            { capabilityId, url, tenant, vendor, product, inputs },
+            { capabilityId, url, tenant, vendor, product, assist, inputs },
             {
               registry,
               ...(deps.executeReplay === undefined

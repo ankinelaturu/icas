@@ -127,6 +127,9 @@ importers:
       '@icas/capability':
         specifier: workspace:*
         version: link:../../packages/capability
+      '@icas/discovery':
+        specifier: workspace:*
+        version: link:../../packages/discovery
       '@icas/evidence':
         specifier: workspace:*
         version: link:../../packages/evidence
@@ -142,6 +145,9 @@ importers:
       '@icas/replay':
         specifier: workspace:*
         version: link:../../packages/replay
+      '@mastra/core':
+        specifier: 1.63.0
+        version: 1.63.0(express@5.2.1)(zod@4.5.2)
       '@modelcontextprotocol/sdk':
         specifier: 1.30.0
         version: 1.30.0(zod@4.5.2)

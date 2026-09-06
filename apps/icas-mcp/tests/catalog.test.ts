@@ -51,7 +51,7 @@ describe("MCP tool catalog", () => {
     const artifact = loadLoanPayoff();
     const shape = mcpInputShape(artifact);
     expect(Object.keys(shape).sort()).toEqual(
-      ["loanAccountId", "payoffDate", "product", "tenant", "url", "vendor"].sort(),
+      ["assist", "loanAccountId", "payoffDate", "product", "tenant", "url", "vendor"].sort(),
     );
     expect(mcpIdentityDefaults(artifact)).toEqual({
       tenant: "icas-bank",
@@ -66,6 +66,7 @@ describe("MCP tool catalog", () => {
     expect(parsed.tenant).toBe("icas-bank");
     expect(parsed.vendor).toBe("icas-bank");
     expect(parsed.product).toBe("icas-bank");
+    expect(parsed.assist).toBe(false);
   });
 
   it("defaults identity from the artifact target and discoveredOn tenant", () => {

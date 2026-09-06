@@ -79,6 +79,7 @@ describe("invokeMcpCapability", () => {
           expect(capability.id).toBe("loan-payoff");
           expect(request.tenant).toBe("icas-bank");
           expect(request.url).toBe("https://loki.example/home");
+          expect(request.assist).toBe(false);
           return {
             status: "success",
             capabilityId: capability.id,
@@ -138,5 +139,48 @@ describe("invokeMcpCapability", () => {
         },
       ),
     ).rejects.toThrow(/helix\/helix/);
+  });
+
+  it("passes assist: true through to replay without constructing Mastra", async () => {
+    await registry.save(loadLoanPayoff());
+    await registry.saveOverride(loadIcasBankOverride());
+    await invokeMcpCapability(
+      {
+        capabilityId: "loan-payoff",
+        url: "https://bank.example/home",
+        tenant: "icas-bank",
+        assist: true,
+        inputs: { loanAccountId: "987654", payoffDate: "2026-09-30" },
+      },
+      {
+        registry,
+        executeReplay: async ({ request }) => {
+          expect(request.assist).toBe(true);
+          return {
+            status: "success",
+            capabilityId: "loan-payoff",
+            outputs: { totalPayoffAmount: "1.00" },
+            runId: "run-mcp-assist",
+          };
+        },
+      },
+    );
+  });
+
+  it("fails closed when assist is true and ICAS_ASSIST_LLM_* is unset", async () => {
+    await registry.save(loadLoanPayoff());
+    await registry.saveOverride(loadIcasBankOverride());
+    await expect(
+      invokeMcpCapability(
+        {
+          capabilityId: "loan-payoff",
+          url: "https://bank.example/home",
+          tenant: "icas-bank",
+          assist: true,
+          inputs: { loanAccountId: "987654", payoffDate: "2026-09-30" },
+        },
+        { registry, env: {} },
+      ),
+    ).rejects.toThrow(/ICAS_ASSIST_LLM_/);
   });
 });

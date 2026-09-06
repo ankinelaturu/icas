@@ -200,7 +200,7 @@ If the repaired state does not rejoin the known path, stop. Assisted fallback is
 
 Stdout prints the LLM round-trip: transport (never the API key), system instructions, the exact user prompt passed to `generate`, the structured model object (pretty JSON, not the Mastra envelope), token usage, and the mapped `RepairProposal`. Deterministic step checkpoints stay in evidence `log.jsonl`.
 
-Env is model transport. The SDK seam is `RepairProposer` (injected in `icas-play`; `@icas/replay` stays model-free). `--assist` reads only `ICAS_ASSIST_LLM_*`.
+Env is model transport. The SDK seam is `RepairProposer` (injected in `icas-play` and `icas-mcp`; `@icas/replay` stays model-free). `--assist` / MCP `assist` read only `ICAS_ASSIST_LLM_*`.
 
 ## Effective capability resolution
 

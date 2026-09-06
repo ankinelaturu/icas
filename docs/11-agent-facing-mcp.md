@@ -69,7 +69,7 @@ loan_payoff({
 })
 ```
 
-`url` is required. `tenant`, `vendor`, and `product` are optional. Defaults come from that capability: `target.vendor` / `target.product`, and `discoveredOn.tenant` (or `icas-bank` if discover did not stamp a tenant). An explicit value still wins. `loan-payoff` on icas-banc still passes `tenant: icas-banc`. Vendor and product must match the artifact target.
+`url` is required. `tenant`, `vendor`, and `product` are optional. Defaults come from that capability: `target.vendor` / `target.product`, and `discoveredOn.tenant` (or `icas-bank` if discover did not stamp a tenant). An explicit value still wins. `loan-payoff` on icas-banc still passes `tenant: icas-banc`. Vendor and product must match the artifact target. Optional `assist` (default false) injects the same bounded `RepairProposer` as `icas-play run --assist`. It reads `ICAS_ASSIST_LLM_*` from the process (repo `.env` is loaded on MCP start). It does not persist an override. Repair logs go to stderr so they do not corrupt stdio.
 
 Invocation delegates to:
 

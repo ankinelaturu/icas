@@ -17,12 +17,21 @@ import {
 } from "@icas/capability";
 import { FileSystemEvidenceWriter } from "@icas/evidence";
 import { createRedactor } from "@icas/redactor";
-import { ReplayEngine, type ExecutionResult } from "@icas/replay";
+import {
+  ReplayEngine,
+  type ExecutionResult,
+  type RepairProposer,
+} from "@icas/replay";
 
 import { CliHandoffController } from "./cli-handoff.js";
 import { policyGuardForUrl } from "./default-policy.js";
 import { DEFAULT_ICAS_IDENTITY } from "./defaults.js";
 import { evidenceRoot } from "./evidence-root.js";
+import {
+  createConfiguredRepairProposer,
+  hasRepairApiKey,
+  resolveRepairModel,
+} from "./mastra-repair-proposer.js";
 
 /**
  * Arguments for one tool invocation.
@@ -35,6 +44,11 @@ export interface McpInvokeRequest {
   vendor?: string;
   /** Must match `capability.target.product`. Omitted uses the artifact target. */
   product?: string;
+  /**
+   * One bounded LLM repair. Default false. Uses `ICAS_ASSIST_LLM_*`, not tool
+   * args. Does not persist an override.
+   */
+  assist?: boolean;
   inputs: Record<string, unknown>;
   headed?: boolean;
 }
@@ -46,6 +60,10 @@ export interface McpInvokeDeps {
     request: McpInvokeRequest;
   }) => Promise<ExecutionResult>;
   evidenceRoot?: string;
+  /** Injected proposer for tests. Production builds Mastra when `assist`. */
+  repair?: RepairProposer;
+  /** Process env for `ICAS_ASSIST_LLM_*`; tests inject a stub. */
+  env?: NodeJS.ProcessEnv;
 }
 
 /**
@@ -80,7 +98,14 @@ export async function invokeMcpCapability(
     );
   }
   validateInputValues(capability.inputs, request.inputs);
-  const normalized: McpInvokeRequest = { ...request, tenant, vendor, product };
+  const assist = request.assist === true;
+  const normalized: McpInvokeRequest = {
+    ...request,
+    tenant,
+    vendor,
+    product,
+    assist,
+  };
   if (deps.executeReplay !== undefined) {
     return await deps.executeReplay({ capability, request: normalized });
   }
@@ -120,14 +145,58 @@ async function executePlaywrightReplay(
   const handoff = new CliHandoffController({ stdin: process.stdin });
   // MCP stdio owns stdout. Do not open a headed window by default.
   const headed = request.headed === true;
+  const assist = request.assist === true;
+  const repair = await resolveRepairProposer(request, deps);
   const surface = new PlaywrightSurface({ headed });
   try {
     await surface.open(request.url);
-    const engine = new ReplayEngine(surface, { policy, evidence, handoff });
-    const result = await engine.run(capability, request.inputs, { runId });
+    const engine = new ReplayEngine(surface, {
+      policy,
+      evidence,
+      handoff,
+      ...(assist && repair !== undefined ? { repair } : {}),
+    });
+    const result = await engine.run(capability, request.inputs, {
+      assist,
+      runId,
+    });
     return result;
   } finally {
     // Close Chromium even when invoke fails. Stdio MCP must not leak the process.
     await surface.close();
   }
+}
+
+/**
+ * Inject Mastra repair only when `assist` is set and the caller did not
+ * supply a proposer. Missing API keys fail closed. Log on stderr — stdout is
+ * the MCP byte stream.
+ *
+ * @param request - Tool args including `assist`
+ * @param deps - Optional injected proposer
+ */
+async function resolveRepairProposer(
+  request: McpInvokeRequest,
+  deps: McpInvokeDeps,
+): Promise<RepairProposer | undefined> {
+  if (request.assist !== true) {
+    return undefined;
+  }
+  if (deps.repair !== undefined) {
+    return deps.repair;
+  }
+  const env = deps.env ?? process.env;
+  if (!hasRepairApiKey(env)) {
+    throw new Error(
+      "assist requires ICAS_ASSIST_LLM_API_KEY or ICAS_ASSIST_LLM_BASE_URL",
+    );
+  }
+  const configured = await createConfiguredRepairProposer({
+    model: resolveRepairModel(env),
+    env,
+    log: (line) => {
+      console.error(line);
+    },
+  });
+  return configured.proposer;
 }
