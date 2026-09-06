@@ -194,12 +194,13 @@ pnpm icas-play describe payoff-statement
 
 pnpm icas-play \
   run payoff-statement \
+  --tenant loki-bank \
   --url http://localhost:4102 \
-  --loanAccountNumber 112233 \
+  --loanNumber 112233 \
   --payoffDate 2026-09-30
 ```
 
-Replay flags after this discover come from that describe (names may differ).
+Replay flags after this discover come from that describe (this run: `loanNumber` + `payoffDate`). Omitted `--tenant` defaults to `icas-bank`, which is not enrolled on this id.
 
 ### 10. Helix CU (`share-hold`)
 
@@ -216,9 +217,19 @@ pnpm icas-agent \
   --goal "Place a \$250.00 hold on member 441122 share 01 for pending debit card authorization. Extract the hold confirmation number, available balance after the hold, and the hold expiry date."
 
 pnpm icas-play describe share-hold
+
+pnpm icas-play \
+  run share-hold \
+  --tenant helix-cu \
+  --vendor helix \
+  --product helix \
+  --url http://localhost:4103 \
+  --memberNumber 441122 \
+  --holdAmount 250.00 \
+  --holdReason "pending debit card authorization"
 ```
 
-Replay `--` flags come from that describe. Do not copy loan-payoff flags onto this capability. Known member `441122` / `$250.00` / share `01`.
+Replay flags after this discover come from that describe (this run: `memberNumber`, `holdAmount`, `holdReason`). Omitted `--tenant` / `--vendor` / `--product` default to `icas-bank`, which does not match this artifact. Share `01` is compiled into the clicks, not a flag.
 
 ### 11. MCP Inspector
 

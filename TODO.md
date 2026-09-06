@@ -978,7 +978,7 @@ pnpm icas-play describe payoff-statement \
   2>&1 | tee $PWD/phase8-09-describe-loki.log
 ```
 
-Replay `--` flags come from that describe (names may differ from 8.1). Example only after this discover names the same params:
+Replay `--` flags come from that describe (names may differ from 8.1). This discover named `loanNumber` and `payoffDate`. `--tenant loki-bank` is required: omitted tenant defaults to `icas-bank`, which is not enrolled on this id. `--url` only opens `:4102`.
 
 ```bash
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
@@ -986,8 +986,9 @@ export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
 pnpm icas-play \
   run payoff-statement \
+  --tenant loki-bank \
   --url http://localhost:4102 \
-  --loanAccountNumber 112233 \
+  --loanNumber 112233 \
   --payoffDate 2026-09-30 \
   2>&1 | tee $PWD/phase8-09-replay-loki.log
 ```
@@ -1023,7 +1024,23 @@ pnpm icas-play describe share-hold \
   2>&1 | tee $PWD/phase8-10-describe-helix.log
 ```
 
-Replay `--` flags come from that describe. Known demo member `441122` / `$250.00` / share `01`; a second member for a different-inputs replay is `330198`. Do not copy 8.2 loan flags onto this capability.
+Replay `--` flags come from that describe. This discover named `memberNumber`, `holdAmount`, and `holdReason`. `--tenant helix-cu` plus `--vendor helix --product helix` are required (omitted identity defaults to `icas-bank`). `--url` only opens `:4103`. Share `01` is a compiled click, not a CLI input — leave it. A second-member replay is `--memberNumber 330198` (same share click). Do not copy loan flags onto this capability.
+
+```bash
+export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
+export ICAS_EVIDENCE_ROOT=$PWD/evidence
+
+pnpm icas-play \
+  run share-hold \
+  --tenant helix-cu \
+  --vendor helix \
+  --product helix \
+  --url http://localhost:4103 \
+  --memberNumber 441122 \
+  --holdAmount 250.00 \
+  --holdReason "pending debit card authorization" \
+  2>&1 | tee $PWD/phase8-10-replay-helix.log
+```
 
 ### Pass 8.11 — MCP Inspector
 
