@@ -7,6 +7,11 @@
  * the surface entry. After guarded replay this pass writes a header-only
  * override (`verified`) or a one-step patch (`icas-adapt`).
  *
+ * Mismatch patches call Mastra once via StepSpecializer (`ICAS_ADAPT_LLM_*`).
+ * Compatible runs skip the model. ReplayEngine stays model-free. The CLI
+ * prints system instructions, the exact generate message, and the structured
+ * model object (never the API key).
+ *
  * @see docs/06-multi-tenant-and-adaptation.md
  */
 
@@ -16,13 +21,18 @@ import {
   FileSystemCapabilityRegistry,
   type CapabilityRegistry,
 } from "@icas/capability";
-import type { ExecutionResult, GuardedReplayReport } from "@icas/replay";
+import { isIcasLlmReady, resolveIcasLlmSettings } from "@icas/discovery";
+import type { ExecutionResult } from "@icas/replay";
 
 import { runGuardedAdapt, type AdaptReplayInvocation, type AdaptRunRequest } from "./adapt-session.js";
 import type { StepSpecializer } from "./build-override.js";
 import { catalogRoot } from "./catalog-root.js";
 import { coerceInputValues } from "./coerce-inputs.js";
 import { DEFAULT_ICAS_IDENTITY } from "./defaults.js";
+import { evidenceRoot } from "./evidence-root.js";
+import { formatAdaptOutcome } from "./format-adapt-log.js";
+import { loadRepoEnv } from "./load-repo-env.js";
+import { createConfiguredStepSpecializer } from "./mastra-step-specializer.js";
 import { parseCapabilityInputFlags } from "./parse-cli-inputs.js";
 
 export interface AdaptCliDeps {
@@ -31,6 +41,8 @@ export interface AdaptCliDeps {
   stderr?: (line: string) => void;
   executeReplay?: (invocation: AdaptReplayInvocation) => Promise<ExecutionResult>;
   specializer?: StepSpecializer;
+  /** Stubbed visible chrome for tests; live Playwright capture ignores this. */
+  pageText?: string;
   env?: NodeJS.ProcessEnv;
 }
 
@@ -82,6 +94,7 @@ export function createAdaptProgram(deps: AdaptCliDeps = {}): Command {
         env: deps.env ?? process.env,
         ...(deps.executeReplay === undefined ? {} : { executeReplay: deps.executeReplay }),
         ...(deps.specializer === undefined ? {} : { specializer: deps.specializer }),
+        ...(deps.pageText === undefined ? {} : { pageText: deps.pageText }),
       });
     });
 
@@ -107,6 +120,7 @@ async function executeAdaptCommand(
     writeErr: (line: string) => void;
     executeReplay?: (invocation: AdaptReplayInvocation) => Promise<ExecutionResult>;
     specializer?: StepSpecializer;
+    pageText?: string;
     env: NodeJS.ProcessEnv;
   },
 ): Promise<void> {
@@ -129,49 +143,32 @@ async function executeAdaptCommand(
       inputs: coerceInputValues(preview.inputs, raw),
       headed: resolveHeaded(opts.headless === true, io.env),
     };
-    const { report, override } = await runGuardedAdapt(request, {
+    io.write(`catalog: ${catalogRoot(io.env)}`);
+    io.write(`evidence root: ${evidenceRoot(io.env)}`);
+    io.write(`vendor/product: ${request.vendor}/${request.product}`);
+    io.write(`headed: ${String(request.headed)}`);
+    io.write(`inputs: ${JSON.stringify(request.inputs, null, 2)}`);
+    const specializer = await resolveAdaptSpecializer(io);
+    const { report, override, reverify } = await runGuardedAdapt(request, {
       registry: io.registry,
+      log: io.write,
       ...(io.executeReplay === undefined ? {} : { executeReplay: io.executeReplay }),
-      ...(io.specializer === undefined ? {} : { specializer: io.specializer }),
+      ...(specializer === undefined ? {} : { specializer }),
+      ...(io.pageText === undefined ? {} : { pageText: io.pageText }),
     });
-    io.write(formatAdaptReport(report, opts.tenant, override?.provenance.createdBy));
+    io.write(
+      formatAdaptOutcome({
+        tenant: opts.tenant,
+        report,
+        ...(override === undefined ? {} : { override }),
+        ...(reverify === undefined ? {} : { reverify }),
+      }),
+    );
     process.exitCode = 0;
   } catch (error) {
     io.writeErr(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
   }
-}
-
-/**
- * Human-readable guarded-replay outcome. JSON is avoided on purpose.
- */
-function formatAdaptReport(
-  report: GuardedReplayReport,
-  tenant: string,
-  createdBy: string | undefined,
-): string {
-  const lines = [`tenant: ${tenant}`, `status: ${report.status}`];
-  if (createdBy !== undefined) {
-    lines.push(`override provenance: ${createdBy}`);
-  }
-  if (report.status === "compatible") {
-    lines.push(`runId: ${report.result.runId}`);
-    lines.push("enrolled header-only override (createdBy: verified)");
-    return lines.join("\n");
-  }
-  if (report.status === "business_outcome") {
-    lines.push(`outcome: ${report.result.outcome}`);
-    lines.push(`runId: ${report.result.runId}`);
-    lines.push("re-verified effective capability; enrollment kept");
-    return lines.join("\n");
-  }
-  lines.push(`step: ${report.stepId}`);
-  lines.push(`code: ${report.result.code}`);
-  lines.push(`expected: ${JSON.stringify(report.expected)}`);
-  lines.push(`observed: ${JSON.stringify(report.observed)}`);
-  lines.push(`runId: ${report.result.runId}`);
-  lines.push("re-verified effective capability; enrollment kept");
-  return lines.join("\n");
 }
 
 function resolveHeaded(headlessFlag: boolean, env: NodeJS.ProcessEnv): boolean {
@@ -182,6 +179,36 @@ function resolveHeaded(headlessFlag: boolean, env: NodeJS.ProcessEnv): boolean {
     return false;
   }
   return true;
+}
+
+/**
+ * Prefer an injected stub (tests). Otherwise construct Mastra when
+ * `ICAS_ADAPT_LLM_*` is ready. Compatible runs still skip `specialize`.
+ *
+ * @param io - CLI I/O plus optional stub specializer
+ * @returns Specializer, or `undefined` so mismatch fails closed with env hint
+ */
+async function resolveAdaptSpecializer(io: {
+  specializer?: StepSpecializer;
+  env: NodeJS.ProcessEnv;
+  write: (line: string) => void;
+}): Promise<StepSpecializer | undefined> {
+  if (io.specializer !== undefined) {
+    io.write("specializer: injected");
+    return io.specializer;
+  }
+  if (!isIcasLlmReady(resolveIcasLlmSettings("adapt", io.env))) {
+    io.write(
+      "specializer: unset (compatible enrollments skip the model; mismatch needs ICAS_ADAPT_LLM_*)",
+    );
+    return undefined;
+  }
+  const configured = await createConfiguredStepSpecializer({
+    env: io.env,
+    log: io.write,
+  });
+  io.write(`specializer: ready model=${configured.model}`);
+  return configured.specializer;
 }
 
 /**
@@ -235,6 +262,8 @@ const isMain =
   (process.argv[1].endsWith("cli.ts") || process.argv[1].endsWith("cli.js"));
 
 if (isMain) {
+  // pnpm --filter exec strips ICAS_*_LLM_API_KEY; adapt still needs a key.
+  loadRepoEnv();
   void runAdapt().catch((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
     console.error(message);

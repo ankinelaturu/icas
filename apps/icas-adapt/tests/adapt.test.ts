@@ -66,6 +66,7 @@ describe("icas-adapt override generation", () => {
   function deps(result: "mismatch" | "compatible", specializer?: StepSpecializer) {
     return {
       registry,
+      env: {} as NodeJS.ProcessEnv,
       stdout: (line: string) => {
         lines.push(line);
       },
@@ -155,8 +156,12 @@ describe("icas-adapt override generation", () => {
       ],
       deps("mismatch", memberLendingSpecializer),
     );
-    expect(lines.join("\n")).toContain("status: mismatch");
+    expect(lines.join("\n")).toContain("guarded replay: mismatch");
+    expect(lines.join("\n")).toContain("status: enrolled");
     expect(lines.join("\n")).toContain("override provenance: icas-adapt");
+    expect(lines.join("\n")).toContain("patched step: open-lending");
+    expect(lines.join("\n")).toContain("re-verify: success");
+    expect(lines.join("\n")).toContain("enrollment kept");
     const overrides = await registry.listOverrides({ tenant: "loki-bank" });
     expect(overrides).toHaveLength(1);
     expect(overrides[0]?.provenance.createdBy).toBe("icas-adapt");
@@ -196,10 +201,66 @@ describe("icas-adapt override generation", () => {
     expect(invocations[0]?.request.tenant).toBe("loki-bank");
     expect(invocations[0]?.request.url).toBe("https://icas.example/home");
     expect(lines.join("\n")).toContain("createdBy: verified");
+    expect(lines.join("\n")).toContain("status: enrolled");
+    expect(lines.join("\n")).toContain("enrolled header-only override");
     const overrides = await registry.listOverrides({ tenant: "loki-bank" });
     expect(overrides[0]?.overrides).toEqual({});
     expect(overrides[0]?.provenance.createdBy).toBe("verified");
     expect(invocations).toHaveLength(2);
+  });
+
+  it("fails closed on mismatch when ICAS_ADAPT_LLM_* is unset", async () => {
+    await registry.save(loadLoanPayoff());
+    await runAdapt(
+      [
+        "node",
+        "icas-adapt",
+        "loan-payoff",
+        "--tenant",
+        "icas-banc",
+        "--url",
+        "https://banc.example/home",
+        "--loanAccountId",
+        "987654",
+        "--payoffDate",
+        "2026-09-30",
+      ],
+      deps("mismatch"),
+    );
+    expect(process.exitCode).toBe(1);
+    expect(errors.join("\n")).toMatch(/ICAS_ADAPT_LLM/);
+    expect(await registry.listOverrides({ tenant: "icas-banc" })).toEqual([]);
+  });
+
+  it("forwards stubbed page text to the specializer", async () => {
+    await registry.save(loadLoanPayoff());
+    let seen = "";
+    const specializer: StepSpecializer = {
+      async specialize({ pageText }) {
+        seen = pageText;
+        return {
+          target: { strategies: [{ type: "visibleText", text: "Look Up" }] },
+        };
+      },
+    };
+    await runAdapt(
+      [
+        "node",
+        "icas-adapt",
+        "loan-payoff",
+        "--tenant",
+        "icas-banc",
+        "--url",
+        "https://banc.example/home",
+        "--loanAccountId",
+        "987654",
+        "--payoffDate",
+        "2026-09-30",
+      ],
+      { ...deps("mismatch", specializer), pageText: "Look Up" },
+    );
+    expect(process.exitCode).toBe(0);
+    expect(seen).toBe("Look Up");
   });
 
   it("rolls back the override when re-verify checkpoints fail", async () => {
@@ -236,6 +297,10 @@ describe("icas-adapt override generation", () => {
     );
     expect(process.exitCode).toBe(1);
     expect(errors.join("\n")).toMatch(/failed re-verify/);
+    expect(errors.join("\n")).toMatch(/step: open-lending/);
+    expect(errors.join("\n")).toMatch(/TARGET_NOT_FOUND/);
     expect(await registry.listOverrides({ tenant: "loki-bank" })).toEqual([]);
+    expect(lines.join("\n")).toMatch(/phase: guarded replay/);
+    expect(lines.join("\n")).toMatch(/phase: re-verify/);
   });
 });

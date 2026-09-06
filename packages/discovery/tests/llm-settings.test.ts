@@ -13,25 +13,31 @@ import {
 } from "../src/llm-settings.js";
 
 describe("resolveIcasLlmSettings", () => {
-  it("resolves discovery and assist independently", () => {
+  it("resolves discovery, assist, and adapt independently", () => {
     const env = {
       ICAS_DISCOVERY_LLM_MODEL: "openai/gpt-4o-mini",
       ICAS_DISCOVERY_LLM_API_KEY: "disc-key",
       ICAS_ASSIST_LLM_MODEL: "anthropic/claude-sonnet-4-6",
       ICAS_ASSIST_LLM_API_KEY: "assist-key",
+      ICAS_ADAPT_LLM_MODEL: "openai/gpt-4o-mini",
+      ICAS_ADAPT_LLM_API_KEY: "adapt-key",
     };
     const discovery = resolveIcasLlmSettings("discovery", env);
     const assist = resolveIcasLlmSettings("assist", env);
+    const adapt = resolveIcasLlmSettings("adapt", env);
     expect(discovery.model).toBe("openai/gpt-4o-mini");
     expect(discovery.apiKey).toBe("disc-key");
     expect(assist.model).toBe("anthropic/claude-sonnet-4-6");
     expect(assist.apiKey).toBe("assist-key");
+    expect(adapt.model).toBe("openai/gpt-4o-mini");
+    expect(adapt.apiKey).toBe("adapt-key");
   });
 
-  it("does not leak a discovery-only key into assist", () => {
+  it("does not leak a discovery-only key into assist or adapt", () => {
     const env = { ICAS_DISCOVERY_LLM_API_KEY: "disc-only" };
     expect(isIcasLlmReady(resolveIcasLlmSettings("discovery", env))).toBe(true);
     expect(isIcasLlmReady(resolveIcasLlmSettings("assist", env))).toBe(false);
+    expect(isIcasLlmReady(resolveIcasLlmSettings("adapt", env))).toBe(false);
   });
 
   it("omits empty BASE_URL so the provider public host applies", () => {
@@ -56,6 +62,18 @@ describe("resolveIcasLlmSettings", () => {
   it("is not ready when neither API_KEY nor BASE_URL is set", () => {
     expect(isIcasLlmReady(resolveIcasLlmSettings("discovery", {}))).toBe(false);
     expect(isIcasLlmReady(resolveIcasLlmSettings("assist", {}))).toBe(false);
+    expect(isIcasLlmReady(resolveIcasLlmSettings("adapt", {}))).toBe(false);
+  });
+
+  it("is ready with a local adapt BASE_URL and no cloud key", () => {
+    const settings = resolveIcasLlmSettings("adapt", {
+      ICAS_ADAPT_LLM_BASE_URL: "http://127.0.0.1:11434/v1",
+    });
+    expect(isIcasLlmReady(settings)).toBe(true);
+    expect(toMastraModelConfig(settings)).toEqual({
+      id: DEFAULT_ICAS_LLM_MODEL,
+      url: "http://127.0.0.1:11434/v1",
+    });
   });
 
   it("keeps temperature 0 and omits empty sampling", () => {

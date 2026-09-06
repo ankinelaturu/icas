@@ -274,4 +274,6 @@ Discover reads **`ICAS_DISCOVERY_LLM_*`** from the process env (repo-root `.env`
 
 Ready to run: `MODEL` is set and either `API_KEY` or `BASE_URL` is set. `ICAS_DISCOVERY_SMOKE=1` opts into the live smoke test; leave it unset in CI.
 
+`--assist` and `icas-adapt` use sibling prefixes (`ICAS_ASSIST_LLM_*`, `ICAS_ADAPT_LLM_*`) and do not read discovery keys. See [`05-replay-engine.md`](05-replay-engine.md) and [`06-multi-tenant-and-adaptation.md`](06-multi-tenant-and-adaptation.md).
+
 Env is **model transport**. The SDK seam remains `CandidateProposer`: production injects one implementation; tests inject a fake. A second SDK is a new class on that interface, not extra env vars.

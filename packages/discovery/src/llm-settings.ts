@@ -1,9 +1,10 @@
 /**
  * @file IcasLlmSettings — resolve per-flow LLM transport from env.
  *
- * Discover and `--assist` each have their own `ICAS_*_LLM_*` prefix so
- * operators can point them at different hosts. Env is model transport only;
- * {@link CandidateProposer} / RepairProposer stay the SDK seam.
+ * Discover, `--assist`, and `icas-adapt` each have their own `ICAS_*_LLM_*`
+ * prefix so operators can point them at different hosts. Env is model
+ * transport only; {@link CandidateProposer} / RepairProposer /
+ * StepSpecializer stay the SDK seam.
  *
  * Empty `BASE_URL` means the provider's public host. The provider prefix on
  * `MODEL` (`openai/…`, `anthropic/…`) selects the public host; do not infer
@@ -17,8 +18,25 @@ export const DEFAULT_ICAS_LLM_MODEL = "openai/gpt-4o";
  * Which CLI flow to resolve.
  *
  * `discovery` → `ICAS_DISCOVERY_LLM_*`. `assist` → `ICAS_ASSIST_LLM_*`.
+ * `adapt` → `ICAS_ADAPT_LLM_*`.
  */
-export type IcasLlmFlow = "discovery" | "assist";
+export type IcasLlmFlow = "discovery" | "assist" | "adapt";
+
+/**
+ * Env prefix for one flow. Callers must not concatenate ad-hoc names.
+ *
+ * @param flow - Discover, assist, or adapt
+ */
+function envPrefix(flow: IcasLlmFlow): string {
+  switch (flow) {
+    case "discovery":
+      return "ICAS_DISCOVERY_LLM";
+    case "assist":
+      return "ICAS_ASSIST_LLM";
+    case "adapt":
+      return "ICAS_ADAPT_LLM";
+  }
+}
 
 /**
  * Resolved LLM transport for one generate call.
@@ -58,14 +76,14 @@ export function isIcasLlmReady(settings: IcasLlmSettings): boolean {
  *
  * Reads only `ICAS_<FLOW>_LLM_*`. Empty strings are unset.
  *
- * @param flow - Discovery or assist prefix
+ * @param flow - Discovery, assist, or adapt prefix
  * @param env - Process env; inject in tests
  */
 export function resolveIcasLlmSettings(
   flow: IcasLlmFlow,
   env: NodeJS.ProcessEnv = process.env,
 ): IcasLlmSettings {
-  const prefix = flow === "discovery" ? "ICAS_DISCOVERY_LLM" : "ICAS_ASSIST_LLM";
+  const prefix = envPrefix(flow);
   const model = firstNonEmpty(env[`${prefix}_MODEL`]) ?? DEFAULT_ICAS_LLM_MODEL;
   const apiKey = firstNonEmpty(env[`${prefix}_API_KEY`]);
   const baseUrl = firstNonEmpty(env[`${prefix}_BASE_URL`]);

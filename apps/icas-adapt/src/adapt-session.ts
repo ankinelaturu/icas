@@ -5,7 +5,8 @@
  * first checkpoint mismatch. Compatible enrollments write a header-only override
  * (`createdBy: "verified"`). A one-step mismatch writes `createdBy: "icas-adapt"`.
  * Enrollment is kept only when a second ReplayEngine run of the resolved
- * effective capability passes every checkpoint.
+ * effective capability passes every checkpoint. The CLI logger prints each
+ * phase so a rollback includes the miss, the patch, and the re-verify stop.
  */
 
 import { randomUUID } from "node:crypto";
@@ -26,11 +27,16 @@ import {
   type GuardedReplayReport,
 } from "@icas/replay";
 
-import { buildAdaptOverride, type StepSpecializer } from "./build-override.js";
-
+import { buildAdaptOverride, resolveDivergentStep, type StepSpecializer } from "./build-override.js";
 import { CliHandoffController } from "./cli-handoff.js";
 import { policyGuardForUrl } from "./default-policy.js";
 import { evidenceRoot } from "./evidence-root.js";
+import {
+  AdaptReverifyError,
+  formatGuardedReplayReport,
+  formatOverrideSummary,
+  formatPageTextPreview,
+} from "./format-adapt-log.js";
 
 /**
  * Parsed `icas-adapt` invocation. `--tenant` is required; never defaulted.
@@ -58,11 +64,30 @@ export interface AdaptSessionDeps {
   executeReplay?: (invocation: AdaptReplayInvocation) => Promise<ExecutionResult>;
   /** Required to persist a mismatch patch; header-only compatible enrollments skip it. */
   specializer?: StepSpecializer;
+  /**
+   * Visible page text for a stubbed mismatch. Production Playwright capture
+   * ignores this and reads the live document after a failed run.
+   */
+  pageText?: string;
   /** When false, report only (tests). Default true. */
   persistOverride?: boolean;
   evidenceRoot?: string;
   stdin?: NodeJS.ReadableStream;
   stdout?: NodeJS.WritableStream;
+  /** Stage lines for the CLI. Tests capture these as stdout. */
+  log?: (line: string) => void;
+}
+
+/**
+ * Replay result plus optional page text for the specializer.
+ *
+ * Compatible runs leave `pageText` empty. Mismatch needs the chrome the
+ * operator can see so the model can propose a locator synonym.
+ */
+interface ReplayCapture {
+  result: ExecutionResult;
+  pageText: string;
+  evidenceDir?: string;
 }
 
 /**
@@ -79,6 +104,7 @@ export async function runGuardedAdapt(
   report: GuardedReplayReport;
   capability: CapabilityArtifact;
   override?: CapabilityOverride;
+  reverify?: ExecutionResult;
 }> {
   const base = await deps.registry.get(request.id);
   if (base === undefined) {
@@ -94,34 +120,53 @@ export async function runGuardedAdapt(
   }
   validateInputValues(base.inputs, request.inputs);
   const invocation: AdaptReplayInvocation = { capability: base, request };
-  const result =
-    deps.executeReplay === undefined
-      ? await executePlaywrightReplay(invocation, deps)
-      : await deps.executeReplay(invocation);
-  const report = classifyGuardedReplay(result);
+  emit(deps, `adapt: ${request.id} tenant=${request.tenant} url=${request.url}`);
+  emit(deps, `inputs: ${JSON.stringify(request.inputs, null, 2)}`);
+  emit(deps, `vendor/product: ${request.vendor}/${request.product}`);
+  emit(deps, `headed: ${String(request.headed)}`);
+  emit(deps, "phase: guarded replay (base capability, no LLM)");
+  const captured = await replayOnce(invocation, deps);
+  const report = classifyGuardedReplay(captured.result);
+  emit(deps, formatGuardedReplayReport(report, captured.evidenceDir));
+  if (report.status === "mismatch") {
+    const failed = resolveDivergentStep(base, report);
+    emit(deps, `failed step definition:\n${JSON.stringify(failed, null, 2)}`);
+    emit(deps, formatPageTextPreview(captured.pageText));
+  }
   if (deps.persistOverride === false) {
     return { report, capability: base };
+  }
+  if (report.status === "mismatch") {
+    emit(deps, "phase: StepSpecializer (one-step override)");
+  } else if (report.status === "compatible") {
+    emit(deps, "phase: header-only enrollment (createdBy: verified)");
   }
   const override = await buildAdaptOverride({
     base,
     tenant: request.tenant,
     report,
+    pageText: captured.pageText,
     ...(deps.specializer === undefined ? {} : { specializer: deps.specializer }),
   });
+  emit(deps, formatOverrideSummary(override));
   await deps.registry.saveOverride(override);
-  // Second replay of the resolved effective capability. Failure rolls back
-  // so icas-play cannot run an unverified tenant.
-  const verified = await reverifyOverride(request, base, deps);
-  if (!verified) {
-    await deps.registry.removeOverride(
-      request.tenant,
-      base.id,
-    );
-    throw new Error(
-      `override for tenant "${request.tenant}" failed re-verify; enrollment was rolled back`,
-    );
+  emit(deps, `saved override for tenant ${request.tenant} capability ${base.id}`);
+  emit(deps, "phase: re-verify (effective capability, no LLM)");
+  const reverified = await reverifyOverride(request, base, deps);
+  emit(deps, formatGuardedReplayReport(
+    classifyGuardedReplay(reverified.result),
+    reverified.evidenceDir,
+  ));
+  if (reverified.result.status !== "success") {
+    await deps.registry.removeOverride(request.tenant, base.id);
+    emit(deps, `rolled back override for tenant ${request.tenant} capability ${base.id}`);
+    throw new AdaptReverifyError({
+      tenant: request.tenant,
+      reverify: reverified.result,
+      ...(reverified.evidenceDir === undefined ? {} : { evidenceDir: reverified.evidenceDir }),
+    });
   }
-  return { report, capability: base, override };
+  return { report, capability: base, override, reverify: reverified.result };
 }
 
 /**
@@ -130,32 +175,72 @@ export async function runGuardedAdapt(
  * Header-only enrollment is proven the same way as a one-step patch. Failure
  * rolls back so `icas-play` cannot run an unverified tenant.
  *
- * @returns true when every checkpoint passes
+ * @returns Capture of the second run (success keeps enrollment)
  */
 async function reverifyOverride(
   request: AdaptRunRequest,
   base: CapabilityArtifact,
   deps: AdaptSessionDeps,
-): Promise<boolean> {
+): Promise<ReplayCapture> {
   const effective = await new CapabilityResolver(deps.registry).resolve({
     id: base.id,
     tenant: request.tenant,
   });
   const invocation: AdaptReplayInvocation = { capability: effective, request };
-  const result =
-    deps.executeReplay === undefined
-      ? await executePlaywrightReplay(invocation, deps)
-      : await deps.executeReplay(invocation);
-  return result.status === "success";
+  return replayOnce(invocation, deps);
 }
 
 /**
- * Open Playwright and run ReplayEngine on the base artifact (no LLM).
+ * Write a stage line when the CLI injected a logger.
+ *
+ * @param deps - Session deps
+ * @param line - One or more newline-separated lines
+ */
+function emit(deps: AdaptSessionDeps, text: string): void {
+  if (deps.log === undefined) {
+    return;
+  }
+  for (const line of text.split("\n")) {
+    deps.log(line);
+  }
+}
+
+/**
+ * Run ReplayEngine once. Injected `executeReplay` skips Playwright.
+ *
+ * Stubbed runs use {@link AdaptSessionDeps.pageText} so unit tests can feed
+ * chrome without a browser. Live runs capture `visibleText` after a failure,
+ * before `surface.close()`.
+ *
+ * @param invocation - Artifact plus CLI request
+ * @param deps - Registry, optional stub, evidence
+ */
+async function replayOnce(
+  invocation: AdaptReplayInvocation,
+  deps: AdaptSessionDeps,
+): Promise<ReplayCapture> {
+  if (deps.executeReplay !== undefined) {
+    return {
+      result: await deps.executeReplay(invocation),
+      pageText: deps.pageText ?? "",
+    };
+  }
+  return executePlaywrightReplay(invocation, deps);
+}
+
+/**
+ * Open Playwright and run ReplayEngine on the artifact (no LLM).
+ *
+ * On failure, read visible text while the page is still open. Close always
+ * runs in `finally` so a hung capture cannot leak Chromium.
+ *
+ * @param invocation - Artifact plus CLI request
+ * @param deps - Evidence, policy, handoff streams
  */
 async function executePlaywrightReplay(
   invocation: AdaptReplayInvocation,
   deps: AdaptSessionDeps,
-): Promise<ExecutionResult> {
+): Promise<ReplayCapture> {
   const { capability, request } = invocation;
   const runId = request.runId ?? randomUUID();
   const evidence = new FileSystemEvidenceWriter({
@@ -174,11 +259,25 @@ async function executePlaywrightReplay(
     headed: request.headed,
     ...(request.timeoutMs === undefined ? {} : { timeoutMs: request.timeoutMs }),
   });
+    emit(
+      deps,
+      `browser: opening ${request.url} (${request.headed ? "headed" : "headless"}) runId=${runId}`,
+    );
   try {
     await surface.open(request.url);
     const engine = new ReplayEngine(surface, { policy, evidence, handoff });
     const result = await engine.run(capability, request.inputs, { runId });
-    return result;
+    let pageText = "";
+    // Compatible success has nothing to specialize. Capture only on a miss
+    // so the specializer sees the chrome that replaced the expected locator.
+    if (result.status === "failure") {
+      try {
+        pageText = await surface.visibleText();
+      } catch {
+        pageText = "";
+      }
+    }
+    return { result, pageText, evidenceDir: evidence.runDirectory() };
   } finally {
     await surface.close();
   }

@@ -83,13 +83,13 @@ Input:
 
 Behavior:
 
-1. run guarded replay;
+1. run guarded replay (`ReplayEngine`, no LLM);
 2. stop at the first meaningful mismatch;
-3. capture expected vs observed state;
-4. invoke bounded discovery/adaptation around the divergent region;
-5. prove re-entry into the known downstream path via pre/post conditions;
-6. produce a specialized/overridden capability representation (header-only if compatible, patch if a small region drifted);
-7. record evidence.
+3. capture expected vs observed state and visible page text;
+4. if compatible, write a header-only override (`createdBy: "verified"`) and skip the model;
+5. if one step drifted, call `StepSpecializer` once (`ICAS_ADAPT_LLM_*`, Mastra in `icas-adapt`) for a declarative `StepOverride`. When replay reports `UNEXPECTED_STATE` because the **next** locator is missing, the override is for that next step (Inquire → Look Up), not the fill that already succeeded;
+6. prove re-entry into the known downstream path via `ReplayEngine` re-verify (no LLM);
+7. record evidence. Roll back the override if re-verify fails. `icas-adapt` prints each phase (miss, patch, re-verify, evidence path) and the LLM round-trip (system instructions, exact user prompt, structured model object, token usage). The final summary is enrollment status (`status: enrolled`) plus the re-verify run; it does not reprint the first-run miss as the command result. API keys are never printed.
 
 ## Base + specialization concept
 
@@ -216,7 +216,9 @@ ReplayEngine
 
 ### When an override is not enough
 
-`icas-adapt` should use a small override only if it can prove re-entry into the known downstream path. If divergence spans much of the workflow, downstream preconditions cannot be restored, or the business flow is materially different, stop adaptation and require broader rediscovery instead of accumulating a large brittle patch.
+`icas-adapt` should use a small override only if it can prove re-entry into the known downstream path. The specializer lives in `apps/icas-adapt` (`MastraStepSpecializer`); `@icas/replay` stays model-free. It reads **`ICAS_ADAPT_LLM_*`** with the same shape as discovery/assist (`MODEL`, `API_KEY`, optional `BASE_URL`, sampling). Ready when `MODEL` is set and either `API_KEY` or `BASE_URL` is set. Compatible runs ignore this env. `--assist` is a different prefix (`ICAS_ASSIST_LLM_*`) and does not persist an override.
+
+If divergence spans much of the workflow, downstream preconditions cannot be restored, or the business flow is materially different, stop adaptation and require broader rediscovery instead of accumulating a large brittle patch.
 
 ## Drift
 

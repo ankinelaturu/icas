@@ -108,7 +108,7 @@ Many legacy screens never expose a document status (XHR, frames, `200` error pag
 
 ### Matching `match.phrases`
 
-After the next locator misses, replay reads `Surface.visibleText()` **once** and runs an ordered matcher pipeline. First hit wins. All miss → generic chrome, then `UNEXPECTED_STATE`.
+After the next locator misses, replay reads `Surface.visibleText()` **once** and runs an ordered matcher pipeline. First hit wins. All miss → generic chrome, then `UNEXPECTED_STATE` with `stepId` of the **next** step (the missing locator) and `expected` that step's action. Adapt patches that step, not the fill that already succeeded.
 
 1. **Substring** (implemented) — case-insensitive `includes` of each phrase. Do not `textVisible`-wait per phrase.
 2. **Embedding** (stub) — reserved for chunking page text, embedding chunks vs `match.phrases`, returning a high-confidence phrase. Always misses today. No vectors on the capability. Strict replay still has **no LLM**.
@@ -236,7 +236,7 @@ same Vendor+Product
 
 The replay engine therefore becomes the authority on whether an artifact actually works in the observed runtime state.
 
-When `icas-adapt` sees a mismatch, it may generate an override. The override is not considered valid merely because it was generated. Resolve base + override, then run the effective capability through `ReplayEngine` again. All normal checkpoints must pass before the tenant specialization is considered verified.
+When `icas-adapt` sees a mismatch, it may generate an override. A live mismatch calls `StepSpecializer` once (`ICAS_ADAPT_LLM_*` in the adapt app; not `--assist`). The override is not considered valid merely because it was generated. Resolve base + override, then run the effective capability through `ReplayEngine` again. All normal checkpoints must pass before the tenant specialization is considered verified.
 
 ## HITL
 
@@ -252,7 +252,7 @@ If `kind: "hitl"` fires but no `HandoffController` is available, fail closed wit
 
 `kind: "error"` must not pause for a human. The application already answered.
 
-The same browser session remains alive during handoff. After a `kind: "hitl"` resume, replay probes the next step’s locator again. Found means continue; still missing is `UNEXPECTED_STATE`.
+The same browser session remains alive during handoff. After a `kind: "hitl"` resume, replay probes the next step’s locator again. Found means continue; still missing is `UNEXPECTED_STATE` on that next step.
 
 ## Evidence
 

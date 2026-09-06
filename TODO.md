@@ -712,10 +712,10 @@ Discover needs `ICAS_DISCOVERY_LLM_*` in `.env`. Strict replay does not. Each IC
 
 ### Pass 8.0 — Start servers
 
-- [ ] icas-bank on `:4101`, loki-bank on `:4102`, helix-cu on `:4103`
+- [ ] icas-bank on `:4101`, loki-bank on `:4102`, helix-cu on `:4103`, icas-banc on `:4104`
 - [ ] Confirm each responds before 8.1
 
-One tenant per terminal. Leave all three up for the rest of Phase 8 (8.1–8.5 and 8.7 use icas-bank; 8.6 uses Loki; Helix is the second-product surface if you record it).
+One tenant per terminal. Leave all four up for the rest of Phase 8 (8.1–8.5 and 8.7 use icas-bank; 8.6 uses icas-banc; Helix is the second-product surface if you record it). Loki stays available as the larger-drift twin; it is not the 8.6 enroll target.
 
 ```bash
 pnpm icas-bank
@@ -729,15 +729,20 @@ pnpm loki-bank
 pnpm helix-cu
 ```
 
+```bash
+pnpm icas-banc
+```
+
 Check they are listening (expect HTTP 200 from each):
 
 ```bash
 curl -s -o /dev/null -w 'icas-bank 4101 %{http_code}\n' http://127.0.0.1:4101/
 curl -s -o /dev/null -w 'loki-bank 4102 %{http_code}\n' http://127.0.0.1:4102/
 curl -s -o /dev/null -w 'helix-cu 4103 %{http_code}\n' http://127.0.0.1:4103/
+curl -s -o /dev/null -w 'icas-banc 4104 %{http_code}\n' http://127.0.0.1:4104/
 ```
 
-If a check is `000` or connection refused, that app is not running. Do not start 8.1 until all three print `200`.
+If a check is `000` or connection refused, that app is not running. Do not start 8.1 until all four print `200`.
 
 ### Pass 8.1 — Real discovery against icas-bank
 
@@ -851,12 +856,16 @@ pnpm icas-play \
   2>&1 | tee $PWD/phase8-05-hitl.log
 ```
 
-### Pass 8.6 — Loki Bank adaptation evidence
+### Pass 8.6 — icas-banc adaptation evidence
 
 - [ ] `icas-adapt` produces a verified override
 - [ ] Commit override + adaptation evidence
 
-Loki overlay is unused here (happy-path adapt). icas-bank stays on 4101 from 8.0. Same `--` input names as 8.2 / describe.
+`tenants/icas-banc` is the same Vendor+Product as icas-bank with **one** search-submit rename (Inquire → Look Up). That is the bounded one-step adapt target (`MAX_ADAPT_PATCH_STEPS = 1`). Loki’s broader label drift is not this pass.
+
+Overlay is unused (happy-path adapt). icas-banc is already on `:4104` from 8.0; icas-bank stays on 4101. Same `--` input names as 8.2 / describe.
+
+Mismatch patches need `ICAS_ADAPT_LLM_*` (repo-root `.env` is loaded on start). Compatible enrollments skip the model; this tenant is expected to miss once, write `createdBy: "icas-adapt"`, then re-verify with `ReplayEngine` (no LLM). `--assist` / `ICAS_ASSIST_LLM_*` do not persist an override.
 
 ```bash
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
@@ -864,8 +873,8 @@ export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
 pnpm icas-adapt \
   loan-payoff \
-  --tenant loki-bank \
-  --url http://localhost:4102 \
+  --tenant icas-banc \
+  --url http://localhost:4104 \
   --loanAccountNumber 112233 \
   --payoffDate 2026-09-30 \
   2>&1 | tee $PWD/phase8-06-adapt.log
@@ -901,7 +910,7 @@ No extra command. The blocks above are the README demo path plus inject URLs for
 
 - [ ] Short recording of discovery or HITL if it helps the reviewer
 
-No extra ICAS command. Record the same invocations as 8.1–8.7 as separate shorts (discover, replay `112233`, not-found, wait, HITL, Loki adapt, MCP).
+No extra ICAS command. Record the same invocations as 8.1–8.7 as separate shorts (discover, replay `112233`, not-found, wait, HITL, icas-banc adapt, MCP).
 
 ---
 

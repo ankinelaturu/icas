@@ -20,7 +20,7 @@ An operator drives ICAS with `icas-agent` (discover), `icas-play` (replay), and 
 
 Discover and adapt write the `capabilities/` catalog. Replay and MCP read it through `CapabilityResolver` and never glob the tree. `ReplayEngine` receives only the **effective** capability. Every run writes `evidence/` (traces, logs, screenshots). Evidence is not an input to the next run.
 
-Discover is the LLM path: `DiscoveryAgent` → `CandidateProposer` (Mastra) → the configured model (`ICAS_DISCOVERY_LLM_*`; default `openai/gpt-4o`). Search state stays in ICAS, not in Mastra memory. Strict replay has no LLM. `--assist` uses a separate `RepairProposer` and `ICAS_ASSIST_LLM_*`. `.env` is model transport only (`MODEL`, `API_KEY`, optional `BASE_URL` and sampling).
+Discover is the LLM path: `DiscoveryAgent` → `CandidateProposer` (Mastra) → the configured model (`ICAS_DISCOVERY_LLM_*`; default `openai/gpt-4o`). Search state stays in ICAS, not in Mastra memory. Strict replay has no LLM. `--assist` uses a separate `RepairProposer` and `ICAS_ASSIST_LLM_*`. `icas-adapt` mismatch patches use a `StepSpecializer` and `ICAS_ADAPT_LLM_*` (compatible enrollments skip the model). `.env` is model transport only (`MODEL`, `API_KEY`, optional `BASE_URL` and sampling).
 
 `PlaywrightSurface` is the implemented `Surface`. It opens the synthetic tenants: `icas-bank` (`:4101`), `loki-bank` (`:4102`), `helix-cu` (`:4103`). icas-bank and Loki Bank share Vendor+Product `icas-bank` / `icas-bank`; Loki has label/nav drift. Helix CU is a different vendor/product (share hold).
 
@@ -149,7 +149,7 @@ Discovery traces are the richest. Replay writes checkpoint JSONL on every termin
 Vendor → Product → Tenant
 ```
 
-Same Vendor+Product is a reuse **hint**, not proof. `icas-adapt` runs guarded replay against a new tenant URL. Compatible → header-only override (`createdBy: "verified"`). Small drift → declarative patch (`createdBy: "icas-adapt"`) and re-verify. Large divergence → abort; do not accumulate a brittle patch. Rediscover is a separate `icas-agent` run, not a giant override.
+Same Vendor+Product is a reuse **hint**, not proof. `icas-adapt` runs guarded replay against a new tenant URL. Compatible → header-only override (`createdBy: "verified"`) with no LLM. Small drift → one `StepSpecializer` generate (`ICAS_ADAPT_LLM_*`) writes a declarative one-step patch (`createdBy: "icas-adapt"`) and re-verify with `ReplayEngine` (still no LLM). Large divergence → abort; do not accumulate a brittle patch. Rediscover is a separate `icas-agent` run, not a giant override.
 
 `icas-play` / MCP must not silently use the bare base for an unenrolled tenant. Details: [`06-multi-tenant-and-adaptation.md`](06-multi-tenant-and-adaptation.md).
 

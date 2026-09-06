@@ -83,7 +83,7 @@ apps/icas-play
   → policy / redactor / handoff / evidence
 
 apps/icas-adapt
-  → replay + discovery + capability
+  → replay + capability; Mastra StepSpecializer on mismatch (`ICAS_ADAPT_LLM_*`)
 
 apps/icas-mcp
   → capability registry + replay

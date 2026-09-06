@@ -27,7 +27,8 @@ tests/         Cross-package integration tests
 ```bash
 pnpm install
 cp .env.example .env
-# Set ICAS_DISCOVERY_LLM_API_KEY (and ICAS_ASSIST_LLM_API_KEY if you use --assist).
+# Set ICAS_DISCOVERY_LLM_API_KEY (and ICAS_ASSIST_LLM_API_KEY / ICAS_ADAPT_LLM_API_KEY
+# if you use --assist or icas-adapt mismatch patches).
 # MODEL is provider/model, default openai/gpt-4o. Leave BASE_URL empty for hosted APIs.
 pnpm build
 ```
@@ -75,6 +76,7 @@ pnpm icas-play \
   --payoffDate 2026-09-30
 
 # Loki Bank: same vendor/product, label drift. Keep icas-bank running on 4101.
+# Mismatch patches need ICAS_ADAPT_LLM_* (compatible enrollments skip the model).
 pnpm loki-bank
 pnpm icas-adapt \
   loan-payoff \
