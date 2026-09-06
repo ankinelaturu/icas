@@ -123,8 +123,80 @@ describe("icas-bank HTTP", () => {
     expect(html).toContain('id="inject-hitl" style=""');
     expect(html).toContain("Manual review required");
     expect(html).toContain("Release to servicing");
+    expect(html).toContain("Supervisor hold");
     expect(html).toContain('id="loan-work" style="display:none"');
     expect(html).toContain('id="inject-wait" style="display:none"');
+  });
+
+  it("puts a custom HITL phrase in the overlay and labels dismiss human interacted", async () => {
+    const baseUrl = await listen();
+    const phrase = "Permission required to access loan details";
+    const html = await (
+      await fetch(
+        `${baseUrl}/lending/account.htm?ln=987654&inject=hitl&message=${encodeURIComponent(phrase)}`,
+      )
+    ).text();
+    expect(html).toContain(phrase);
+    expect(html).toContain(">human interacted</a>");
+    expect(html).not.toContain("Release to servicing");
+    expect(html).not.toContain("Supervisor hold");
+  });
+
+  it("puts a custom wait body under Session warning and keeps Continue", async () => {
+    const baseUrl = await listen();
+    const html = await (
+      await fetch(
+        `${baseUrl}/lending/account.htm?ln=987654&inject=wait&message=${encodeURIComponent("Host is restoring the session.")}`,
+      )
+    ).text();
+    expect(html).toContain("Session warning");
+    expect(html).toContain("Host is restoring the session.");
+    expect(html).toContain(">Continue</a>");
+    expect(html).not.toContain(
+      "Please wait. The host is restoring your operator session.",
+    );
+  });
+
+  it("carries inject=hitl and message from home via cookies onto loan details", async () => {
+    const baseUrl = await listen();
+    const phrase = "Permission required to access loan details";
+    const home = await fetch(
+      `${baseUrl}/?inject=hitl&message=${encodeURIComponent(phrase)}`,
+    );
+    const html = await (
+      await fetch(`${baseUrl}/lending/account.htm?ln=987654`, {
+        headers: { cookie: cookieHeader(home) },
+      })
+    ).text();
+    expect(html).toContain('id="inject-hitl" style=""');
+    expect(html).toContain(phrase);
+    expect(html).toContain(">human interacted</a>");
+  });
+
+  it("drops a leftover HITL phrase when inject=wait is set without message", async () => {
+    const baseUrl = await listen();
+    const hitl = await fetch(
+      `${baseUrl}/?inject=hitl&message=${encodeURIComponent("Permission required to access loan details")}`,
+    );
+    const html = await (
+      await fetch(`${baseUrl}/lending/account.htm?ln=987654&inject=wait`, {
+        headers: { cookie: cookieHeader(hitl) },
+      })
+    ).text();
+    expect(html).toContain('id="inject-wait" style=""');
+    expect(html).toContain("Please wait");
+    expect(html).not.toContain("Permission required to access loan details");
+  });
+
+  it("escapes HTML in a custom overlay message", async () => {
+    const baseUrl = await listen();
+    const html = await (
+      await fetch(
+        `${baseUrl}/lending/account.htm?ln=987654&inject=hitl&message=${encodeURIComponent("<script>alert(1)</script>")}`,
+      )
+    ).text();
+    expect(html).toContain("&lt;script&gt;");
+    expect(html).not.toContain("<script>alert(1)</script>");
   });
 
   it("carries inject=wait from home via cookie onto loan details", async () => {
@@ -147,6 +219,7 @@ describe("icas-bank HTTP", () => {
     const html = await cleared.text();
     expect(cleared.url).toContain("/lending/account.htm?ln=987654");
     expect(cleared.url).not.toContain("inject=");
+    expect(cleared.url).not.toContain("message=");
     expect(html).toContain('id="loan-work" style=""');
     expect(html).toContain('id="inject-wait" style="display:none"');
   });

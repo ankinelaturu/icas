@@ -23,6 +23,7 @@ import {
 } from "./loans.js";
 import {
   attachInjectMode,
+  injectMessageFrom,
   injectModeFrom,
   maybeDelayInjectWait,
   overlayTemplateVars,
@@ -97,7 +98,12 @@ export function createIcasBankApp(options: IcasBankAppOptions = {}): Express {
       res,
       page("account.html", {
         ...loanVars(loan),
-        ...overlayTemplateVars(mode, `/lending/account.htm?ln=${ln}&inject=clear`),
+        ...overlayTemplateVars(
+          mode,
+          `/lending/account.htm?ln=${ln}&inject=clear`,
+          // Cookie-backed `message=` so HITL copy survives Home → Inquire.
+          injectMessageFrom(res),
+        ),
       }),
     );
   });

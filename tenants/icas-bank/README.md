@@ -33,10 +33,20 @@ Demo quote for `987654` / `2026-09-30`: principal `12450.00`, per diem `3.45`, 3
 
 Query `inject` (cookie-backed so it survives navigation). Overlay appears on **Loan Details**, not search.
 
+Optional `message=` is stored on a second cookie. Use it so HITL body text can match a compiled `possibleOutcomes` phrase after Home → Inquire (the query string is dropped). Wait accepts the same param for future tests; omit it to keep the default “Please wait” copy.
+
+URL-encode the phrase (`encodeURIComponent` in a shell, or a browser address bar).
+
 | Start URL | What happens |
 |---|---|
 | `http://localhost:4101/?inject=wait` | Session warning + Continue (recoverable; ~400ms delay) |
+| `http://localhost:4101/?inject=wait&message=…` | Same heading and Continue; custom body |
 | `http://localhost:4101/?inject=hitl` | Manual review; **Release to servicing** (do not click Continue) |
+| `http://localhost:4101/?inject=hitl&message=…` | Custom body; dismiss link is **human interacted** |
 | no query | Happy path |
 
-Continue / Release request `inject=clear` and drop the cookie.
+Example HITL (encode the spaces):
+
+`http://localhost:4101/?inject=hitl&message=Permission%20required%20to%20access%20loan%20details`
+
+Continue / Release / human interacted request `inject=clear` and drop both cookies. Setting `inject=wait` or `inject=hitl` without `message=` also drops a leftover phrase cookie.

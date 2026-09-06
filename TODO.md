@@ -695,6 +695,7 @@ Same fictional Vendor+Product: `icas-bank` / `icas-bank`. Tenant catalog id for 
 ### Pass 7.8 — Injectable HITL / manual-review screen
 
 - [x] Ambiguous or approval boundary that automation should not click through
+- [x] icas-bank: optional cookie-backed `message=` on `inject=hitl` (and `inject=wait`) so overlay body can match compiled HITL phrases; custom HITL dismiss is **human interacted**
 
 ### Pass 7.9 — Helix CU share hold (div layout)
 
@@ -815,7 +816,7 @@ pnpm icas-play \
 
 - [ ] Bounded recovery visible in the log
 
-`?inject=wait` puts a **session-warning** overlay on **Loan Details** (cookie so it survives Home → Inquire). Replay should dismiss **Continue** on its own, wait the short stall, then finish payoff. Do not click the overlay. Do not use `?inject=hitl` (that is 8.5). The log should show a `known_interstitial` recovery, then success with outputs. Same `--` input names as 8.2 / describe.
+`?inject=wait` puts a **session-warning** overlay on **Loan Details** (cookie so it survives Home → Inquire). Replay should dismiss **Continue** on its own, wait the short stall, then finish payoff. Do not click the overlay. Do not use `?inject=hitl` (that is 8.5). Omit `message=` so the default “Please wait” / Session warning copy stays; that is what `known_interstitial` matches. (`message=` on wait is for later fixture tests.) The log should show a `known_interstitial` recovery, then success with outputs. Same `--` input names as 8.2 / describe.
 
 ```bash
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
@@ -834,7 +835,9 @@ pnpm icas-play \
 - [ ] Pause, same browser, recorded human actions, resume
 - [ ] Commit handoff evidence
 
-Do not click **Continue**. Use **Release to servicing** in the same headed window, then press ENTER in the CLI. Same `--` input names as 8.2 / describe.
+Default `?inject=hitl` overlay copy (“Supervisor hold” / **Release to servicing**) does **not** match compiled HITL phrases, so replay would stop as `UNEXPECTED_STATE`. Pass `message=` with a substring from the **Inquire** step’s `possibleOutcomes` `kind: "hitl"` entry (this 8.1 artifact: `Permission required to access loan details`). Cookie-backed like `inject`, so the phrase survives Home → Inquire. If you rediscover, re-read that phrase from describe / the artifact and re-encode it.
+
+Do not click **Continue**. In the same headed window click **human interacted**, then press ENTER in the CLI. Same `--` input names as 8.2 / describe.
 
 ```bash
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
@@ -842,7 +845,7 @@ export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
 pnpm icas-play \
   run loan-payoff \
-  --url "http://localhost:4101/?inject=hitl" \
+  --url "http://localhost:4101/?inject=hitl&message=Permission%20required%20to%20access%20loan%20details" \
   --loanAccountNumber 112233 \
   --payoffDate 2026-09-30 \
   2>&1 | tee $PWD/phase8-05-hitl.log
