@@ -31,9 +31,9 @@ export interface McpInvokeRequest {
   capabilityId: string;
   url: string;
   tenant: string;
-  /** Must match `capability.target.vendor`. Defaults to `icas-bank`. */
+  /** Must match `capability.target.vendor`. Omitted uses the artifact target. */
   vendor?: string;
-  /** Must match `capability.target.product`. Defaults to `icas-bank`. */
+  /** Must match `capability.target.product`. Omitted uses the artifact target. */
   product?: string;
   inputs: Record<string, unknown>;
   headed?: boolean;
@@ -63,13 +63,14 @@ export async function invokeMcpCapability(
   deps: McpInvokeDeps,
 ): Promise<ExecutionResult> {
   const tenant = nonemptyIdentity(request.tenant);
-  const vendor = nonemptyIdentity(request.vendor);
-  const product = nonemptyIdentity(request.product);
   const resolver = new CapabilityResolver(deps.registry);
   const capability = await resolver.resolve({
     id: request.capabilityId,
     tenant,
   });
+  // Omitted vendor/product take this artifact's target so Helix omit matches.
+  const vendor = nonemptyIdentity(request.vendor, capability.target.vendor);
+  const product = nonemptyIdentity(request.product, capability.target.product);
   if (
     capability.target.vendor !== vendor ||
     capability.target.product !== product
@@ -87,12 +88,19 @@ export async function invokeMcpCapability(
 }
 
 /**
- * Treat missing or empty identity the same as the catalog default.
+ * Treat missing or empty identity as `fallback`.
+ *
+ * Tenant omit still uses {@link DEFAULT_ICAS_IDENTITY} because resolve runs
+ * before the artifact is loaded. Vendor/product omit uses `capability.target`.
  *
  * @param value - Tool arg or omitted field
+ * @param fallback - Value when `value` is empty
  */
-function nonemptyIdentity(value: string | undefined): string {
-  return value !== undefined && value.length > 0 ? value : DEFAULT_ICAS_IDENTITY;
+function nonemptyIdentity(
+  value: string | undefined,
+  fallback: string = DEFAULT_ICAS_IDENTITY,
+): string {
+  return value !== undefined && value.length > 0 ? value : fallback;
 }
 
 async function executePlaywrightReplay(

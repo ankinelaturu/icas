@@ -32,7 +32,7 @@ CapabilityRegistry
    └── icas-mcp   → agent-facing protocol
 ```
 
-`icas-play` may list/describe/run capabilities for humans. That is not by itself the agent-facing stretch goal. `icas-mcp` makes the catalog machine-discoverable as tools. Both must go through `CapabilityRegistry` / `CapabilityResolver` rather than reading files directly. Invocation uses capability id + tenant + vendor + product (MCP host should pass them or accept the `icas-bank` default) + runtime URL + typed args. Vendor and product must match the artifact target. The tenant must already be enrolled. Identity is never inferred from the URL. Catalog API and on-disk layout are specified in [`04-capability-artifact.md`](04-capability-artifact.md).
+`icas-play` may list/describe/run capabilities for humans. That is not by itself the agent-facing stretch goal. `icas-mcp` makes the catalog machine-discoverable as tools. Both must go through `CapabilityRegistry` / `CapabilityResolver` rather than reading files directly. Invocation uses capability id + tenant + vendor + product + runtime URL + typed args. Omitted identity defaults from that capability (`discoveredOn.tenant`, `target.vendor` / `target.product`). Vendor and product must match the artifact target. The tenant must already be enrolled. Identity is never inferred from the URL. Catalog API and on-disk layout are specified in [`04-capability-artifact.md`](04-capability-artifact.md).
 
 ## MCP server shape
 
@@ -69,7 +69,7 @@ loan_payoff({
 })
 ```
 
-`url` is required. `tenant`, `vendor`, and `product` are optional and default to `icas-bank`. A Helix tool call must pass `helix` / `helix` (and enrolled `helix-cu`); omitted identity does not match that artifact target.
+`url` is required. `tenant`, `vendor`, and `product` are optional. Defaults come from that capability: `target.vendor` / `target.product`, and `discoveredOn.tenant` (or `icas-bank` if discover did not stamp a tenant). An explicit value still wins. `loan-payoff` on icas-banc still passes `tenant: icas-banc`. Vendor and product must match the artifact target.
 
 Invocation delegates to:
 

@@ -264,14 +264,14 @@ Project `.cursor/mcp.json` (so `${workspaceFolder}` works). User-global `~/.curs
 }
 ```
 
-Pass `url` on the tool call. Omitted `tenant` / `vendor` / `product` default to `icas-bank` and must match the artifact target. Do not call `loan_payoff` with `tenant: loki-bank`.
+Pass `url` on the tool call. Omitted `tenant` / `vendor` / `product` default from that capability. Override `tenant` for icas-banc. Do not call `loan_payoff` with `tenant: loki-bank`.
 
 | Ask about | Tool | `tenant` | `vendor` / `product` | `url` |
 |---|---|---|---|---|
-| icas-bank payoff | `loan_payoff` | `icas-bank` (or omit) | omit | `http://localhost:4101` |
+| icas-bank payoff | `loan_payoff` | omit | omit | `http://localhost:4101` |
 | icas-banc payoff | `loan_payoff` | `icas-banc` | omit | `http://localhost:4104` |
-| Loki payoff | `payoff_statement` | `loki-bank` | omit | `http://localhost:4102` |
-| Helix hold | `share_hold` | `helix-cu` | `helix` / `helix` | `http://localhost:4103` |
+| Loki payoff | `payoff_statement` | omit | omit | `http://localhost:4102` |
+| Helix hold | `share_hold` | omit | omit | `http://localhost:4103` |
 
 ```text
 How much principal balance on loan 112233 as of 2026-09-30 on tenant icas-bank at http://localhost:4101.

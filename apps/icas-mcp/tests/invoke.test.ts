@@ -91,7 +91,7 @@ describe("invokeMcpCapability", () => {
     expect(result.status).toBe("success");
   });
 
-  it("defaults omitted vendor and product to icas-bank", async () => {
+  it("fills omitted vendor and product from the artifact target", async () => {
     await registry.save(loadLoanPayoff());
     await registry.saveOverride(loadIcasBankOverride());
     await invokeMcpCapability(

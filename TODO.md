@@ -654,7 +654,7 @@ Thin entry points. Packages own behavior.
 ### Pass 6.12 — MCP invoke → ReplayEngine
 
 - [x] Tool call delegates to `ReplayEngine` with resolved effective capability for an enrolled tenant (default `icas-bank`)
-- [x] Optional `vendor` / `product` / `tenant` on every tool (default `icas-bank`); mismatch vs artifact target fails; never inferred from `url`
+- [x] Optional `vendor` / `product` / `tenant` on every tool; defaults from that capability (`discoveredOn.tenant`, `target`); mismatch vs artifact target fails; never inferred from `url`
 - [x] No duplicated browser or replay logic
 
 ### Pass 6.13 — MCP `business_outcome` copy
@@ -1051,7 +1051,7 @@ pnpm icas-play \
 - [ ] Inspector lists `loan_payoff` and invokes it through `ReplayEngine`
 - [ ] Tool-call evidence under `$ICAS_EVIDENCE_ROOT`
 
-Stdio server (`loan-payoff` → tool `loan_payoff`). Tenant must already be enrolled (`icas-bank` from 8.1). icas-bank must be running. Tool args follow the 8.1 describe names, plus `url` and optional `tenant` / `vendor` / `product` (default `icas-bank`). Loki / Helix tools are optional; this pass is `loan_payoff` only.
+Stdio server (`loan-payoff` → tool `loan_payoff`). Tenant must already be enrolled (`icas-bank` from 8.1). icas-bank must be running. Tool args follow the 8.1 describe names, plus `url` and optional `tenant` / `vendor` / `product` (defaults from that capability). Loki / Helix tools are optional; this pass is `loan_payoff` only.
 
 Inspector starts the web UI and **spawns** `pnpm icas-mcp` as a stdio child. Do not also run `pnpm icas-mcp` in another terminal. Do not `tee` this command — stdout is the Inspector/MCP pipe. After a tool call, inspect `$ICAS_EVIDENCE_ROOT`. Run from the repo root.
 
@@ -1089,14 +1089,14 @@ Same stdio server as 8.11. Prefer a **project** config so `${workspaceFolder}` w
 }
 ```
 
-By this pass, 8.9–8.10 have added Loki / Helix ids. Tools are catalog ids with hyphens → underscores. The agent must pass `url` on the tool call. Omitted `tenant` / `vendor` / `product` default to `icas-bank` and must match the artifact target.
+By this pass, 8.9–8.10 have added Loki / Helix ids. Tools are catalog ids with hyphens → underscores. The agent must pass `url` on the tool call. Omitted `tenant` / `vendor` / `product` default from that capability (`discoveredOn.tenant`, `target`). Override `tenant` for a later enrollment (icas-banc on `loan_payoff`).
 
 | Ask about | Tool | `tenant` | `vendor` / `product` | `url` |
 |---|---|---|---|---|
-| icas-bank payoff | `loan_payoff` | `icas-bank` (or omit) | omit | `http://localhost:4101` |
+| icas-bank payoff | `loan_payoff` | omit | omit | `http://localhost:4101` |
 | icas-banc payoff | `loan_payoff` | `icas-banc` | omit | `http://localhost:4104` |
-| Loki payoff | `payoff_statement` | `loki-bank` | omit | `http://localhost:4102` |
-| Helix hold | `share_hold` | `helix-cu` | `helix` / `helix` | `http://localhost:4103` |
+| Loki payoff | `payoff_statement` | omit | omit | `http://localhost:4102` |
+| Helix hold | `share_hold` | omit | omit | `http://localhost:4103` |
 
 Do **not** call `loan_payoff` with `tenant: loki-bank` (that tenant is not enrolled on that id). Replay `--` input names still come from describe; chat can stay natural language.
 
