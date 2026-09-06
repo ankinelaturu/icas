@@ -60,6 +60,8 @@ export interface PlayReplaySessionDeps {
   repair?: RepairProposer;
   /** Process env for `--assist` API-key checks; tests inject a stub. */
   env?: NodeJS.ProcessEnv;
+  /** Stdout for `--assist` LLM prompt/response. Unused on strict replay. */
+  log?: (line: string) => void;
   evidenceRoot?: string;
   stdin?: NodeJS.ReadableStream;
   stdout?: NodeJS.WritableStream;
@@ -142,6 +144,7 @@ async function resolveRepairProposer(
   const configured = await createConfiguredRepairProposer({
     model: resolveRepairModel(env),
     env,
+    ...(deps.log === undefined ? {} : { log: deps.log }),
   });
   return configured.proposer;
 }

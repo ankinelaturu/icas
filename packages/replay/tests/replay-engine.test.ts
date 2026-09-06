@@ -1172,6 +1172,142 @@ describe("ReplayEngine assisted fallback rejoin", () => {
   });
 });
 
+describe("ReplayEngine assist next-locator miss", () => {
+  const policy = new PolicyGuard({
+    allowedOrigins: ["https://bank.example"],
+    allowedActionTypes: ["click", "fill", "read"],
+  });
+
+  function targetMiss(): Error {
+    const error = new Error("no matching control");
+    (error as Error & { code: string }).code = "TARGET_NOT_FOUND";
+    return error;
+  }
+
+  const fillLoan: ReturnType<typeof clickStep> = {
+    id: "fill-ln-acct",
+    preconditions: [],
+    action: {
+      type: "fill",
+      target: { strategies: [{ type: "label", label: "Loan Account" }] },
+      value: { literal: "112233" },
+      risk: "safe",
+    },
+    postconditions: [
+      {
+        type: "valueEquals",
+        target: { strategies: [{ type: "label", label: "Loan Account" }] },
+        value: { literal: "112233" },
+      },
+    ],
+  };
+
+  const clickInquire = clickStep("click-inquire", {
+    action: {
+      type: "click",
+      target: { strategies: [{ type: "visibleText", text: "Inquire" }] },
+      risk: "safe",
+    },
+    postconditions: [{ type: "textVisible", value: "Loan Details" }],
+  });
+
+  it("assists the missing click, skips re-executing Inquire, and rejoins", async () => {
+    const surface = new FakeSurface();
+    let onDetails = false;
+    let frozenStepId: string | undefined;
+    let frozenPageText: string | undefined;
+    surface.visibleTextContent = "Search Loan Account\nLook Up";
+    surface.locateHandler = (target) => {
+      const first = target.strategies[0];
+      if (first !== undefined && "text" in first && first.text === "Inquire") {
+        throw targetMiss();
+      }
+      return { ok: true };
+    };
+    surface.assertHandler = (assertion) => {
+      if (assertion.type === "textVisible" && assertion.value === "Loan Details") {
+        return onDetails;
+      }
+      if (assertion.type === "textVisible" && assertion.value === "Payoff ready") {
+        return onDetails;
+      }
+      return assertion.type === "textVisible" && assertion.value === "Payoff Statement";
+    };
+    surface.executeHandler = (action) => {
+      if (
+        action.type === "click" &&
+        action.target.strategies.some(
+          (strategy) => strategy.type === "visibleText" && strategy.text === "Look Up",
+        )
+      ) {
+        onDetails = true;
+      }
+      return { status: "ok" };
+    };
+    const engine = new ReplayEngine(surface, {
+      policy,
+      repair: {
+        propose: async (context) => {
+          frozenStepId = context.step.id;
+          frozenPageText = context.pageText;
+          return {
+            actions: [
+              {
+                type: "click",
+                target: { strategies: [{ type: "visibleText", text: "Look Up" }] },
+              },
+            ],
+            rationale: "Inquire was renamed Look Up",
+          };
+        },
+      },
+    });
+    const result = await engine.run(
+      testCapability({
+        steps: [
+          fillLoan,
+          clickInquire,
+          clickStep("open-payoff", {
+            preconditions: [{ type: "textVisible", value: "Payoff ready" }],
+          }),
+        ],
+      }),
+      {},
+      { runId: "run-assist-next-locator", assist: true },
+    );
+    expect(result.status).toBe("success");
+    expect(frozenStepId).toBe("click-inquire");
+    expect(frozenPageText).toContain("Look Up");
+    const inquireClicks = surface.executed.filter(
+      (action) =>
+        action.type === "click" &&
+        action.target.strategies.some(
+          (strategy) => strategy.type === "visibleText" && strategy.text === "Inquire",
+        ),
+    );
+    expect(inquireClicks).toHaveLength(0);
+    expect(
+      surface.executed.filter(
+        (action) =>
+          action.type === "click" &&
+          action.target.strategies.some(
+            (strategy) => strategy.type === "visibleText" && strategy.text === "Look Up",
+          ),
+      ),
+    ).toHaveLength(1);
+    expect(surface.executed.filter((action) => action.type === "fill")).toHaveLength(1);
+    expect(
+      surface.executed.filter(
+        (action) =>
+          action.type === "click" &&
+          action.target.strategies.some(
+            (strategy) => strategy.type === "visibleText" && strategy.text === "Continue",
+          ),
+      ),
+    ).toHaveLength(1);
+  });
+});
+
 
 
 describe("ReplayEngine HITL", () => {

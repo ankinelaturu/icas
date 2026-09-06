@@ -185,18 +185,20 @@ icas-play run ... --assist
 
 If one step fails:
 
-1. freeze the current failure context;
+1. freeze the failed step (the **missing next click** when the next locator is what failed after a successful fill; otherwise the step whose action missed);
 2. invoke a bounded LLM repair for that step only;
 3. apply runtime policy to the proposed repair;
 4. execute the replacement action(s) within a strict budget;
-5. verify the failed step's intended postconditions;
-6. verify the next original step's preconditions;
-7. only then rejoin the deterministic path;
+5. verify that frozen step's intended postconditions;
+6. verify the following original step's preconditions;
+7. only then rejoin the deterministic path (do not execute the original missing locator again);
 8. record the recovery as evidence.
 
 If the repaired state does not rejoin the known path, stop. Assisted fallback is not open-ended rediscovery.
 
-`--assist` reads **`ICAS_ASSIST_LLM_*`** (independent of discovery). Same shape: `MODEL` (`provider/model`), `API_KEY`, optional `BASE_URL` (`/v1` for OpenAI-compatible local servers; empty means the provider's public host), and optional sampling (`TEMPERATURE`, `TOP_K`, `TOP_P`, `MAX_OUTPUT_TOKENS`). Ready when `MODEL` is set and either `API_KEY` or `BASE_URL` is set. Strict replay without `--assist` ignores this env entirely. The repair prompt currently includes `imagePath` as a path string; whether `--assist` also gets image bytes is Pass 5.22.
+`--assist` reads **`ICAS_ASSIST_LLM_*`** (independent of discovery). Same shape: `MODEL` (`provider/model`), `API_KEY`, optional `BASE_URL` (`/v1` for OpenAI-compatible local servers; empty means the provider's public host), and optional sampling (`TEMPERATURE`, `TOP_K`, `TOP_P`, `MAX_OUTPUT_TOKENS`). Ready when `MODEL` is set and either `API_KEY` or `BASE_URL` is set. Strict replay without `--assist` ignores this env entirely. The repair prompt includes clipped `visibleText()` (submit values included) so the model can see chrome synonyms. `imagePath` is still a path string; whether `--assist` also gets image bytes is Pass 5.22.
+
+Stdout prints the LLM round-trip: transport (never the API key), system instructions, the exact user prompt passed to `generate`, the structured model object (pretty JSON, not the Mastra envelope), token usage, and the mapped `RepairProposal`. Deterministic step checkpoints stay in evidence `log.jsonl`.
 
 Env is model transport. The SDK seam is `RepairProposer` (injected in `icas-play`; `@icas/replay` stays model-free). `--assist` reads only `ICAS_ASSIST_LLM_*`.
 

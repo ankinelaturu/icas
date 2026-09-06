@@ -338,7 +338,7 @@ Callers resolve with `CapabilityResolver` first. `ReplayEngine` never branches o
 - [x] Rejoin deterministic path only if both pass; otherwise stop
 - [x] Tests: successful rejoin; failed rejoin does not continue inventing steps
 
-Next-locator miss still assists the **fill** today. Pass 4.17 (unchecked) + Phase 8.6 are the fix and demo.
+Pass 4.17 assists the missing next click on a next-locator miss (not the fill).
 
 ### Pass 4.12 — Replay integration tests
 
@@ -392,12 +392,13 @@ Depends on Pass 4.14 and Pass 2.10. Do not put this catalog on the capability or
 
 Depends on Pass 4.10 / 4.11. No catalog writes. See `docs/05-replay-engine.md`.
 
-After a successful fill, replay probes the **next** locator. Unclassified miss is `UNEXPECTED_STATE` with `stepId` of that next click (`click-inquire`). `maybeAssist` still freezes the **fill** step and rejoins using fill postconditions + Inquire preconditions. Clicking Look Up leaves search, so rejoin fails. Same bug adapt already fixed for overrides.
+After a successful fill, replay probes the **next** locator. Unclassified miss is `UNEXPECTED_STATE` with `stepId` of that next click (`click-inquire`). Assist freezes that click, sends clipped `visibleText()` (submit values included) to the repair model, rejoins that click’s postconditions, and skips executing Inquire again.
 
-- [ ] On `NEXT_ACTION_TARGET_MISSING` / next-locator `UNEXPECTED_STATE`, assist the **missing next step**, not the fill that already succeeded
-- [ ] After repair actions, rejoin that click’s postconditions (and the following step’s preconditions)
-- [ ] Still one assist per run; `PolicyGuard` + budget unchanged; do not persist an override
-- [ ] Tests: fill ok + next submit renamed → `--assist` clicks the synonym and rejoins; catalog untouched
+- [x] On `NEXT_ACTION_TARGET_MISSING` / next-locator `UNEXPECTED_STATE`, assist the **missing next step**, not the fill that already succeeded
+- [x] After repair actions, rejoin that click’s postconditions (and the following step’s preconditions)
+- [x] Still one assist per run; `PolicyGuard` + budget unchanged; do not persist an override
+- [x] Repair prompt includes visible page chrome so the model can see synonyms (Look Up), not only the missing Inquire locator
+- [x] Tests: fill ok + next submit renamed → `--assist` clicks the synonym and rejoins; catalog untouched
 
 ---
 
@@ -609,6 +610,7 @@ Thin entry points. Packages own behavior.
 
 - [x] Pass `assist: true` through to replay
 - [x] Default remains model-free when the flag is absent
+- [x] `--assist` stdout logs system instructions, exact generate prompt, structured response (no API key)
 
 ### Pass 6.5 — `icas-agent discover`
 
@@ -871,7 +873,7 @@ pnpm icas-play \
 
 ### Pass 8.6 — `--assist` on icas-banc URL (no catalog write)
 
-Depends on Pass 4.17. Do not run this until that fix lands.
+Depends on Pass 4.17.
 
 - [ ] `icas-play run loan-payoff --assist --tenant icas-bank --url :4104` succeeds
 - [ ] Evidence includes `assisted_fallback`; `loan-payoff` overrides are unchanged (no new `icas-banc.json` from this run)

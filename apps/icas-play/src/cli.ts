@@ -218,6 +218,7 @@ async function executeRunCommand(
       env: io.env,
       ...(io.executeReplay === undefined ? {} : { executeReplay: io.executeReplay }),
       ...(io.repair === undefined ? {} : { repair: io.repair }),
+      ...(opts.assist === true ? { log: io.write } : {}),
     });
     io.write(formatRunResult(result));
     process.exitCode = exitCodeForResult(result);

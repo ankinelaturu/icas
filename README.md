@@ -293,4 +293,4 @@ See [`docs/README.md`](docs/README.md) for the detailed design notes. Reviewer h
 
 ## Status
 
-The must-have vertical slice is implemented: discover → artifact + tenant enrollment → deterministic replay, exceptional-state classification, HITL, and evidence. Stretch already in-repo: `--assist`, `icas-adapt`, MCP. Demo step 6 still needs an open replay fix: `--assist` must rejoin the missing click, not the fill that already succeeded. Pass 4.15 (phrase embeddings) and Pass 5.22 (screenshot pixels on `generate`) are deferred on purpose.
+The must-have vertical slice is implemented: discover → artifact + tenant enrollment → deterministic replay, exceptional-state classification, HITL, and evidence. Stretch already in-repo: `--assist`, `icas-adapt`, MCP. Pass 4.15 (phrase embeddings) and Pass 5.22 (screenshot pixels on `generate`) are deferred on purpose.

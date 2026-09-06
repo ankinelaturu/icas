@@ -80,6 +80,12 @@ export class ReplayEngine {
   private assistEnabled = false;
   /** One assist per run: freeze, repair, rejoin — not rediscovery. */
   private assistUsed = false;
+  /**
+   * After a next-locator assist, skip executing that click. Repair already
+   * satisfied its postconditions; running the original Inquire locator would
+   * miss again on Look Up.
+   */
+  private skipStepId: string | undefined;
   private currentCapability: CapabilityArtifact | undefined;
   private startedAt = "";
   /** Capability steps that fully passed postconditions. */
@@ -116,6 +122,7 @@ export class ReplayEngine {
     this.assistEnabled = options.assist === true;
     this.assistBudget = options.assistBudget ?? 3;
     this.assistUsed = false;
+    this.skipStepId = undefined;
     this.completedSteps = 0;
     this.startedAt = new Date().toISOString();
     const result = await this.runLoop(capability, inputs, runId);
@@ -156,6 +163,12 @@ export class ReplayEngine {
       // Peek the next step so a successful `--assist` can verify its
       // preconditions before rejoining this loop.
       const nextStep = capability.steps[index + 1];
+      if (step.id === this.skipStepId) {
+        // Repair already completed this missing click. Do not locate Inquire.
+        this.skipStepId = undefined;
+        this.completedSteps += 1;
+        continue;
+      }
       const preFailure = await this.evaluatePreconditions(step, inputs, runId, capability.id);
       if (preFailure !== undefined) {
         return preFailure;
@@ -297,7 +310,8 @@ export class ReplayEngine {
   }
 
   /**
-   * Policy-check, execute, then postcondition. Assist is considered on classified fails.
+   * Policy-check, execute, then postcondition. Assist is considered on classified
+   * fails. A next-locator miss assists the missing click, not this successful action.
    *
    * @returns `undefined` when the step completed; otherwise a stop result
    */
@@ -403,7 +417,19 @@ export class ReplayEngine {
       capabilityId,
     );
     if (after !== undefined && after.status === "failure") {
-      return await this.maybeAssist(step, nextStep, inputs, runId, capabilityId, after);
+      const focus = this.assistFocus(step, nextStep, after);
+      const repaired = await this.maybeAssist(
+        focus.step,
+        focus.rejoinNext,
+        inputs,
+        runId,
+        capabilityId,
+        after,
+      );
+      if (repaired === undefined && focus.skipStepId !== undefined) {
+        this.skipStepId = focus.skipStepId;
+      }
+      return repaired;
     }
     return after;
   }
@@ -675,10 +701,44 @@ export class ReplayEngine {
   }
 
   /**
+   * Which step to freeze for `--assist`, and which original step is the rejoin gate.
+   *
+   * A next-locator miss names `failure.stepId` as the missing click while
+   * `executed` is the fill that already succeeded. Assist that click, then skip
+   * executing it in the step loop. This-step misses (target not found, surface
+   * fail) still freeze `executed`.
+   *
+   * @param executed - Step whose action just ran (or failed to)
+   * @param nextStep - Catalog successor, if any
+   * @param failure - Structured stop from execute / after-execute
+   */
+  private assistFocus(
+    executed: CapabilityStep,
+    nextStep: CapabilityStep | undefined,
+    failure: Extract<ExecutionResult, { status: "failure" }>,
+  ): {
+    step: CapabilityStep;
+    rejoinNext: CapabilityStep | undefined;
+    skipStepId?: string;
+  } {
+    const nextLocatorMiss =
+      failure.observed === NEXT_ACTION_TARGET_MISSING && nextStep !== undefined;
+    if (!nextLocatorMiss) {
+      return { step: executed, rejoinNext: nextStep };
+    }
+    const steps = this.currentCapability?.steps ?? [];
+    const nextIndex = steps.findIndex((candidate) => candidate.id === nextStep.id);
+    // findIndex -1 would make steps[0] the "following" step; refuse that.
+    const afterNext = nextIndex >= 0 ? steps[nextIndex + 1] : undefined;
+    return { step: nextStep, rejoinNext: afterNext, skipStepId: nextStep.id };
+  }
+
+  /**
    * One bounded LLM repair, then rejoin the original path or stop.
    *
    * Sequence: freeze context → propose → policy-check each action → execute
-   * within budget → original postconditions → next step's preconditions.
+   * within budget → frozen step postconditions → next original preconditions.
+   * On a next-locator miss the frozen step is the missing click, not the fill.
    * A second failure after this is not another assist (`assistUsed`).
    *
    * @returns `undefined` when execution rejoined; otherwise the unrepaired or new failure
@@ -698,13 +758,16 @@ export class ReplayEngine {
       return failure;
     }
     this.assistUsed = true;
-    // Freeze the current observation + failed step. This is not a new goal search.
+    // Freeze the current observation + visible chrome. Page text is the
+    // repair input; imagePath is a path string until Pass 5.22.
     const observation = await this.surface.observe();
+    const pageText = await this.surface.visibleText();
     const proposal = await this.repair.propose({
       step,
       capability: this.currentCapability,
       failure,
       observation,
+      pageText,
     });
     let executed = 0;
     for (const raw of proposal.actions) {

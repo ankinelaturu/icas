@@ -51,6 +51,61 @@ function fakeContext(): RepairContext {
       runId: "run-1",
     },
     observation: { id: "obs-1", imagePath: "/tmp/x.png" },
+    pageText: "Search Loan Account\nLook Up\nLoan Account",
+  };
+}
+
+function lookUpLlmObject() {
+  return {
+    actions: [
+      {
+        type: "click" as const,
+        intent: null,
+        risk: null,
+        path: null,
+        reason: null,
+        value: null,
+        proposedInputParam: null,
+        target: {
+          ref: null,
+          strategies: [
+            {
+              type: "visibleText" as const,
+              role: null,
+              text: "Look Up",
+              label: null,
+              selector: null,
+              xpath: null,
+              x: null,
+              y: null,
+              confidence: null,
+            },
+          ],
+        },
+      },
+    ],
+    rationale: "Inquire was renamed Look Up",
+  };
+}
+
+/**
+ * Shape Mastra returns at runtime: structured `object`, escaped JSON in
+ * `text`, plus nested usage/steps/messages that must not dump to stdout.
+ */
+function mastraGenerateResult(object: ReturnType<typeof lookUpLlmObject>) {
+  return {
+    object,
+    text: JSON.stringify(object),
+    usage: {
+      inputTokens: 1200,
+      outputTokens: 80,
+      totalTokens: 1280,
+      raw: { raw: { usage: { prompt_tokens: 1200 } } },
+    },
+    steps: [{ type: "tool", text: JSON.stringify(object) }],
+    messages: {
+      all: [{ role: "user", content: "full prompt echo open-lending" }],
+    },
   };
 }
 
@@ -147,6 +202,41 @@ describe("MastraRepairProposer", () => {
     });
     await expect(proposer.propose(fakeContext())).rejects.toThrow(/invalid RepairProposal/);
   });
+
+  it("logs system instructions, exact user prompt, and structured response", async () => {
+    const lines: string[] = [];
+    const proposer = new MastraRepairProposer(
+      {
+        generate: async () => mastraGenerateResult(lookUpLlmObject()),
+      },
+      {
+        settings: { model: "openai/gpt-4o", apiKey: "sk-secret-do-not-print", temperature: 0 },
+        instructions: "SYSTEM CONTRACT TEXT",
+        log: (line) => {
+          lines.push(line);
+        },
+      },
+    );
+    await proposer.propose(fakeContext());
+    const dump = lines.join("\n");
+    expect(dump).toContain("LLM generate step=open-lending");
+    expect(dump).toContain("pageTextChars=");
+    expect(dump).toContain("Look Up");
+    expect(dump).toContain("LLM agent instructions (system):");
+    expect(dump).toContain("SYSTEM CONTRACT TEXT");
+    expect(dump).toContain("LLM user prompt (exact generate message):");
+    expect(dump).toContain("open-lending");
+    expect(dump).toContain("LLM response:");
+    expect(dump).toContain("LLM usage: input=1200 output=80 total=1280");
+    expect(dump).toContain('"text": "Look Up"');
+    expect(dump).toContain("LLM rationale:");
+    expect(dump).toContain("LLM mapped RepairProposal:");
+    expect(dump).not.toContain("LLM raw response:");
+    expect(dump).not.toContain("prompt_tokens");
+    expect(dump).not.toContain("full prompt echo");
+    expect(dump).not.toContain("sk-secret-do-not-print");
+    expect(dump).toContain('"hasApiKey": true');
+  });
 });
 
 describe("repair helpers", () => {
@@ -166,8 +256,11 @@ describe("repair helpers", () => {
     ).toBe(true);
   });
 
-  it("includes the failed step id in the prompt", () => {
-    expect(formatRepairPrompt(fakeContext())).toContain("open-lending");
+  it("includes the failed step id and visible page chrome in the prompt", () => {
+    const prompt = formatRepairPrompt(fakeContext());
+    expect(prompt).toContain("open-lending");
+    expect(prompt).toContain("Visible page text:");
+    expect(prompt).toContain("Look Up");
   });
 
   it("accepts a valid RepairProposal schema", () => {
