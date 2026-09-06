@@ -31,6 +31,7 @@ pnpm icas-agent
 ```
 pnpm icas-play \
   run share-hold \
+  --assist \
   --url http://localhost:4103 \
   --vendor helix \
   --product helix \

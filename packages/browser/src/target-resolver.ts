@@ -80,10 +80,37 @@ function locatorFor(page: Page, strategy: TargetStrategy): Locator | undefined {
 }
 
 /**
+ * Caption nodes that are page titles, not field labels.
+ *
+ * A confirmation screen often repeats the heading as a row caption. Exact
+ * `getByText` would bind the `<h1>` first; the value lives on a later sibling
+ * of the field caption, not of the heading.
+ */
+const RELATIVE_CAPTION_XPATH =
+  "self::*[not(self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6 or @role='heading')]";
+
+/**
+ * Default `relative` when the catalog omitted `xpath` / `role`.
+ *
+ * One relationship: the caption's following sibling is the value or control.
+ * If that sibling wraps `input` / `textarea` / `select`, use the control so a
+ * fill does not target the wrapper. If the caption has no sibling, fall back to
+ * the next form control in document order (caption then input, not siblings).
+ * Do not name tenant tags (`td`, `div.val`) here.
+ */
+const DEFAULT_RELATIVE_XPATH = [
+  "following-sibling::*[1]/descendant-or-self::*[self::input or self::textarea or self::select][1]",
+  "following-sibling::*[1][not(descendant-or-self::input or descendant-or-self::textarea or descendant-or-self::select)]",
+  "self::*[not(following-sibling::*)]/following::*[self::input or self::textarea or self::select][1]",
+].join(" | ");
+
+/**
  * Locate a control relative to visible anchor text.
  *
  * Prefer an explicit xpath, then a role under following siblings. Default is
- * the nearest following form control, or a table cell that does not wrap one.
+ * the caption's following sibling (control if it wraps one), else the next
+ * form control when the caption has no sibling. Headings with the same string
+ * are not captions.
  */
 function relativeLocator(
   page: Page,
@@ -98,12 +125,8 @@ function relativeLocator(
       strategy.role as Parameters<Page["getByRole"]>[0],
     );
   }
-  // Bank inquiry rows are caption td + value td wrapping <input>. A bare
-  // `self::td` would fill that wrapper. Skip cells that already contain a
-  // control; statement amount cells have no input, so they still match.
-  return anchor.locator(
-    "xpath=following::*[self::input or self::textarea or self::select or (self::td and not(.//input or .//textarea or .//select))][1]",
-  );
+  const caption = anchor.locator(`xpath=${RELATIVE_CAPTION_XPATH}`);
+  return caption.locator(`xpath=${DEFAULT_RELATIVE_XPATH}`);
 }
 
 /**

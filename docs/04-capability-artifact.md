@@ -258,7 +258,7 @@ interface TargetDescriptor {
 }
 ```
 
-`relative` anchors on visible `text`, then optionally a `role` or `xpath` from that node. With neither, it takes the nearest following `input` / `textarea` / `select`, or a `td` that does **not** wrap a form control. Inquiry rows are caption `td` + value `td` around an input; a bare following-`td` would fill the wrapper. Statement amount cells have no control, so they still match. `coordinates` is last-resort only.
+`relative` anchors on visible `text`, then optionally a `role` or `xpath` from that node. With neither, the caption's **following sibling** is the value or control. If that sibling wraps `input` / `textarea` / `select`, replay uses the control (inquiry fill). If it has no control, replay reads the sibling (statement amount, Helix `div.val`). Headings with the same string are not captions — a confirmation `<h1>` must not win over the field label. When the caption has no sibling, replay falls back to the next form control in document order. Do not encode tenant tags (`td`, `div.val`) in the default. `coordinates` is last-resort only.
 
 Discovery may propose a snapshot `ref` (`e12`). That token is not a catalog strategy. Discovery executes the ref, then keeps the model's locator phrases and may append bind CSS/`label` identity. Live accessible names are not copied: they concatenate this run's balances and ids. Replay matches `roleText` / `visibleText` as a substring of the accessible name so a chrome phrase still hits a data tile. Replay never uses the ref.
 

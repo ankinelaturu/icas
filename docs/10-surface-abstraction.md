@@ -50,7 +50,7 @@ Discovery may use full rendered page images with a vision-capable model because 
 
 ## Deterministic replay targeting
 
-Replay should prefer stable semantic locators from discovery rather than raw screen coordinates. TargetDescriptor can contain ranked strategies and fallbacks. `roleText` / `visibleText` match a substring of the accessible name. `relative` without `xpath`/`role` binds to the nearest following form control, or a table cell that does not wrap one, so inquiry fills skip the wrapping `td` and statement-style caption|value rows can still be `read`. Snapshot refs are a discovery binding, not a replay strategy.
+Replay should prefer stable semantic locators from discovery rather than raw screen coordinates. TargetDescriptor can contain ranked strategies and fallbacks. `roleText` / `visibleText` match a substring of the accessible name. `relative` without `xpath`/`role` binds to the caption's following sibling (the wrapped control if present, otherwise the sibling itself). Headings that repeat the caption are skipped. When the caption has no sibling, replay uses the next form control. Snapshot refs are a discovery binding, not a replay strategy.
 
 ## Desktop extension
 

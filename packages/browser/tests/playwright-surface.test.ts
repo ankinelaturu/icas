@@ -229,6 +229,30 @@ describe("PlaywrightSurface locate (fallbacks)", () => {
     await expect(control.inputValue()).resolves.toBe("112233");
   });
 
+  it("reads a sibling value cell when a heading repeats the caption", async () => {
+    await surface.open(pageUrl("caption-sibling.html"));
+    const control = await surface.locate({
+      strategies: [{ type: "relative", text: "Hold Confirmation" }],
+    });
+    await expect(control.innerText()).resolves.toBe("HLD-441122-01-25000");
+  });
+
+  it("reads a non-table sibling value cell", async () => {
+    await surface.open(pageUrl("caption-sibling.html"));
+    const control = await surface.locate({
+      strategies: [{ type: "relative", text: "Available After Hold" }],
+    });
+    await expect(control.innerText()).resolves.toBe("1590.50");
+  });
+
+  it("falls back to the next input when the caption has no sibling", async () => {
+    await surface.open(pageUrl("caption-sibling.html"));
+    const control = await surface.locate({
+      strategies: [{ type: "relative", text: "Member #" }],
+    });
+    await expect(control.inputValue()).resolves.toBe("441122");
+  });
+
   it("uses coordinates only as a last resort", async () => {
     await surface.open(pageUrl("labeled-fields.html"));
     const control = await surface.locate({
@@ -328,6 +352,32 @@ describe("PlaywrightSurface execute", () => {
       target: { strategies: [{ type: "relative", text: "LN Acct #" }] },
     });
     expect(read).toEqual({ status: "ok", details: { value: "987654" } });
+  });
+
+  it("reads a sibling confirmation id, not the heading with the same text", async () => {
+    await surface.open(pageUrl("caption-sibling.html"));
+    const read = await surface.execute({
+      type: "read",
+      target: { strategies: [{ type: "relative", text: "Hold Confirmation" }] },
+    });
+    expect(read).toEqual({
+      status: "ok",
+      details: { value: "HLD-441122-01-25000" },
+    });
+  });
+
+  it("fills a sibling input via default relative", async () => {
+    await surface.open(pageUrl("caption-sibling.html"));
+    await surface.execute({
+      type: "fill",
+      target: { strategies: [{ type: "relative", text: "Hold Amt" }] },
+      value: { literal: "99.00" },
+    });
+    const read = await surface.execute({
+      type: "read",
+      target: { strategies: [{ type: "relative", text: "Hold Amt" }] },
+    });
+    expect(read).toEqual({ status: "ok", details: { value: "99.00" } });
   });
 
   it("navigates a relative path", async () => {

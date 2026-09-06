@@ -181,11 +181,11 @@ Replay Pass 4.16 needs this. Do not classify business outcomes here.
 
 ### Pass 2.11 — Relative locates associated value
 
-Default `relative` was `following::input[1]` (unlabeled fill). Statement-style rows are caption `td` + value `td`, so `read` missed the amount.
+Default `relative` was `following::input[1]`, then a `td` allowlist. That encoded ICAS Bank tables in the engine. Helix confirmation rows are caption + sibling value (`span` / `div`), often with the same string on an `<h1>`.
 
-- [x] Default `relative` (no `xpath` / `role`) locates the nearest following `input` / `textarea` / `select`, or a `td` that does not wrap a form control
+- [x] Default `relative` (no `xpath` / `role`) locates the caption's following sibling (wrapped form control if present, else the sibling). Headings are not captions. No sibling → next form control
 - [x] Explicit `xpath` / `role` on the strategy still win
-- [x] Tests: unlabeled input after a caption still fills; caption `td` + value `td` wrapping an input fills the input; caption|value table row `read` returns the cell text, not the caption
+- [x] Tests: unlabeled input after a caption still fills; caption `td` + value `td` wrapping an input fills the input; caption|value table row `read` returns the cell text, not the caption; heading+sibling value `read` returns the value, not the heading or lead line
 
 ---
 
@@ -996,7 +996,7 @@ pnpm icas-play \
 ### Pass 8.10 — Helix CU second product
 
 - [ ] `icas-agent discover` share-hold (`--vendor helix --product helix --tenant helix-cu`)
-- [ ] `icas-play run` the new id against `:4103`
+- [ ] `icas-play run --assist` the new id against `:4103`
 - [ ] Commit generated capability + discovery/replay evidence
 
 Different vendor/product and a different goal (share hold, div layout). Not an override of `loan-payoff`. Pass identity explicitly; defaults would tag this as icas-bank.
@@ -1026,12 +1026,15 @@ pnpm icas-play describe share-hold \
 
 Replay `--` flags come from that describe. This discover named `memberNumber`, `holdAmount`, and `holdReason`. `--tenant helix-cu` plus `--vendor helix --product helix` are required (omitted identity defaults to `icas-bank`). `--url` only opens `:4103`. Share `01` is a compiled click, not a CLI input — leave it. A second-member replay is `--memberNumber 330198` (same share click). Do not copy loan flags onto this capability.
 
+The compiled share-row locator copies the snapshot accessible name (`Primary Share Share 01`); `getByText` does not see the space `<br>` inserts in that name. `--assist` repairs that click for this run (`ICAS_ASSIST_LLM_*`). It does not persist an override.
+
 ```bash
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
 export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
 pnpm icas-play \
   run share-hold \
+  --assist \
   --tenant helix-cu \
   --vendor helix \
   --product helix \
@@ -1132,7 +1135,7 @@ Root `README.md` Demo path is the reviewer walkthrough of 8.0–8.12 (no checkbo
 
 - [ ] Short recording of discovery or HITL if it helps the reviewer
 
-No extra ICAS command. Record the same invocations as 8.1–8.12 as separate shorts (discover, replay `112233`, not-found, wait, HITL, `--assist` on icas-banc URL, icas-banc adapt, Loki adapt-fail, Loki rediscover, Helix share-hold, MCP Inspector, Cursor MCP).
+No extra ICAS command. Record the same invocations as 8.1–8.12 as separate shorts (discover, replay `112233`, not-found, wait, HITL, `--assist` on icas-banc URL, icas-banc adapt, Loki adapt-fail, Loki rediscover, Helix share-hold `--assist`, MCP Inspector, Cursor MCP).
 
 ---
 

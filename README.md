@@ -44,7 +44,7 @@ Four synthetic **staff** UIs (no login, no real PII). Three of them are the same
 | `icas-bank` | `:4101` | Discover `loan-payoff`. Replay, not-found, wait overlay, HITL, MCP default. |
 | `icas-banc` | `:4104` | Same product, one rename (Inquire → Look Up). `--assist` on the icas-bank enrollment (no catalog write), then bounded `icas-adapt` success. |
 | `loki-bank` | `:4102` | Same product, several label/nav changes. Adapt of `loan-payoff` fails; rediscover as `payoff-statement`. |
-| `helix-cu` | `:4103` | Vendor/product `helix` / `helix`. Discover `share-hold` (div layout). |
+| `helix-cu` | `:4103` | Vendor/product `helix` / `helix`. Discover `share-hold` (div layout). Replay with `--assist`. |
 
 `--vendor` / `--product` / `--tenant` are never inferred from `--url`. Replay `--` flags come from `icas-play describe`.
 
@@ -220,6 +220,7 @@ pnpm icas-play describe share-hold
 
 pnpm icas-play \
   run share-hold \
+  --assist \
   --tenant helix-cu \
   --vendor helix \
   --product helix \
@@ -229,7 +230,7 @@ pnpm icas-play \
   --holdReason "pending debit card authorization"
 ```
 
-Replay flags after this discover come from that describe (this run: `memberNumber`, `holdAmount`, `holdReason`). Omitted `--tenant` / `--vendor` / `--product` default to `icas-bank`, which does not match this artifact. Share `01` is compiled into the clicks, not a flag.
+Replay flags after this discover come from that describe (this run: `memberNumber`, `holdAmount`, `holdReason`). Omitted `--tenant` / `--vendor` / `--product` default to `icas-bank`, which does not match this artifact. Share `01` is compiled into the clicks, not a flag. `--assist` repairs that share-row click for this run (`ICAS_ASSIST_LLM_*`); it does not persist an override.
 
 ### 11. MCP Inspector
 
