@@ -42,7 +42,7 @@ Four synthetic **staff** UIs (no login, no real PII). Three of them are the same
 | Tenant | Port | Role |
 |---|---|---|
 | `icas-bank` | `:4101` | Discover `loan-payoff`. Replay, not-found, wait overlay, HITL, MCP default. |
-| `icas-banc` | `:4104` | Same product, one rename (Inquire → Look Up). Bounded `icas-adapt` success. |
+| `icas-banc` | `:4104` | Same product, one rename (Inquire → Look Up). `--assist` on the icas-bank enrollment (no catalog write), then bounded `icas-adapt` success. |
 | `loki-bank` | `:4102` | Same product, several label/nav changes. Adapt of `loan-payoff` fails; rediscover as `payoff-statement`. |
 | `helix-cu` | `:4103` | Vendor/product `helix` / `helix`. Discover `share-hold` (div layout). |
 
@@ -98,8 +98,6 @@ pnpm icas-play \
   --payoffDate 2026-09-30
 ```
 
-Optional `--assist` (`ICAS_ASSIST_LLM_*`) is a bounded repair on replay. It is not a Phase 8 step and does not persist an override.
-
 ### 3. Business outcome
 
 Unknown loan → `business_outcome` from compiled `possibleOutcomes` (not an engine enum).
@@ -138,9 +136,23 @@ pnpm icas-play \
 
 HITL is control transfer of the **same** headed browser session (not a co-browsing console).
 
-### 6. icas-banc adapt (one-step success)
+### 6. Assist (icas-banc URL, no catalog write)
 
-Same Vendor+Product; Inquire → Look Up. Needs `ICAS_ADAPT_LLM_*`. Re-verify is `ReplayEngine` with no LLM.
+`--tenant icas-bank` (already enrolled) plus icas-banc’s URL so Inquire misses Look Up. Needs `ICAS_ASSIST_LLM_*`. Repair is this run only; it does not persist an override. Do not use `--tenant icas-banc` here.
+
+```bash
+pnpm icas-play \
+  run loan-payoff \
+  --assist \
+  --tenant icas-bank \
+  --url http://localhost:4104 \
+  --loanAccountNumber 112233 \
+  --payoffDate 2026-09-30
+```
+
+### 7. icas-banc adapt (one-step success)
+
+Same Vendor+Product; Inquire → Look Up. Needs `ICAS_ADAPT_LLM_*`. Re-verify is `ReplayEngine` with no LLM. Step 6 already repaired this miss for one run; this step persists Look Up.
 
 ```bash
 pnpm icas-adapt \
@@ -151,7 +163,7 @@ pnpm icas-adapt \
   --payoffDate 2026-09-30
 ```
 
-### 7. Loki adapt (expected fail)
+### 8. Loki adapt (expected fail)
 
 Several label/nav renames. One-step patch, then re-verify rolls back. `loan-payoff` stays enrolled for icas-bank / icas-banc only.
 
@@ -164,7 +176,7 @@ pnpm icas-adapt \
   --payoffDate 2026-09-30
 ```
 
-### 8. Loki rediscover (`payoff-statement`)
+### 9. Loki rediscover (`payoff-statement`)
 
 New catalog id for the same goal. Pass identity explicitly. Do not reuse `--id loan-payoff`.
 
@@ -189,7 +201,7 @@ pnpm icas-play \
 
 Replay flags after this discover come from that describe (names may differ).
 
-### 9. Helix CU (`share-hold`)
+### 10. Helix CU (`share-hold`)
 
 Different vendor/product and goal. Pass identity explicitly.
 
@@ -208,7 +220,7 @@ pnpm icas-play describe share-hold
 
 Replay `--` flags come from that describe. Do not copy loan-payoff flags onto this capability. Known member `441122` / `$250.00` / share `01`.
 
-### 10. MCP Inspector
+### 11. MCP Inspector
 
 Inspector starts the web UI and spawns `pnpm icas-mcp`. Do not also run `pnpm icas-mcp` in another terminal. Do not `tee`. icas-bank must be running. This step is `loan_payoff` only.
 
@@ -220,7 +232,7 @@ npx -y @modelcontextprotocol/inspector \
   pnpm icas-mcp
 ```
 
-### 11. MCP in Cursor
+### 12. MCP in Cursor
 
 Project `.cursor/mcp.json` (so `${workspaceFolder}` works). User-global `~/.cursor/mcp.json` needs absolute paths.
 
@@ -281,4 +293,4 @@ See [`docs/README.md`](docs/README.md) for the detailed design notes. Reviewer h
 
 ## Status
 
-The must-have vertical slice is implemented: discover → artifact + tenant enrollment → deterministic replay, exceptional-state classification, HITL, and evidence. Stretch already in-repo: `--assist`, `icas-adapt`, MCP. Pass 4.15 (phrase embeddings) and Pass 5.22 (screenshot pixels on `generate`) are deferred on purpose.
+The must-have vertical slice is implemented: discover → artifact + tenant enrollment → deterministic replay, exceptional-state classification, HITL, and evidence. Stretch already in-repo: `--assist`, `icas-adapt`, MCP. Demo step 6 still needs an open replay fix: `--assist` must rejoin the missing click, not the fill that already succeeded. Pass 4.15 (phrase embeddings) and Pass 5.22 (screenshot pixels on `generate`) are deferred on purpose.

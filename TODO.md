@@ -338,6 +338,8 @@ Callers resolve with `CapabilityResolver` first. `ReplayEngine` never branches o
 - [x] Rejoin deterministic path only if both pass; otherwise stop
 - [x] Tests: successful rejoin; failed rejoin does not continue inventing steps
 
+Next-locator miss still assists the **fill** today. Pass 4.17 (unchecked) + Phase 8.6 are the fix and demo.
+
 ### Pass 4.12 — Replay integration tests
 
 - [x] `tests/integration/capability-replay.test.ts`
@@ -385,6 +387,17 @@ Depends on Pass 4.14 and Pass 2.10. Do not put this catalog on the capability or
 - [x] Step-specific phrases win over generic 500 / access-denied copy
 - [x] Missing HTTP status is normal (200 error banners, XHR); continue to phrases
 - [x] Tests: document 404 fails without needing artifact phrases; generic visible “Internal Server Error” hits fallback; compiled step phrase wins when both could match
+
+### Pass 4.17 — Assist next-locator miss (rejoin the missing click)
+
+Depends on Pass 4.10 / 4.11. No catalog writes. See `docs/05-replay-engine.md`.
+
+After a successful fill, replay probes the **next** locator. Unclassified miss is `UNEXPECTED_STATE` with `stepId` of that next click (`click-inquire`). `maybeAssist` still freezes the **fill** step and rejoins using fill postconditions + Inquire preconditions. Clicking Look Up leaves search, so rejoin fails. Same bug adapt already fixed for overrides.
+
+- [ ] On `NEXT_ACTION_TARGET_MISSING` / next-locator `UNEXPECTED_STATE`, assist the **missing next step**, not the fill that already succeeded
+- [ ] After repair actions, rejoin that click’s postconditions (and the following step’s preconditions)
+- [ ] Still one assist per run; `PolicyGuard` + budget unchanged; do not persist an override
+- [ ] Tests: fill ok + next submit renamed → `--assist` clicks the synonym and rejoins; catalog untouched
 
 ---
 
@@ -715,7 +728,7 @@ Discover needs `ICAS_DISCOVERY_LLM_*` in `.env`. Strict replay does not. Each IC
 - [ ] icas-bank on `:4101`, loki-bank on `:4102`, helix-cu on `:4103`, icas-banc on `:4104`
 - [ ] Confirm each responds before 8.1
 
-One tenant per terminal. Leave all four up for the rest of Phase 8. 8.1–8.5 and 8.10–8.11 use icas-bank (`:4101`). 8.6 uses icas-banc (`:4104`). 8.7–8.8 use loki-bank (`:4102`). 8.9 uses helix-cu (`:4103`).
+One tenant per terminal. Leave all four up for the rest of Phase 8. 8.1–8.5 use icas-bank (`:4101`). 8.6 uses icas-bank **enrollment** against icas-banc (`:4104`). 8.7 enrolls icas-banc. 8.8–8.9 use loki-bank (`:4102`). 8.10 uses helix-cu (`:4103`). 8.11–8.12 use icas-bank MCP.
 
 ```bash
 pnpm icas-bank
@@ -782,7 +795,7 @@ pnpm icas-play describe loan-payoff \
 - [ ] `icas-play run` with a different loan/date than discovery
 - [ ] Commit successful replay log; no model decisions
 
-Replay flags are **not** a fixed CLI contract. Discover does not take typed invocation flags. The proposer names fill/select params; compile writes those names onto the artifact. This 8.1 run named them `loanAccountNumber` and `payoffDate` — the blocks below match that describe. If you rediscover, read describe again and adjust the `--` flags. Later 8.3–8.6, 8.7 (adapt of `loan-payoff`), and 8.10–8.11 must use those same names. 8.8 is `payoff-statement` (describe after that discover). 8.9 is `share-hold`.
+Replay flags are **not** a fixed CLI contract. Discover does not take typed invocation flags. The proposer names fill/select params; compile writes those names onto the artifact. This 8.1 run named them `loanAccountNumber` and `payoffDate` — the blocks below match that describe. If you rediscover, read describe again and adjust the `--` flags. Later 8.3–8.8 (`loan-payoff` replay, assist, both adapts) and 8.11–8.12 must use those same names. 8.9 is `payoff-statement` (describe after that discover). 8.10 is `share-hold`.
 
 ```bash
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
@@ -856,16 +869,41 @@ pnpm icas-play \
   2>&1 | tee $PWD/phase8-05-hitl.log
 ```
 
-### Pass 8.6 — icas-banc adaptation evidence
+### Pass 8.6 — `--assist` on icas-banc URL (no catalog write)
+
+Depends on Pass 4.17. Do not run this until that fix lands.
+
+- [ ] `icas-play run loan-payoff --assist --tenant icas-bank --url :4104` succeeds
+- [ ] Evidence includes `assisted_fallback`; `loan-payoff` overrides are unchanged (no new `icas-banc.json` from this run)
+
+This is **not** `icas-adapt` minus a file. Assist proposes repair **actions** for this session and must rejoin the original path. Adapt writes a `StepOverride` and re-verifies. `--tenant icas-bank` (already enrolled) plus icas-banc’s URL so Inquire misses Look Up. Needs `ICAS_ASSIST_LLM_*` (repo-root `.env` is loaded on start). Same `--` input names as 8.2 / describe.
+
+Do **not** use `--tenant icas-banc` here (that enrollment is 8.7). Overlay unused.
+
+```bash
+export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
+export ICAS_EVIDENCE_ROOT=$PWD/evidence
+
+pnpm icas-play \
+  run loan-payoff \
+  --assist \
+  --tenant icas-bank \
+  --url http://localhost:4104 \
+  --loanAccountNumber 112233 \
+  --payoffDate 2026-09-30 \
+  2>&1 | tee $PWD/phase8-06-assist.log
+```
+
+### Pass 8.7 — icas-banc adaptation evidence
 
 - [ ] `icas-adapt` produces a verified override
 - [ ] Commit override + adaptation evidence
 
-`tenants/icas-banc` is the same Vendor+Product as icas-bank with **one** search-submit rename (Inquire → Look Up). That is the bounded one-step adapt target (`MAX_ADAPT_PATCH_STEPS = 1`). Loki’s broader label drift is 8.7 (expected fail) then 8.8 (rediscover as `--id payoff-statement`).
+`tenants/icas-banc` is the same Vendor+Product as icas-bank with **one** search-submit rename (Inquire → Look Up). That is the bounded one-step adapt target (`MAX_ADAPT_PATCH_STEPS = 1`). 8.6 already repaired the same miss **this run only**. This pass **persists** Look Up. Loki’s broader label drift is 8.8 (expected fail) then 8.9 (rediscover as `--id payoff-statement`).
 
 Overlay is unused (happy-path adapt). icas-banc is already on `:4104` from 8.0; icas-bank stays on 4101. Same `--` input names as 8.2 / describe.
 
-Mismatch patches need `ICAS_ADAPT_LLM_*` (repo-root `.env` is loaded on start). Compatible enrollments skip the model; this tenant is expected to miss once, write `createdBy: "icas-adapt"`, then re-verify with `ReplayEngine` (no LLM). `--assist` / `ICAS_ASSIST_LLM_*` do not persist an override.
+Mismatch patches need `ICAS_ADAPT_LLM_*`. Compatible enrollments skip the model; this tenant is expected to miss once, write `createdBy: "icas-adapt"`, then re-verify with `ReplayEngine` (no LLM). `--assist` / `ICAS_ASSIST_LLM_*` do not persist an override.
 
 ```bash
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
@@ -877,10 +915,10 @@ pnpm icas-adapt \
   --url http://localhost:4104 \
   --loanAccountNumber 112233 \
   --payoffDate 2026-09-30 \
-  2>&1 | tee $PWD/phase8-06-adapt.log
+  2>&1 | tee $PWD/phase8-07-adapt.log
 ```
 
-### Pass 8.7 — Loki adapt expected fail
+### Pass 8.8 — Loki adapt expected fail
 
 - [ ] `icas-adapt loan-payoff --tenant loki-bank` patches one step then fails re-verify
 - [ ] Override is rolled back; `loan-payoff` catalog is unchanged (icas-banc enrollment stays)
@@ -899,19 +937,19 @@ pnpm icas-adapt \
   --url http://localhost:4102 \
   --loanAccountNumber 112233 \
   --payoffDate 2026-09-30 \
-  2>&1 | tee $PWD/phase8-07-adapt-loki.log
+  2>&1 | tee $PWD/phase8-08-adapt-loki.log
 ```
 
 Expect stderr `failed re-verify; enrollment was rolled back`. `capabilities/loan-payoff/overrides/loki-bank.json` must not remain.
 
-### Pass 8.8 — Loki rediscover (`payoff-statement`, same Vendor+Product, same goal)
+### Pass 8.9 — Loki rediscover (`payoff-statement`, same Vendor+Product, same goal)
 
 - [ ] `icas-agent discover` with a **new** `--id` against Loki (`:4102`)
 - [ ] Header-only override for `--tenant loki-bank` (`createdBy: "discovery"`)
 - [ ] `icas-play run` the new id against `:4102`
 - [ ] Commit generated capability + discovery/replay evidence
 
-Discover refuses an existing `--id`. Same vendor+product is not an override key. This pass rediscovers the payoff goal as a **new base** after 8.7 showed bounded adapt is not enough. Catalog id is `payoff-statement` (skill name, like `loan-payoff` / `share-hold`). Tenant stays `--tenant loki-bank`. Do **not** reuse `--id loan-payoff` and do **not** put `loki` in the id.
+Discover refuses an existing `--id`. Same vendor+product is not an override key. This pass rediscovers the payoff goal as a **new base** after 8.8 showed bounded adapt is not enough. Catalog id is `payoff-statement` (skill name, like `loan-payoff` / `share-hold`). Tenant stays `--tenant loki-bank`. Do **not** reuse `--id loan-payoff` and do **not** put `loki` in the id.
 
 Pass vendor/product/tenant explicitly. Defaults are all `icas-bank`; a Loki URL alone still enrolls the wrong tenant.
 
@@ -927,7 +965,7 @@ pnpm icas-agent \
   --product icas-bank \
   --tenant loki-bank \
   --goal "Generate a payoff statement for loan 987654 for 2026-09-30" \
-  2>&1 | tee $PWD/phase8-08-discover-loki.log
+  2>&1 | tee $PWD/phase8-09-discover-loki.log
 ```
 
 ```bash
@@ -935,7 +973,7 @@ export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
 export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
 pnpm icas-play describe payoff-statement \
-  2>&1 | tee $PWD/phase8-08-describe-loki.log
+  2>&1 | tee $PWD/phase8-09-describe-loki.log
 ```
 
 Replay `--` flags come from that describe (names may differ from 8.1). Example only after this discover names the same params:
@@ -949,10 +987,10 @@ pnpm icas-play \
   --url http://localhost:4102 \
   --loanAccountNumber 112233 \
   --payoffDate 2026-09-30 \
-  2>&1 | tee $PWD/phase8-08-replay-loki.log
+  2>&1 | tee $PWD/phase8-09-replay-loki.log
 ```
 
-### Pass 8.9 — Helix CU second product
+### Pass 8.10 — Helix CU second product
 
 - [ ] `icas-agent discover` share-hold (`--vendor helix --product helix --tenant helix-cu`)
 - [ ] `icas-play run` the new id against `:4103`
@@ -972,7 +1010,7 @@ pnpm icas-agent \
   --product helix \
   --tenant helix-cu \
   --goal "Place a \$250.00 hold on member 441122 share 01 for pending debit card authorization. Extract the hold confirmation number, available balance after the hold, and the hold expiry date." \
-  2>&1 | tee $PWD/phase8-09-discover-helix.log
+  2>&1 | tee $PWD/phase8-10-discover-helix.log
 ```
 
 ```bash
@@ -980,12 +1018,12 @@ export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
 export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
 pnpm icas-play describe share-hold \
-  2>&1 | tee $PWD/phase8-09-describe-helix.log
+  2>&1 | tee $PWD/phase8-10-describe-helix.log
 ```
 
 Replay `--` flags come from that describe. Known demo member `441122` / `$250.00` / share `01`; a second member for a different-inputs replay is `330198`. Do not copy 8.2 loan flags onto this capability.
 
-### Pass 8.10 — MCP Inspector
+### Pass 8.11 — MCP Inspector
 
 - [ ] Inspector lists `loan_payoff` and invokes it through `ReplayEngine`
 - [ ] Tool-call evidence under `$ICAS_EVIDENCE_ROOT`
@@ -1002,15 +1040,15 @@ npx -y @modelcontextprotocol/inspector \
   pnpm icas-mcp
 ```
 
-### Pass 8.11 — MCP in Cursor
+### Pass 8.12 — MCP in Cursor
 
 - [ ] Project `.cursor/mcp.json` launches `pnpm icas-mcp` with catalog/evidence env
 - [ ] Agent chat invokes tools (url + tenant explicit; do not infer tenant from url)
 - [ ] Document the exact host/command in README if it is not already there
 
-Same stdio server as 8.10. Prefer a **project** config so `${workspaceFolder}` works. User-global `~/.cursor/mcp.json` has no repo root — keep absolute paths there (or `${userHome}/…/icas/…`). Do not invent `${ICAS_ROOT}`.
+Same stdio server as 8.11. Prefer a **project** config so `${workspaceFolder}` works. User-global `~/.cursor/mcp.json` has no repo root — keep absolute paths there (or `${userHome}/…/icas/…`). Do not invent `${ICAS_ROOT}`.
 
-`pnpm icas-mcp` matches 8.10 (tsx). `node apps/icas-mcp/dist/cli.js` is fine after `pnpm build`; rebuild if sources changed.
+`pnpm icas-mcp` matches 8.11 (tsx). `node apps/icas-mcp/dist/cli.js` is fine after `pnpm build`; rebuild if sources changed.
 
 ```json
 {
@@ -1028,7 +1066,7 @@ Same stdio server as 8.10. Prefer a **project** config so `${workspaceFolder}` w
 }
 ```
 
-By this pass, 8.8–8.9 have added Loki / Helix ids. Tools are catalog ids with hyphens → underscores. The agent must pass `url` and `tenant` on the tool call. Omitted `tenant` defaults to `icas-bank`.
+By this pass, 8.9–8.10 have added Loki / Helix ids. Tools are catalog ids with hyphens → underscores. The agent must pass `url` and `tenant` on the tool call. Omitted `tenant` defaults to `icas-bank`.
 
 | Ask about | Tool | `tenant` | `url` |
 |---|---|---|---|
@@ -1065,17 +1103,17 @@ Payoff for loan 112233 as of 2026-09-30 on tenant loki-bank at http://localhost:
 Place a $250.00 hold on member 441122 share 01 for pending debit card authorization on tenant helix-cu at http://localhost:4103. Return confirmation id, available after hold, and expiry.
 ```
 
-### Pass 8.12 — README demo path
+### Pass 8.13 — README demo path
 
 - [x] Root README commands match reality; no undocumented setup
 
-Root `README.md` Demo path is the reviewer walkthrough of 8.0–8.11 (no checkboxes, no `tee`). When those commands change, update the README in the same change. Evidence/commit notes stay in this file.
+Root `README.md` Demo path is the reviewer walkthrough of 8.0–8.12 (no checkboxes, no `tee`). When those commands change, update the README in the same change. Evidence/commit notes stay in this file.
 
-### Pass 8.13 — Optional screen recording
+### Pass 8.14 — Optional screen recording
 
 - [ ] Short recording of discovery or HITL if it helps the reviewer
 
-No extra ICAS command. Record the same invocations as 8.1–8.11 as separate shorts (discover, replay `112233`, not-found, wait, HITL, icas-banc adapt, Loki adapt-fail, Loki rediscover, Helix share-hold, MCP Inspector, Cursor MCP).
+No extra ICAS command. Record the same invocations as 8.1–8.12 as separate shorts (discover, replay `112233`, not-found, wait, HITL, `--assist` on icas-banc URL, icas-banc adapt, Loki adapt-fail, Loki rediscover, Helix share-hold, MCP Inspector, Cursor MCP).
 
 ---
 
@@ -1095,4 +1133,5 @@ No extra ICAS command. Record the same invocations as 8.1–8.11 as separate sho
 - Apps stay thin; packages own behavior; no core package imports a CLI.
 - Saved artifacts must not contain credentials, tokens, or raw sensitive data.
 - When in doubt, fail at the checkpoint boundary with evidence rather than improvising.
-- Root `README.md` Demo path tracks Phase 8.0–8.11. Update it in the same change when those demo commands change.
+- Root `README.md` Demo path tracks Phase 8.0–8.12. Update it in the same change when those demo commands change.
+
