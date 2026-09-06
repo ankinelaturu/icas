@@ -707,17 +707,88 @@ Same fictional Vendor+Product: `icas-bank` / `icas-bank`. Tenant catalog id for 
 
 ## Phase 8 — End-to-end demo and submission evidence
 
-Do not hand-author `capabilities/` merely to look complete. Commit artifacts produced by real runs.
+Discover needs `ICAS_DISCOVERY_LLM_*` in `.env`. Strict replay does not. Each ICAS block exports `ICAS_CAPABILITIES_ROOT` and `ICAS_EVIDENCE_ROOT` so the catalog and traces are not the default-hidden scratch dirs. Evidence lands under `$ICAS_EVIDENCE_ROOT/loan-payoff/<run-id>/`. Console captures are `$PWD/phase8-*.log` (`*.log` is gitignored). Catalog files are gitignored; force-add the generated trees when committing.
+
+### Pass 8.0 — Start servers
+
+- [ ] icas-bank on `:4101`, loki-bank on `:4102`, helix-cu on `:4103`
+- [ ] Confirm each responds before 8.1
+
+One tenant per terminal. Leave all three up for the rest of Phase 8 (8.1–8.5 and 8.7 use icas-bank; 8.6 uses Loki; Helix is the second-product surface if you record it).
+
+```bash
+pnpm icas-bank
+```
+
+```bash
+pnpm loki-bank
+```
+
+```bash
+pnpm helix-cu
+```
+
+Check they are listening (expect HTTP 200 from each):
+
+```bash
+curl -s -o /dev/null -w 'icas-bank 4101 %{http_code}\n' http://127.0.0.1:4101/
+curl -s -o /dev/null -w 'loki-bank 4102 %{http_code}\n' http://127.0.0.1:4102/
+curl -s -o /dev/null -w 'helix-cu 4103 %{http_code}\n' http://127.0.0.1:4103/
+```
+
+If a check is `000` or connection refused, that app is not running. Do not start 8.1 until all three print `200`.
 
 ### Pass 8.1 — Real discovery against icas-bank
 
 - [ ] `icas-agent discover` loan-payoff
 - [ ] Commit generated capability + discovery trace/observations
 
+```bash
+export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
+export ICAS_EVIDENCE_ROOT=$PWD/evidence
+
+pnpm icas-agent \
+  discover \
+  --id loan-payoff \
+  --url http://localhost:4101 \
+  --goal "Generate a payoff statement for loan 987654 for 2026-09-30" \
+  2>&1 | tee $PWD/phase8-01-discover.log
+```
+
+```bash
+export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
+export ICAS_EVIDENCE_ROOT=$PWD/evidence
+
+pnpm icas-play list \
+  2>&1 | tee $PWD/phase8-01-list.log
+```
+
+```bash
+export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
+export ICAS_EVIDENCE_ROOT=$PWD/evidence
+
+pnpm icas-play describe loan-payoff \
+  2>&1 | tee $PWD/phase8-01-describe.log
+```
+
 ### Pass 8.2 — Deterministic replay, different inputs
 
 - [ ] `icas-play run` with a different loan/date than discovery
 - [ ] Commit successful replay log; no model decisions
+
+Replay flags are **not** a fixed CLI contract. Discover does not take typed invocation flags. The proposer names fill/select params; compile writes those names onto the artifact. This 8.1 run named them `loanAccountNumber` and `payoffDate` — the blocks below match that describe. If you rediscover, read describe again and adjust the `--` flags. Later 8.3–8.6 / MCP calls must use the same names.
+
+```bash
+export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
+export ICAS_EVIDENCE_ROOT=$PWD/evidence
+
+pnpm icas-play \
+  run loan-payoff \
+  --url http://localhost:4101 \
+  --loanAccountNumber 112233 \
+  --payoffDate 2026-09-30 \
+  2>&1 | tee $PWD/phase8-02-replay.log
+```
 
 ### Pass 8.3 — Business outcome evidence
 
@@ -726,32 +797,108 @@ Depends on Pass 4.14 / 5.19. Replay classifies from compiled `possibleOutcomes`,
 - [ ] Unknown loan → `business_outcome` (heading/summary from the matching entry, not a hardcoded `LOAN_NOT_FOUND` in `ReplayEngine`)
 - [ ] Commit exceptional replay log
 
+Use the same `--` input names as 8.2 / describe, not a hardcoded `loanAccountId`.
+
+```bash
+export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
+export ICAS_EVIDENCE_ROOT=$PWD/evidence
+
+pnpm icas-play \
+  run loan-payoff \
+  --url http://localhost:4101 \
+  --loanAccountNumber 000000 \
+  --payoffDate 2026-09-30 \
+  2>&1 | tee $PWD/phase8-03-not-found.log
+```
+
 ### Pass 8.4 — Recoverable interstitial evidence
 
 - [ ] Bounded recovery visible in the log
+
+`?inject=wait` puts a **session-warning** overlay on **Loan Details** (cookie so it survives Home → Inquire). Replay should dismiss **Continue** on its own, wait the short stall, then finish payoff. Do not click the overlay. Do not use `?inject=hitl` (that is 8.5). The log should show a `known_interstitial` recovery, then success with outputs. Same `--` input names as 8.2 / describe.
+
+```bash
+export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
+export ICAS_EVIDENCE_ROOT=$PWD/evidence
+
+pnpm icas-play \
+  run loan-payoff \
+  --url "http://localhost:4101/?inject=wait" \
+  --loanAccountNumber 112233 \
+  --payoffDate 2026-09-30 \
+  2>&1 | tee $PWD/phase8-04-wait.log
+```
 
 ### Pass 8.5 — HITL evidence
 
 - [ ] Pause, same browser, recorded human actions, resume
 - [ ] Commit handoff evidence
 
+Do not click **Continue**. Use **Release to servicing** in the same headed window, then press ENTER in the CLI. Same `--` input names as 8.2 / describe.
+
+```bash
+export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
+export ICAS_EVIDENCE_ROOT=$PWD/evidence
+
+pnpm icas-play \
+  run loan-payoff \
+  --url "http://localhost:4101/?inject=hitl" \
+  --loanAccountNumber 112233 \
+  --payoffDate 2026-09-30 \
+  2>&1 | tee $PWD/phase8-05-hitl.log
+```
+
 ### Pass 8.6 — Loki Bank adaptation evidence
 
 - [ ] `icas-adapt` produces a verified override
 - [ ] Commit override + adaptation evidence
+
+Loki overlay is unused here (happy-path adapt). icas-bank stays on 4101 from 8.0. Same `--` input names as 8.2 / describe.
+
+```bash
+export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
+export ICAS_EVIDENCE_ROOT=$PWD/evidence
+
+pnpm icas-adapt \
+  loan-payoff \
+  --tenant loki-bank \
+  --url http://localhost:4102 \
+  --loanAccountNumber 112233 \
+  --payoffDate 2026-09-30 \
+  2>&1 | tee $PWD/phase8-06-adapt.log
+```
 
 ### Pass 8.7 — MCP demo
 
 - [ ] Host discovers `loan_payoff` and invokes it through `ReplayEngine`
 - [ ] Document the exact host/command in README if not already there
 
+Stdio server (`loan-payoff` → tool `loan_payoff`). Tenant must already be enrolled. icas-bank must be running. Tool args follow the artifact inputs from describe (names are not fixed), plus `url` and optional `tenant` (default `icas-bank`). Do not `tee` stdout — that stream is MCP JSON-RPC. After a tool call, inspect `$ICAS_EVIDENCE_ROOT`. Optional stderr capture:
+
+```bash
+export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
+export ICAS_EVIDENCE_ROOT=$PWD/evidence
+
+pnpm icas-mcp 2> >(tee $PWD/phase8-07-mcp.stderr.log >&2)
+
+# Inspector (stdio child inherits the same exports). Do not tee the inspector's
+# MCP pipe either. Tool-call evidence is under $ICAS_EVIDENCE_ROOT.
+npx @modelcontextprotocol/inspector pnpm icas-mcp
+```
+
+Cursor: mcp.json stdio command `pnpm icas-mcp` with cwd = repo root and env `ICAS_CAPABILITIES_ROOT=$PWD/capabilities` / `ICAS_EVIDENCE_ROOT=$PWD/evidence`, then call `loan_payoff`.
+
 ### Pass 8.8 — README demo path
 
 - [x] Root README commands match reality; no undocumented setup
 
+No extra command. The blocks above are the README demo path plus inject URLs for 8.4 / 8.5.
+
 ### Pass 8.9 — Optional screen recording
 
 - [ ] Short recording of discovery or HITL if it helps the reviewer
+
+No extra ICAS command. Record the same invocations as 8.1–8.7 as separate shorts (discover, replay `112233`, not-found, wait, HITL, Loki adapt, MCP).
 
 ---
 
