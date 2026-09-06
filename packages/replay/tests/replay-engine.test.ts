@@ -387,7 +387,7 @@ describe("ReplayEngine possibleOutcomes", () => {
     expect(result).toMatchObject({
       status: "failure",
       code: "UNEXPECTED_STATE",
-      stepId: "inquire-loan",
+      stepId: "open-payoff",
       runId: "run-no-match",
     });
     expect(surface.executed).toHaveLength(1);

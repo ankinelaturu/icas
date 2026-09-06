@@ -51,3 +51,13 @@ export const ReplayFailureCode = {
   unexpectedState: "UNEXPECTED_STATE",
   outputExtractionFailed: "OUTPUT_EXTRACTION_FAILED",
 } as const;
+
+/**
+ * `observed` when the next step's locator is gone after this step executed.
+ *
+ * `expected` is that next action. {@link ReplayEngine} names `stepId` as the
+ * missing next step so adapt patches Inquire → Look Up, not the fill that
+ * already succeeded.
+ */
+export const NEXT_ACTION_TARGET_MISSING =
+  "next action target missing; no possibleOutcomes or generic chrome matched";

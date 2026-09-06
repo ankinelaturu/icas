@@ -20,6 +20,7 @@ import type { PolicyGuard } from "@icas/policy";
 import type { Observation, Surface } from "@icas/surface";
 
 import {
+  NEXT_ACTION_TARGET_MISSING,
   ReplayFailureCode,
   type ExecutionResult,
 } from "./execution-result.js";
@@ -414,8 +415,10 @@ export class ReplayEngine {
    * step exists, its locator is the happy-path gate: found → postconditions;
    * missing → dismiss a known interstitial (200 overlay) then probe again;
    * still missing → this step's `possibleOutcomes`. HITL resume is not a stop
-   * result (`undefined`); probe the next locator again before failing. Last
-   * step uses postconditions then overall success (caller).
+   * result (`undefined`); probe the next locator again before failing. An
+   * unclassified miss names `stepId` as the **next** step (the missing
+   * locator) so adapt patches that chrome, not this successful action.
+   * Last step uses postconditions then overall success (caller).
    *
    * @returns `undefined` to continue the step loop; otherwise a structured stop
    */
@@ -461,9 +464,9 @@ export class ReplayEngine {
         status: "failure",
         capabilityId,
         code: ReplayFailureCode.unexpectedState,
-        stepId: step.id,
+        stepId: nextStep.id,
         expected: nextStep.action,
-        observed: "next action target missing; no possibleOutcomes or generic chrome matched",
+        observed: NEXT_ACTION_TARGET_MISSING,
         runId,
       };
     }
