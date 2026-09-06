@@ -1,0 +1,225 @@
+/* ICAS Banc — same LS 4.12 product as icas-bank; maroon intranet skin */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #f3e8e6;
+  color: #2a0f0f;
+  font-family: "Trebuchet MS", "Segoe UI", Candara, sans-serif;
+  font-size: 14px;
+}
+
+a {
+  color: #9b1b1b;
+  text-decoration: underline;
+}
+
+a:visited {
+  color: #6b1212;
+}
+
+a:active {
+  color: #d32f2f;
+}
+
+table.shell {
+  width: 100%;
+  border-collapse: collapse;
+  background: #f3e8e6;
+}
+
+td.banner {
+  background: #8b1515;
+  color: #fff5f3;
+  padding: 5px 10px;
+  font-weight: bold;
+}
+
+td.banner .prod {
+  font-size: 17px;
+  letter-spacing: 2px;
+  font-variant: small-caps;
+}
+
+td.banner .meta {
+  font-weight: normal;
+  font-size: 13px;
+  text-align: right;
+}
+
+tr.subbar td {
+  background: #5c1010;
+  color: #ffd6d0;
+  padding: 2px 8px;
+  font-size: 13px;
+}
+
+td.nav {
+  width: 190px;
+  background: #f3e8e6;
+  border-right: 2px solid #b55a5a;
+  vertical-align: top;
+  padding: 6px 4px;
+}
+
+table.menu {
+  width: 180px;
+  border: 2px outset #ffd6d0;
+  background: #f3e8e6;
+}
+
+td.menu-hd {
+  background: #8b1515;
+  color: #fff5f3;
+  font-weight: bold;
+  padding: 3px 6px;
+}
+
+td.menu-item {
+  padding: 3px 6px;
+  border-top: 1px solid #b55a5a;
+}
+
+td.menu-item a {
+  color: #2a0f0f;
+  text-decoration: none;
+}
+
+td.menu-item a:hover {
+  text-decoration: underline;
+}
+
+td.work {
+  vertical-align: top;
+  padding: 8px 10px;
+  background: #f3e8e6;
+}
+
+td.status {
+  background: #e0c4c0;
+  border-top: 2px solid #b55a5a;
+  padding: 3px 8px;
+  font-size: 13px;
+  color: #2a0f0f;
+}
+
+.section-hd {
+  background: #f8d0cc;
+  border: 1px solid #b55a5a;
+  padding: 3px 6px;
+  font-weight: bold;
+  color: #8b1515;
+  margin: 0 0 6px 0;
+}
+
+table.grid {
+  border-collapse: collapse;
+  background: #fffaf9;
+  border: 1px solid #b55a5a;
+}
+
+table.grid td, table.grid th {
+  border: 1px solid #b55a5a;
+  padding: 4px 8px;
+  font-size: 14px;
+}
+
+table.grid th {
+  background: #8b1515;
+  color: #fff5f3;
+  font-weight: bold;
+  text-align: left;
+}
+
+td.lbl {
+  background: #f6e0de;
+  width: 190px;
+}
+
+td.val {
+  background: #fffaf9;
+}
+
+td.amt {
+  font-family: Consolas, "Courier New", Courier, monospace;
+  text-align: right;
+  white-space: nowrap;
+}
+
+input[type="text"] {
+  font-family: Consolas, "Courier New", Courier, monospace;
+  font-size: 15px;
+  border: 2px inset #ffd6d0;
+  background: #fffaf9;
+  color: #2a0f0f;
+}
+
+input[type="submit"], input[type="reset"], input[type="button"] {
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  font-size: 14px;
+  background: #f3e8e6;
+  border: 2px outset #ffd6d0;
+  padding: 3px 12px;
+  color: #2a0f0f;
+}
+
+p.note {
+  color: #8b1515;
+  margin: 8px 0 0 0;
+}
+
+p.warn {
+  color: #7a0c0c;
+  font-weight: bold;
+  margin: 8px 0;
+}
+
+tr.err td {
+  background: #ffc9c4;
+  color: #7a0c0c;
+  font-weight: bold;
+}
+
+.stmt-box {
+  border: 3px double #5c1010;
+  background: #fffaf9;
+  padding: 10px;
+  width: 640px;
+}
+
+h1 {
+  font-size: 18px;
+  margin: 0 0 8px 0;
+  color: #8b1515;
+}
+
+h2 {
+  font-size: 15px;
+  margin: 10px 0 4px 0;
+  color: #2a0f0f;
+}
+
+iframe.rates {
+  border: 2px inset #ffd6d0;
+  background: #fffaf9;
+}
+
+.dlg {
+  width: 420px;
+  background: #f3e8e6;
+  border: 2px outset #ffd6d0;
+  padding: 0 0 8px 0;
+  margin: 8px 0 12px 0;
+}
+
+.dlg-hd {
+  background: #8b1515;
+  color: #fff5f3;
+  font-weight: bold;
+  padding: 3px 8px;
+  margin: 0 0 8px 0;
+}
+
+.dlg p {
+  margin: 6px 10px;
+}

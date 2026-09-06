@@ -15,7 +15,7 @@ The repository keeps runnable entry points in `apps/`, behavior in `packages/`, 
 ```text
 apps/          Runnable ICAS programs
 packages/      Reusable ICAS implementation
-tenants/       Synthetic banking tenants (icas-bank, loki-bank, helix-cu)
+tenants/       Synthetic banking tenants (icas-bank, icas-banc, loki-bank, helix-cu)
 capabilities/  Generated capability artifacts (do not hand-author)
 evidence/      Run traces, replay logs, screenshots, and handoff evidence
 docs/          Architecture and design decisions

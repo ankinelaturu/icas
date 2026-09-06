@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>ICAS Banc Core — Payoff Statement</title>
+<link rel="stylesheet" href="/styles.css" type="text/css">
+</head>
+<body>
+<table class="shell" cellspacing="0" cellpadding="0">
+<tr>
+<td class="banner" colspan="2">
+<table width="100%" cellspacing="0" cellpadding="0"><tr>
+<td class="prod">ICAS BANC</td>
+<td class="meta">Vendor: ICAS BANK &nbsp;|&nbsp; Product: LS 4.12.08 &nbsp; Build 2008.03.14 &nbsp;|&nbsp; Oper 5510 &nbsp; Br 008 &nbsp; 08/28/2026</td>
+</tr></table>
+</td>
+</tr>
+<tr class="subbar"><td colspan="2">Institution 7703 &nbsp; ICAS BANC &nbsp;|&nbsp; Licensed product: ICAS BANK CORE &nbsp;|&nbsp; Session 91C770 &nbsp;|&nbsp; LNSTMT {{loanAccountId}} &nbsp;|&nbsp; Unsaved changes: N</td></tr>
+<tr>
+<td class="nav">
+<table class="menu" cellspacing="0" cellpadding="0">
+<tr><td class="menu-hd">FUNCTIONS</td></tr>
+<tr><td class="menu-item"><a href="/">Home</a></td></tr>
+<tr><td class="menu-item"><a href="/cif.htm">CIF / Members</a></td></tr>
+<tr><td class="menu-item"><a href="/lending.htm">Lending</a></td></tr>
+<tr><td class="menu-item"><a href="/dp.htm">Deposits</a></td></tr>
+<tr><td class="menu-item"><a href="/docs.htm">Documents</a></td></tr>
+<tr><td class="menu-item"><a href="/rpts.htm">Reports</a></td></tr>
+<tr><td class="menu-item"><a href="/util.htm">Utilities</a></td></tr>
+<tr><td class="menu-item"><a href="/help.htm">Help</a></td></tr>
+</table>
+<p class="note">F1 Help &nbsp; F3 Exit &nbsp; F12 Cancel</p>
+</td>
+<td class="work">
+<div class="section-hd">Payoff Statement</div>
+<div class="stmt-box">
+<p><b>FORMAL PAYOFF STATEMENT</b><br>
+ICAS BANC &nbsp;|&nbsp; Inst 7703 &nbsp;|&nbsp; Licensed product: ICAS BANK CORE &nbsp;|&nbsp; Formal quote as of processing date {{processingDate}}</p>
+<table class="grid" width="100%">
+<tr><td class="lbl">Loan Account</td><td class="val">{{loanAccountId}}</td></tr>
+<tr><td class="lbl">Short Name</td><td class="val">{{borrowerName}}</td></tr>
+<tr><td class="lbl">Payoff Date</td><td class="val">{{payoffDate}}</td></tr>
+<tr><td class="lbl">Days (proc thru payoff)</td><td class="val">{{days}}</td></tr>
+<tr><td class="lbl">Principal Balance</td><td class="amt">{{principalBalance}}</td></tr>
+<tr><td class="lbl">Per Diem Interest</td><td class="amt">{{perDiemInterest}}</td></tr>
+<tr><td class="lbl">Interest through payoff</td><td class="amt">{{interestThroughPayoff}}</td></tr>
+<tr><td class="lbl">Total Payoff Amount</td><td class="amt">{{totalPayoffAmount}}</td></tr>
+</table>
+<p>Payoff Statement is ready. Figures are good-faith through the stated payoff date. Per diem continues if funds arrive later.</p>
+<p class="note">Synthetic demonstration. Not an official bank document.</p>
+</div>
+<p>
+<a href="/lending/payoff.htm?ln={{loanAccountId}}">Revise Payoff Dt</a>
+&nbsp;|&nbsp;
+<a href="/lending/search.htm">New Inquire</a>
+</p>
+</td>
+</tr>
+<tr><td class="status" colspan="2">Ready. Caps: Off &nbsp; NUM &nbsp;|&nbsp; Synthetic demonstration data. Not a real financial institution.</td></tr>
+</table>
+</body>
+</html>

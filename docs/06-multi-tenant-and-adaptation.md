@@ -66,6 +66,8 @@ icas-adapt loan-payoff --tenant loki-bank --url …
 → mismatch: write a small declarative patch and re-verify
 ```
 
+`tenants/icas-banc` (`:4104`) is the same Vendor+Product with institution chrome and **one** search-submit rename (Inquire → Look Up). It is the intended one-step adapt target. Loki remains the larger-drift twin. Neither tenant is enrolled until `icas-adapt` (or a human) writes `overrides/<tenant>.json`.
+
 A tenant with no override file is not enrolled. `icas-play run` / MCP must not silently use the bare base.
 
 ## `icas-adapt`

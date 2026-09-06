@@ -412,6 +412,31 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(tsx@4.23.12)
 
+  tenants/icas-banc:
+    dependencies:
+      express:
+        specifier: ^5.2.1
+        version: 5.2.1
+    devDependencies:
+      '@types/express':
+        specifier: ^5.0.3
+        version: 5.0.6
+      '@types/node':
+        specifier: ^24.3.0
+        version: 24.13.3
+      rimraf:
+        specifier: ^6.0.1
+        version: 6.1.3
+      tsx:
+        specifier: ^4.20.5
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(tsx@4.23.12)
+
   tenants/icas-bank:
     dependencies:
       express:

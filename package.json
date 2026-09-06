@@ -16,6 +16,7 @@
     "icas-adapt": "pnpm --filter @icas/adapt start --",
     "icas-mcp": "pnpm --filter @icas/mcp start --",
     "icas-bank": "pnpm --filter @icas/icas-bank start",
+    "icas-banc": "pnpm --filter @icas/icas-banc start",
     "loki-bank": "pnpm --filter @icas/loki-bank start",
     "helix-cu": "pnpm --filter @icas/helix-cu start"
   },

@@ -170,6 +170,6 @@ The must-have slice is real LLM discovery, compiled artifact, enrolled tenant, d
 | Out | Co-browsing console, queues, real PII, desktop driver, REST/DB registry, URL inference | Keep the `Surface` and `CapabilityRegistry` seams |
 | Remaining | vision pixels (5.22), phrase embeddings (4.15, deferred), Phase 8 live-run artifacts | [`TODO.md`](../TODO.md) |
 
-Synthetic tenants `icas-bank`, `loki-bank`, and `helix-cu` are in (Phase 7). The first concrete capability is a loan payoff statement (`loanAccountId`, `payoffDate` → `totalPayoffAmount`, `principalBalance`, `perDiemInterest`). Helix CU is a second product (share hold). Discovery learns each path from the live UI; it must not hard-code it.
+Synthetic tenants `icas-bank`, `icas-banc`, `loki-bank`, and `helix-cu` are in (Phase 7). The first concrete capability is a loan payoff statement (`loanAccountId`, `payoffDate` → `totalPayoffAmount`, `principalBalance`, `perDiemInterest`). Helix CU is a second product (share hold). Discovery learns each path from the live UI; it must not hard-code it.
 
 Reviewer-facing seven headings: [`REPORT.md`](../REPORT.md). Demo commands: root README. Testing: [`12-testing-and-demo.md`](12-testing-and-demo.md).
