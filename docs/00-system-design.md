@@ -1,4 +1,4 @@
-# 00 — System Design kkk
+# 00 — System Design
 
 ICAS is a computer-use runtime for legacy banking UIs that do not expose useful APIs. The model spends reasoning only while a workflow is unknown. A successful discovery compiles into a reusable capability. Production execution is deterministic.
 
