@@ -117,7 +117,7 @@ Recorded concrete discovery values must be replaced with parameter references:
 }
 ```
 
-not hard-coded literals. The names above are an example of a compiled contract for this take-home flow. They are not a closed list in the discovery prompt.
+not hard-coded literals. The names above are an example of a compiled contract. They are not a closed list in the discovery prompt. Live `loan-payoff` uses `loanAccountNumber`; `payoff-statement` uses `loanNumber`. Take invocation names from `icas-play describe`, not from this sketch.
 
 ## Outputs
 

@@ -18,10 +18,7 @@ The first concrete capability is a synthetic internal banking workflow:
 
 > Generate a formal loan payoff statement for a loan account and a specified future payoff date.
 
-Inputs:
-
-- `loanAccountId`
-- `payoffDate`
+Discovery names the compiled inputs. This sketch uses `loanAccountId` as an example. Live `loan-payoff` uses `loanAccountNumber` and `payoffDate`; Loki `payoff-statement` uses `loanNumber`. Take invocation flags from `icas-play describe`.
 
 Expected outputs:
 
@@ -78,7 +75,7 @@ icas-play describe <capability>
 icas-play run <capability> --url <url> ...typed inputs...
 ```
 
-`--tenant` / `--vendor` / `--product` default to `icas-bank`. Replay is selected by **capability id**, not by URL. `--url` is only where to open the browser. Typed params (e.g. `--loanAccountId`) are required per the artifact contract.
+`--tenant` / `--vendor` / `--product` default to `icas-bank`. Replay is selected by **capability id**, not by URL. `--url` is only where to open the browser. Typed params (e.g. `--loanAccountNumber` on live `loan-payoff`) are required per the artifact contract.
 
 Strict replay is model-free. An explicit assisted mode may perform one bounded, policy-checked LLM repair at a failed step, then must verify that execution has rejoined the original deterministic path.
 

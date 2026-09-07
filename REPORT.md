@@ -10,6 +10,8 @@ ICAS splits **goal-driven discovery** from **deterministic production execution*
 
 `icas-play` / `icas-mcp` / `icas-adapt` resolve `id` + enrolled `tenant` through `CapabilityResolver`, then hand the **effective** artifact to `ReplayEngine`. Strict replay has no LLM unless `icas-play --assist` or MCP `assist: true`. Apps stay thin; packages own behavior. Playwright is the first `Surface`, not the artifact model.
 
+Trade-offs we took: a filesystem catalog (`FileSystemCapabilityRegistry`) instead of REST/DB, so the submission stays a git tree and callers never glob `capabilities/`. Replay treats the **next** step’s locator as the happy-path gate instead of scanning `possibleOutcomes` first, so a visible error banner does not abort a page that still has Payoff. Missing enrollment fails closed instead of silently replaying the bare base, so an unpatched tenant cannot look like a verified reuse.
+
 Must-have slice: discover → artifact + enrollment → replay, exceptional-state classification, HITL, evidence. Stretch already in-repo: `--assist` / MCP `assist`, `icas-adapt`, MCP. Deferred on purpose: phrase embeddings (4.15), screenshot pixels on `generate` (5.22).
 
 ## 2. Artifact schema
@@ -20,7 +22,7 @@ The artifact carries typed inputs/outputs, ordered steps (semantic actions + ran
 
 ## 3. Determinism & error handling
 
-Replay hydrates `ValueRef`s, checks preconditions, policy-gates execute, then uses the **next** step’s locator as the happy-path gate. That locator found → continue (do not scan outcomes). Missing → document HTTP 403/404 fail before phrases; 5xx retries a known interstitial then fails; otherwise walk this step’s `possibleOutcomes` (OR phrases, skip `success`), then a tiny runtime generic-chrome list. A compiled `error` phrase that is visible returns `business_outcome` with heading/summary/match/phrase in `details`. The engine does not invent product copy (`LOAN_NOT_FOUND`). If no phrase hits, the run is `failure` / `UNEXPECTED_STATE`. `hitl` pauses the same session. This step’s own target miss is `TARGET_NOT_FOUND`, not this step’s outcome list. Last-step overall `success` miss uses the same classifier. Optional `--assist` / MCP `assist` is one bounded, policy-checked repair, then rejoin.
+Replay hydrates `ValueRef`s, checks preconditions, policy-gates execute, then uses the **next** step’s locator as the happy-path gate. That locator found → continue (do not scan outcomes). Missing → document HTTP 403/404 fail before phrases; 5xx retries a known interstitial then fails; otherwise walk this step’s `possibleOutcomes` (OR phrases, skip `success`), then a tiny runtime generic-chrome list. A compiled `error` phrase that is visible returns `business_outcome` with heading/summary/match/phrase in `details`. The engine does not invent product copy (`LOAN_NOT_FOUND`). If no phrase hits, the run is `failure` / `UNEXPECTED_STATE`. `hitl` pauses the same session. This step’s own target miss is `TARGET_NOT_FOUND`, not this step’s outcome list. Last-step overall `success` miss uses the same classifier; after HITL resume, replay re-checks overall success once (it does not scan outcomes again). Optional `--assist` / MCP `assist` is one bounded, policy-checked repair, then rejoin.
 
 ## 4. Heterogeneity & multi-tenant
 
@@ -40,4 +42,4 @@ Defense in depth: injectable markdown prompt policy (`ICAS_PROMPT_POLICY`), `Pol
 
 ## 7. Cuts
 
-Out of scope: production co-browsing/operator console, distributed queues, real bank credentials, a second (desktop) surface implementation, REST/DB capability registries, inferring tenant from URL. Phrase embeddings and attaching screenshot pixels to `generate` are deferred, not abandoned. Live-discover limits we do not hide: compiled `possibleOutcomes` phrases can miss page chrome (unknown loan may be `UNEXPECTED_STATE`); Helix share-row `visibleText` vs accessible name needs `--assist` / MCP `assist: true` for that run. The focus is the complete vertical slice above, with stretch (assist, adapt, MCP) implemented in-repo rather than skipped to polish extras.
+Out of scope: production co-browsing/operator console, distributed queues, real bank credentials, a second (desktop) surface implementation, REST/DB capability registries, inferring tenant from URL. Phrase embeddings and attaching screenshot pixels to `generate` are deferred, not abandoned. Live-discover limits we do not hide: compiled `possibleOutcomes` phrases can miss page chrome (unknown loan may be `UNEXPECTED_STATE`); Helix share-row `visibleText` vs accessible name needs `--assist` / MCP `assist: true` for that run. The brief asks for at most one or two stretch goals; assist, adapt, and MCP all landed after the must-have slice, as seams, not as a substitute for it.

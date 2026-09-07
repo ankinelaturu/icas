@@ -22,7 +22,7 @@ Discover and adapt write the `capabilities/` catalog. Replay and MCP read it thr
 
 Discover is the LLM path: `DiscoveryAgent` → `CandidateProposer` (Mastra) → the configured model (`ICAS_DISCOVERY_LLM_*`; default `openai/gpt-4o`). Search state stays in ICAS, not in Mastra memory. Strict replay has no LLM. `--assist` uses a separate `RepairProposer` and `ICAS_ASSIST_LLM_*`. `icas-adapt` mismatch patches use a `StepSpecializer` and `ICAS_ADAPT_LLM_*` (compatible enrollments skip the model). `.env` is model transport only (`MODEL`, `API_KEY`, optional `BASE_URL` and sampling).
 
-`PlaywrightSurface` is the implemented `Surface`. It opens the synthetic tenants: `icas-bank` (`:4101`), `loki-bank` (`:4102`), `helix-cu` (`:4103`). icas-bank and Loki Bank share Vendor+Product `icas-bank` / `icas-bank`; Loki has label/nav drift. Helix CU is a different vendor/product (share hold).
+`PlaywrightSurface` is the implemented `Surface`. It opens the synthetic tenants: `icas-bank` (`:4101`), `loki-bank` (`:4102`), `helix-cu` (`:4103`), and `icas-banc` (`:4104`). icas-bank, icas-banc, and Loki Bank share Vendor+Product `icas-bank` / `icas-bank`. icas-banc has one rename (Inquire → Look Up). Loki has broader label/nav drift. Helix CU is a different vendor/product (share hold).
 
 
 | Component                      | Package / app                                                             |
@@ -36,7 +36,7 @@ Discover is the LLM path: `DiscoveryAgent` → `CandidateProposer` (Mastra) → 
 | Replay                         | `@icas/replay` (`ReplayEngine`)                                           |
 | Policy, redact, HITL, evidence | `@icas/policy`, `@icas/redactor`, `@icas/handoff`, `@icas/evidence`       |
 | Browser                        | `@icas/surface`, `@icas/browser`                                          |
-| Tenants                        | `tenants/icas-bank`, `loki-bank`, `helix-cu`                              |
+| Tenants                        | `tenants/icas-bank`, `icas-banc`, `loki-bank`, `helix-cu`                  |
 
 
 Prompt policy instructs the model. `PolicyGuard` enforces execute. `Redactor` runs before evidence is persisted. The catalog backend is `FileSystemCapabilityRegistry({ root })` only; REST/DB registries are out of scope.
@@ -119,15 +119,15 @@ flowchart TB
   generic -->|none| resultFail
   success -->|ok| resultSuccess
   success -->|miss| http
+  resultHitl -->|resume mid-flow| nextLoc
+  resultHitl -->|resume last step| success
   resultFail -.-> assist
 
   classDef optional stroke-dasharray: 6 4
   class assist optional
 ```
 
-
-
-Phrase embeddings (Pass 4.15) are deferred: same `match.phrases` field, no vectors on the artifact, still no LLM on strict replay. Details: `[05-replay-engine.md](05-replay-engine.md)`.
+Last-step HITL resume re-checks overall success once. Mid-flow resume re-probes the next locator. Phrase embeddings (Pass 4.15) are deferred: same `match.phrases` field, no vectors on the artifact, still no LLM on strict replay. Details: `[05-replay-engine.md](05-replay-engine.md)`.
 
 ### 3.4 Surface
 
@@ -181,9 +181,9 @@ The must-have slice is real LLM discovery, compiled artifact, enrolled tenant, d
 | Must      | Discover → artifact → enroll → replay + errors → HITL → evidence                       | `[01](01-system-overview.md)`, Phases 1–5 and 6.1–6.5 |
 | Stretch   | `--assist`, `icas-adapt`, MCP, browser takeover                                        | Built in-repo                                         |
 | Out       | Co-browsing console, queues, real PII, desktop driver, REST/DB registry, URL inference | Keep the `Surface` and `CapabilityRegistry` seams     |
-| Remaining | vision pixels (5.22), phrase embeddings (4.15, deferred), Phase 8 live-run artifacts   | `[TODO.md](../TODO.md)`                               |
+| Remaining | vision pixels (5.22), phrase embeddings (4.15, deferred)                               | `[TODO.md](../TODO.md)`                               |
 
 
-Synthetic tenants `icas-bank`, `icas-banc`, `loki-bank`, and `helix-cu` are in (Phase 7). The first concrete capability is a loan payoff statement (`loanAccountId`, `payoffDate` → `totalPayoffAmount`, `principalBalance`, `perDiemInterest`). Helix CU is a second product (share hold). Discovery learns each path from the live UI; it must not hard-code it.
+Synthetic tenants `icas-bank`, `icas-banc`, `loki-bank`, and `helix-cu` are in (Phase 7). The first concrete capability is a loan payoff statement. Discovery names the compiled inputs; live `loan-payoff` uses `loanAccountNumber` and `payoffDate` (see `icas-play describe`), not the sketch name `loanAccountId`. Outputs include `totalPayoffAmount`, `principalBalance`, and `perDiemInterest`. Helix CU is a second product (share hold). Discovery learns each path from the live UI; it must not hard-code it.
 
 Reviewer-facing seven headings: `[REPORT.md](../REPORT.md)`. Demo commands: root README. Testing: `[12-testing-and-demo.md](12-testing-and-demo.md)`.

@@ -100,9 +100,10 @@ tests/integration/
 
 ### 6. Tenant adaptation
 
-- Loki Bank runs same fictional Vendor+Product but has a small UI variation;
-- guarded replay detects the mismatch;
-- `icas-adapt` specializes the affected region and proves re-entry.
+- `icas-banc` (`:4104`) is the same Vendor+Product with one rename (Inquire → Look Up);
+- `icas-adapt` persists a one-step override and re-verifies with `ReplayEngine` (no LLM);
+- Loki Bank has several label/nav changes; bounded adapt fails re-verify and rolls back;
+- rediscover the payoff goal as `payoff-statement` (`--id` must be new).
 
 ### 7. MCP invocation
 

@@ -52,7 +52,7 @@ A capability such as:
 ```text
 id: loan-payoff
 inputs:
-  loanAccountId: string
+  loanAccountNumber: string
   payoffDate: date
 ```
 
@@ -64,10 +64,12 @@ loan_payoff({
   tenant: "icas-bank",
   vendor: "icas-bank",
   product: "icas-bank",
-  loanAccountId: "987654",
+  loanAccountNumber: "987654",
   payoffDate: "2026-09-30"
 })
 ```
+
+Tool argument names come from the compiled artifact (`icas-play describe`), not from a fixed MCP schema. This sketch matches live `loan-payoff`.
 
 `url` is required. `tenant`, `vendor`, and `product` are optional. Defaults come from that capability: `target.vendor` / `target.product`, and `discoveredOn.tenant` (or `icas-bank` if discover did not stamp a tenant). An explicit value still wins. `loan-payoff` on icas-banc still passes `tenant: icas-banc`. Vendor and product must match the artifact target. Optional `assist` (default false) injects the same bounded `RepairProposer` as `icas-play run --assist`. It reads `ICAS_ASSIST_LLM_*` from the process (repo `.env` is loaded on MCP start). It does not persist an override. Repair logs go to stderr so they do not corrupt stdio.
 
