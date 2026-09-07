@@ -1,0 +1,438 @@
+{
+  "schemaVersion": "1.0",
+  "id": "payoff-statement",
+  "name": "payoff-statement",
+  "target": {
+    "vendor": "icas-bank",
+    "product": "icas-bank"
+  },
+  "discoveredOn": {
+    "tenant": "loki-bank"
+  },
+  "inputs": {
+    "loanNumber": {
+      "type": "string",
+      "required": true
+    },
+    "payoffDate": {
+      "type": "date",
+      "required": true
+    }
+  },
+  "outputs": {
+    "loanAccount": {
+      "type": "string",
+      "description": "Loan account number for the payoff statement",
+      "extract": {
+        "target": {
+          "strategies": [
+            {
+              "type": "relative",
+              "text": "Loan Account"
+            }
+          ]
+        }
+      }
+    },
+    "payoffDate": {
+      "type": "date",
+      "description": "Payoff date for the loan",
+      "extract": {
+        "target": {
+          "strategies": [
+            {
+              "type": "relative",
+              "text": "Payoff Date"
+            }
+          ]
+        }
+      }
+    },
+    "principalBalance": {
+      "type": "money",
+      "description": "Principal balance of the loan",
+      "extract": {
+        "target": {
+          "strategies": [
+            {
+              "type": "relative",
+              "text": "Principal Balance"
+            }
+          ]
+        }
+      }
+    },
+    "perDiemInterest": {
+      "type": "money",
+      "description": "Per diem interest for the loan",
+      "extract": {
+        "target": {
+          "strategies": [
+            {
+              "type": "relative",
+              "text": "Per Diem Interest"
+            }
+          ]
+        }
+      }
+    },
+    "interestThroughPayoff": {
+      "type": "money",
+      "description": "Interest through the payoff date",
+      "extract": {
+        "target": {
+          "strategies": [
+            {
+              "type": "relative",
+              "text": "Interest through payoff"
+            }
+          ]
+        }
+      }
+    },
+    "totalPayoffAmount": {
+      "type": "money",
+      "description": "Total payoff amount for the loan",
+      "extract": {
+        "target": {
+          "strategies": [
+            {
+              "type": "relative",
+              "text": "Total Payoff Amount"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "steps": [
+    {
+      "id": "click-member-lending",
+      "preconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/"
+        }
+      ],
+      "action": {
+        "type": "click",
+        "target": {
+          "strategies": [
+            {
+              "type": "roleText",
+              "role": "link",
+              "text": "Member Lending"
+            }
+          ]
+        },
+        "risk": "safe"
+      },
+      "postconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/lending.htm"
+        }
+      ],
+      "possibleOutcomes": [
+        {
+          "kind": "error",
+          "match": {
+            "phrases": [
+              "Unable to generate payoff statement"
+            ]
+          },
+          "heading": null,
+          "summary": null
+        }
+      ]
+    },
+    {
+      "id": "click-loan-servicing",
+      "preconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/lending.htm"
+        }
+      ],
+      "action": {
+        "type": "click",
+        "target": {
+          "strategies": [
+            {
+              "type": "roleText",
+              "role": "link",
+              "text": "Loan Servicing"
+            }
+          ]
+        },
+        "risk": "safe"
+      },
+      "postconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/lending/search.htm"
+        }
+      ],
+      "possibleOutcomes": [
+        {
+          "kind": "error",
+          "match": {
+            "phrases": [
+              "Loan servicing not available"
+            ]
+          },
+          "heading": null,
+          "summary": null
+        }
+      ]
+    },
+    {
+      "id": "fill-loan",
+      "preconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/lending/search.htm"
+        }
+      ],
+      "action": {
+        "type": "fill",
+        "target": {
+          "strategies": [
+            {
+              "type": "relative",
+              "text": "Loan #"
+            },
+            {
+              "type": "css",
+              "selector": "input[name=\"txtAcct\"]"
+            }
+          ]
+        },
+        "value": {
+          "input": "loanNumber"
+        },
+        "risk": "safe"
+      },
+      "postconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/lending/search.htm"
+        }
+      ],
+      "possibleOutcomes": [
+        {
+          "kind": "error",
+          "match": {
+            "phrases": [
+              "Loan not found"
+            ]
+          },
+          "heading": null,
+          "summary": null
+        }
+      ]
+    },
+    {
+      "id": "click-search",
+      "preconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/lending/search.htm"
+        }
+      ],
+      "action": {
+        "type": "click",
+        "target": {
+          "strategies": [
+            {
+              "type": "roleText",
+              "role": "button",
+              "text": "Search"
+            }
+          ]
+        },
+        "risk": "safe"
+      },
+      "postconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/lending/account.htm"
+        }
+      ],
+      "possibleOutcomes": [
+        {
+          "kind": "error",
+          "match": {
+            "phrases": [
+              "Loan not found"
+            ]
+          },
+          "heading": null,
+          "summary": null
+        },
+        {
+          "kind": "error",
+          "match": {
+            "phrases": [
+              "Search failed"
+            ]
+          },
+          "heading": null,
+          "summary": null
+        }
+      ]
+    },
+    {
+      "id": "click-payoff",
+      "preconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/lending/account.htm"
+        }
+      ],
+      "action": {
+        "type": "click",
+        "target": {
+          "strategies": [
+            {
+              "type": "roleText",
+              "role": "link",
+              "text": "Payoff"
+            }
+          ]
+        },
+        "risk": "safe"
+      },
+      "postconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/lending/payoff.htm"
+        }
+      ],
+      "possibleOutcomes": [
+        {
+          "kind": "error",
+          "match": {
+            "phrases": [
+              "Unable to load payoff screen"
+            ]
+          },
+          "heading": null,
+          "summary": null
+        }
+      ]
+    },
+    {
+      "id": "fill-payoff-dt",
+      "preconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/lending/payoff.htm"
+        }
+      ],
+      "action": {
+        "type": "fill",
+        "target": {
+          "strategies": [
+            {
+              "type": "relative",
+              "text": "Payoff Dt"
+            },
+            {
+              "type": "css",
+              "selector": "input[name=\"dtPayoff\"]"
+            }
+          ]
+        },
+        "value": {
+          "input": "payoffDate"
+        },
+        "risk": "safe"
+      },
+      "postconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/lending/payoff.htm"
+        }
+      ],
+      "possibleOutcomes": [
+        {
+          "kind": "error",
+          "match": {
+            "phrases": [
+              "Invalid date format"
+            ]
+          },
+          "heading": null,
+          "summary": null
+        },
+        {
+          "kind": "error",
+          "match": {
+            "phrases": [
+              "Date required"
+            ]
+          },
+          "heading": null,
+          "summary": null
+        }
+      ]
+    },
+    {
+      "id": "click-calculate-generate",
+      "preconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/lending/payoff.htm"
+        }
+      ],
+      "action": {
+        "type": "click",
+        "target": {
+          "strategies": [
+            {
+              "type": "roleText",
+              "role": "button",
+              "text": "Calculate / Generate"
+            }
+          ]
+        },
+        "risk": "safe"
+      },
+      "postconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/lending/payoff.htm"
+        }
+      ],
+      "possibleOutcomes": [
+        {
+          "kind": "error",
+          "match": {
+            "phrases": [
+              "Unable to generate payoff statement"
+            ]
+          },
+          "heading": null,
+          "summary": null
+        },
+        {
+          "kind": "hitl",
+          "match": {
+            "phrases": [
+              "Authorization required"
+            ]
+          },
+          "heading": null,
+          "summary": null
+        }
+      ]
+    }
+  ],
+  "success": [
+    {
+      "type": "textVisible",
+      "value": "Payoff Statement is ready."
+    }
+  ]
+}

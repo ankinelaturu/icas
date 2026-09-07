@@ -1,0 +1,9 @@
+{
+  "runId": "7cf4ffb2-5e39-4db5-a157-b25888502253",
+  "runType": "replay",
+  "capabilityId": "payoff-statement",
+  "status": "failure",
+  "startedAt": "2026-09-07T02:23:45.740Z",
+  "finishedAt": "2026-09-07T02:24:08.412Z",
+  "steps": 7
+}

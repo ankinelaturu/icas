@@ -1,0 +1,9 @@
+{
+  "runId": "69c683c6-5369-42e5-a624-281c5cabccbd",
+  "runType": "discovery",
+  "capabilityId": "payoff-statement",
+  "status": "success",
+  "startedAt": "2026-09-07T00:06:42.225Z",
+  "steps": 7,
+  "backtracks": 0
+}

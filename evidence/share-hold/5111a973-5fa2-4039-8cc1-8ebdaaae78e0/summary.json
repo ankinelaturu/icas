@@ -1,0 +1,9 @@
+{
+  "runId": "5111a973-5fa2-4039-8cc1-8ebdaaae78e0",
+  "runType": "discovery",
+  "capabilityId": "share-hold",
+  "status": "success",
+  "startedAt": "2026-09-07T00:11:19.765Z",
+  "steps": 8,
+  "backtracks": 0
+}

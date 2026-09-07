@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "1.0",
+  "id": "payoff-statement-loki-bank",
+  "baseCapability": "payoff-statement",
+  "target": {
+    "tenant": "loki-bank"
+  },
+  "overrides": {},
+  "provenance": {
+    "createdBy": "discovery",
+    "createdFromRun": "69c683c6-5369-42e5-a624-281c5cabccbd",
+    "reason": "enrolled discovering tenant"
+  }
+}

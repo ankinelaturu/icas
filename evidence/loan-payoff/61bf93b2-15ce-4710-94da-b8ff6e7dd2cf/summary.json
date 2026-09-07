@@ -1,0 +1,9 @@
+{
+  "runId": "61bf93b2-15ce-4710-94da-b8ff6e7dd2cf",
+  "runType": "discovery",
+  "capabilityId": "loan-payoff",
+  "status": "success",
+  "startedAt": "2026-09-06T23:52:47.142Z",
+  "steps": 7,
+  "backtracks": 0
+}

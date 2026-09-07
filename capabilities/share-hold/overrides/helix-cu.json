@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "1.0",
+  "id": "share-hold-helix-cu",
+  "baseCapability": "share-hold",
+  "target": {
+    "tenant": "helix-cu"
+  },
+  "overrides": {},
+  "provenance": {
+    "createdBy": "discovery",
+    "createdFromRun": "5111a973-5fa2-4039-8cc1-8ebdaaae78e0",
+    "reason": "enrolled discovering tenant"
+  }
+}

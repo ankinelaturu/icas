@@ -1,0 +1,9 @@
+{
+  "runId": "cab4dbf2-03dd-4214-9468-840d49c61546",
+  "runType": "replay",
+  "capabilityId": "loan-payoff",
+  "status": "success",
+  "startedAt": "2026-09-07T01:27:08.616Z",
+  "finishedAt": "2026-09-07T01:27:32.084Z",
+  "steps": 7
+}

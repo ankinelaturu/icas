@@ -1,0 +1,442 @@
+{
+  "schemaVersion": "1.0",
+  "id": "share-hold",
+  "name": "share-hold",
+  "target": {
+    "vendor": "helix",
+    "product": "helix"
+  },
+  "discoveredOn": {
+    "tenant": "helix-cu"
+  },
+  "inputs": {
+    "memberNumber": {
+      "type": "string",
+      "required": true
+    },
+    "holdAmount": {
+      "type": "money",
+      "required": true
+    },
+    "holdReason": {
+      "type": "string",
+      "required": true
+    }
+  },
+  "outputs": {
+    "holdConfirmationNumber": {
+      "type": "string",
+      "description": "The confirmation number for the hold placed.",
+      "extract": {
+        "target": {
+          "strategies": [
+            {
+              "type": "relative",
+              "text": "Hold Confirmation"
+            }
+          ]
+        }
+      }
+    },
+    "availableBalanceAfterHold": {
+      "type": "money",
+      "description": "The available balance after the hold is placed.",
+      "extract": {
+        "target": {
+          "strategies": [
+            {
+              "type": "relative",
+              "text": "Available After Hold"
+            }
+          ]
+        }
+      }
+    },
+    "holdExpiryDate": {
+      "type": "date",
+      "description": "The expiry date of the hold.",
+      "extract": {
+        "target": {
+          "strategies": [
+            {
+              "type": "relative",
+              "text": "Hold Expires"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "steps": [
+    {
+      "id": "click-share-holds",
+      "preconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/"
+        }
+      ],
+      "action": {
+        "type": "click",
+        "target": {
+          "strategies": [
+            {
+              "type": "visibleText",
+              "text": "Share Holds"
+            }
+          ]
+        },
+        "risk": "safe"
+      },
+      "postconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/holds.htm"
+        }
+      ],
+      "possibleOutcomes": [
+        {
+          "kind": "error",
+          "match": {
+            "phrases": [
+              "Unable to place hold",
+              "Insufficient funds"
+            ]
+          },
+          "heading": null,
+          "summary": null
+        }
+      ]
+    },
+    {
+      "id": "fill-member",
+      "preconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/holds.htm"
+        }
+      ],
+      "action": {
+        "type": "fill",
+        "target": {
+          "strategies": [
+            {
+              "type": "relative",
+              "text": "Member #"
+            },
+            {
+              "type": "css",
+              "selector": "input[name=\"txtMember\"]"
+            }
+          ]
+        },
+        "value": {
+          "input": "memberNumber"
+        },
+        "risk": "safe"
+      },
+      "postconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/holds.htm"
+        }
+      ],
+      "possibleOutcomes": [
+        {
+          "kind": "error",
+          "match": {
+            "phrases": [
+              "Member not found",
+              "Invalid member number"
+            ]
+          },
+          "heading": null,
+          "summary": null
+        }
+      ]
+    },
+    {
+      "id": "click-find-member",
+      "preconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/holds.htm"
+        }
+      ],
+      "action": {
+        "type": "click",
+        "target": {
+          "strategies": [
+            {
+              "type": "roleText",
+              "role": "button",
+              "text": "Find Member"
+            }
+          ]
+        },
+        "risk": "safe"
+      },
+      "postconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/holds/shares.htm"
+        }
+      ],
+      "possibleOutcomes": [
+        {
+          "kind": "error",
+          "match": {
+            "phrases": [
+              "Member not found",
+              "Invalid member number"
+            ]
+          },
+          "heading": null,
+          "summary": null
+        }
+      ]
+    },
+    {
+      "id": "click-primary-share-share-01",
+      "preconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/holds/shares.htm"
+        }
+      ],
+      "action": {
+        "type": "click",
+        "target": {
+          "strategies": [
+            {
+              "type": "visibleText",
+              "text": "Primary Share Share 01"
+            }
+          ]
+        },
+        "risk": "safe"
+      },
+      "postconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/holds/place.htm"
+        }
+      ],
+      "possibleOutcomes": [
+        {
+          "kind": "error",
+          "match": {
+            "phrases": [
+              "Unable to proceed",
+              "Share not available"
+            ]
+          },
+          "heading": null,
+          "summary": null
+        }
+      ]
+    },
+    {
+      "id": "fill-hold-amt",
+      "preconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/holds/place.htm"
+        }
+      ],
+      "action": {
+        "type": "fill",
+        "target": {
+          "strategies": [
+            {
+              "type": "relative",
+              "text": "Hold Amt"
+            },
+            {
+              "type": "css",
+              "selector": "input[name=\"txtAmt\"]"
+            }
+          ]
+        },
+        "value": {
+          "input": "holdAmount"
+        },
+        "risk": "safe"
+      },
+      "postconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/holds/place.htm"
+        }
+      ],
+      "possibleOutcomes": [
+        {
+          "kind": "error",
+          "match": {
+            "phrases": [
+              "Invalid hold amount",
+              "Hold amount required"
+            ]
+          },
+          "heading": null,
+          "summary": null
+        }
+      ]
+    },
+    {
+      "id": "click-place-hold",
+      "preconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/holds/place.htm"
+        }
+      ],
+      "action": {
+        "type": "click",
+        "target": {
+          "strategies": [
+            {
+              "type": "roleText",
+              "role": "button",
+              "text": "Place Hold"
+            }
+          ]
+        },
+        "risk": "safe"
+      },
+      "postconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/holds/place.htm"
+        }
+      ],
+      "possibleOutcomes": [
+        {
+          "kind": "error",
+          "match": {
+            "phrases": [
+              "Unable to place hold",
+              "Insufficient funds"
+            ]
+          },
+          "heading": null,
+          "summary": null
+        },
+        {
+          "kind": "hitl",
+          "match": {
+            "phrases": [
+              "Authorization required"
+            ]
+          },
+          "heading": null,
+          "summary": null
+        }
+      ]
+    },
+    {
+      "id": "fill-reason",
+      "preconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/holds/place.htm"
+        }
+      ],
+      "action": {
+        "type": "fill",
+        "target": {
+          "strategies": [
+            {
+              "type": "relative",
+              "text": "Reason"
+            },
+            {
+              "type": "css",
+              "selector": "input[name=\"txtReason\"]"
+            }
+          ]
+        },
+        "value": {
+          "input": "holdReason"
+        },
+        "risk": "safe"
+      },
+      "postconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/holds/place.htm"
+        }
+      ],
+      "possibleOutcomes": [
+        {
+          "kind": "error",
+          "match": {
+            "phrases": [
+              "Reason is required",
+              "Invalid reason"
+            ]
+          },
+          "heading": null,
+          "summary": null
+        }
+      ]
+    },
+    {
+      "id": "click-place-hold-2",
+      "preconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/holds/place.htm"
+        }
+      ],
+      "action": {
+        "type": "click",
+        "target": {
+          "strategies": [
+            {
+              "type": "roleText",
+              "role": "button",
+              "text": "Place Hold"
+            }
+          ]
+        },
+        "risk": "safe"
+      },
+      "postconditions": [
+        {
+          "type": "urlMatches",
+          "pattern": "/holds/place.htm"
+        }
+      ],
+      "possibleOutcomes": [
+        {
+          "kind": "error",
+          "match": {
+            "phrases": [
+              "Unable to place hold",
+              "Insufficient funds"
+            ]
+          },
+          "heading": null,
+          "summary": null
+        },
+        {
+          "kind": "hitl",
+          "match": {
+            "phrases": [
+              "Authorization required"
+            ]
+          },
+          "heading": null,
+          "summary": null
+        }
+      ]
+    }
+  ],
+  "success": [
+    {
+      "type": "textVisible",
+      "value": "Hold Confirmation"
+    }
+  ]
+}

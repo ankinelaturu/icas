@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0",
+  "id": "loan-payoff-icas-banc",
+  "baseCapability": "loan-payoff",
+  "target": {
+    "tenant": "icas-banc"
+  },
+  "overrides": {
+    "steps": {
+      "click-inquire": {
+        "target": {
+          "strategies": [
+            {
+              "type": "roleText",
+              "role": "button",
+              "text": "Look Up"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "provenance": {
+    "createdBy": "icas-adapt",
+    "createdFromRun": "06428ddf-60ac-45d5-82eb-dc39c800ca20",
+    "reason": "step click-inquire UNEXPECTED_STATE"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "runId": "17b078f2-15e5-4f33-a53c-4a3117bb3719",
+  "runType": "adaptation",
+  "capabilityId": "loan-payoff",
+  "status": "failure",
+  "startedAt": "2026-09-07T00:04:34.263Z",
+  "finishedAt": "2026-09-07T00:04:54.514Z",
+  "steps": 0
+}
