@@ -20,7 +20,7 @@ export type RunType = "discovery" | "replay" | "adaptation";
 /**
  * Compact whole-run record written as `summary.json`.
  *
- * Reviewers should see outcome without scanning every JSONL line. Status
+ * A summary shows outcome without scanning every JSONL line. Status
  * `business_outcome` is a completed run that did not take the success path.
  */
 export interface RunSummary {

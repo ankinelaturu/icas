@@ -195,7 +195,7 @@ export class FileSystemEvidenceWriter implements EvidenceWriter {
   }
 
   /**
-   * Mask `payload` only. Envelope fields stay so reviewers can join events.
+   * Mask `payload` only. Envelope fields stay so events can be joined.
    */
   private redactEvent(event: EvidenceEvent): EvidenceEvent {
     if (!("payload" in event) || event.payload === undefined) {

@@ -126,4 +126,4 @@ At minimum:
 - exceptional replay log;
 - rich failure signal where relevant;
 - handoff evidence;
-- optional short screen recording.
+- optional short screen recording (`demo-recordings/`).

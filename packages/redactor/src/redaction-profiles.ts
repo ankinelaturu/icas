@@ -39,7 +39,7 @@ export const MODEL_PROFILE: RedactionProfile = {
 /**
  * Masks identifiers that must not be persisted on disk.
  *
- * Evidence is the leak that reviewers and CI will copy. Email is included
+ * Evidence is the leak that logs and CI will copy. Email is included
  * here even though the model profile leaves it.
  */
 export const EVIDENCE_PROFILE: RedactionProfile = {

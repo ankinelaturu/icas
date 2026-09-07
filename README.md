@@ -13,13 +13,14 @@ The repository keeps runnable entry points in `apps/`, behavior in `packages/`, 
 ## Repository layout
 
 ```text
-apps/          Runnable ICAS programs
-packages/      Reusable ICAS implementation
-tenants/       Synthetic banking tenants (icas-bank, icas-banc, loki-bank, helix-cu)
-capabilities/  Generated capability artifacts (do not hand-author)
-evidence/      Run traces, replay logs, screenshots, and handoff evidence
-docs/          Architecture and design decisions
-tests/         Cross-package integration tests
+apps/              Runnable ICAS programs
+packages/          Reusable ICAS implementation
+tenants/           Synthetic banking tenants (icas-bank, icas-banc, loki-bank, helix-cu)
+capabilities/      Generated capability artifacts (do not hand-author)
+evidence/          Run traces, replay logs, screenshots, and handoff evidence
+demo-recordings/   Demo recordings (numbered 01–14)
+docs/              Architecture and design decisions
+tests/             Cross-package integration tests
 ```
 
 ## Setup
@@ -37,7 +38,7 @@ Callers must not glob `capabilities/`. CLIs use `FileSystemCapabilityRegistry` (
 
 ## Demo path
 
-Four synthetic **staff** UIs (no login, no real PII). Three of them are the same fictional Vendor+Product (`icas-bank` / `icas-bank`) so ICAS can reuse one payoff capability and still prove tenant drift. Helix is a **different** vendor/product so a second goal is not a loan-payoff clone.
+Four synthetic **staff** UIs (no login, no real PII). Three of them are the same fictional Vendor+Product (`icas-bank` / `icas-bank`) so ICAS can reuse one payoff capability and still prove tenant drift. Helix is a **different** vendor/product so a second goal is not a loan-payoff clone. Screen recordings of this path are in [`demo-recordings/`](demo-recordings/).
 
 | Tenant | Port | Role |
 |---|---|---|
