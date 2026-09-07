@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`icas-mcp` implements the optional agent-facing capability interface. It exposes saved capability artifacts as tools that another agent/host can discover and invoke by name with typed arguments.
+`icas-mcp` implements the agent-facing capability interface. It exposes saved capability artifacts as tools that another agent/host can discover and invoke by name with typed arguments.
 
 ## Architecture
 
@@ -32,7 +32,7 @@ CapabilityRegistry
    └── icas-mcp   → agent-facing protocol
 ```
 
-`icas-play` may list/describe/run capabilities for humans. That is not by itself the agent-facing stretch goal. `icas-mcp` makes the catalog machine-discoverable as tools. Both must go through `CapabilityRegistry` / `CapabilityResolver` rather than reading files directly. Invocation uses capability id + tenant + vendor + product + runtime URL + typed args. Omitted identity defaults from that capability (`discoveredOn.tenant`, `target.vendor` / `target.product`). Vendor and product must match the artifact target. The tenant must already be enrolled. Identity is never inferred from the URL. Catalog API and on-disk layout are specified in [`04-capability-artifact.md`](04-capability-artifact.md).
+`icas-play` lists, describes, and runs capabilities for humans. `icas-mcp` makes the catalog machine-discoverable as tools. Both go through `CapabilityRegistry` / `CapabilityResolver` rather than reading files directly. Invocation uses capability id + tenant + vendor + product + runtime URL + typed args. Omitted identity defaults from that capability (`discoveredOn.tenant`, `target.vendor` / `target.product`). Vendor and product must match the artifact target. The tenant must already be enrolled. Identity is never inferred from the URL. Catalog API and on-disk layout are specified in [`04-capability-artifact.md`](04-capability-artifact.md).
 
 ## MCP server shape
 

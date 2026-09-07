@@ -1,12 +1,12 @@
 # ICAS — Interface Computer-Use Automation System
 
-ICAS is a small end-to-end computer-use automation system built for the Interface.AI engineering take-home. It separates **discovery** from **execution**:
+ICAS is a small end-to-end computer-use automation system built for the Interface.AI engineering take-home. Discovery learns the contract. Replay implements the contract. MCP exposes the contract to other agents.
 
 - `icas-agent` uses an LLM to discover how to complete a goal against a live UI.
-- A successful discovery is compiled into a typed capability artifact (catalog `id` only; tenant differences live on overrides).
+- A successful discovery is compiled into a typed capability artifact (catalog `id` only; tenant differences live on overrides). First discover also writes a header-only tenant override (`overrides: {}`) so the discovering tenant is enrolled without copying tenant chrome into the base.
 - `icas-play` replays a known capability deterministically, with checkpoints, structured outputs, exceptional-state classification from compiled `possibleOutcomes`, and optional bounded `--assist`.
-- `icas-adapt` specializes a known capability for another tenant running the same vendor/product when checkpoints reveal drift.
-- `icas-mcp` exposes saved capabilities as tools that another AI agent can discover and invoke by name with typed arguments.
+- `icas-adapt` specializes a known capability for another tenant running the same vendor/product when checkpoints reveal drift. One-step patches only; larger divergence rolls back and requires rediscovery.
+- `icas-mcp` exposes saved capabilities as tools that another AI agent can discover and invoke by name with typed arguments. It resolves the same catalog and calls the same `ReplayEngine` as play.
 
 The repository keeps runnable entry points in `apps/`, behavior in `packages/`, and synthetic tenant apps in `tenants/`.
 
@@ -46,7 +46,7 @@ Four synthetic **staff** UIs (no login, no real PII). Three of them are the same
 | `loki-bank` | `:4102` | Same product, several label/nav changes. Adapt of `loan-payoff` fails; rediscover as `payoff-statement`. |
 | `helix-cu` | `:4103` | Vendor/product `helix` / `helix`. Discover `share-hold` (div layout). Replay with `--assist`. |
 
-`--vendor` / `--product` / `--tenant` are never inferred from `--url`. Replay `--` flags come from `icas-play describe`.
+`--vendor` / `--product` / `--tenant` are never inferred from `--url`. `--url` only opens this run’s surface (deployment/environment). Replay `--` flags come from `icas-play describe`.
 
 ```bash
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
@@ -265,7 +265,7 @@ Project `.cursor/mcp.json` (so `${workspaceFolder}` works). User-global `~/.curs
 }
 ```
 
-Pass `url` on the tool call. Omitted `tenant` / `vendor` / `product` default from that capability. Override `tenant` for icas-banc. Do not call `loan_payoff` with `tenant: loki-bank`. Optional `assist` (default false) uses `ICAS_ASSIST_LLM_*` from repo `.env`; Helix share-row replay needs `assist: true`.
+Pass `url` on the tool call (runtime surface; not stored on the capability). Omitted `tenant` / `vendor` / `product` default from that capability. Override `tenant` for icas-banc. Do not call `loan_payoff` with `tenant: loki-bank`. Optional `assist` (default false) uses `ICAS_ASSIST_LLM_*` from repo `.env`; Helix share-row replay needs `assist: true`.
 
 | Ask about | Tool | `tenant` | `vendor` / `product` | `assist` | `url` |
 |---|---|---|---|---|---|
@@ -294,10 +294,10 @@ Known-good icas-bank loans: `987654` (primary), `112233` (second active). Missin
 
 ## Design principles
 
-1. **The model discovers; replay executes.** LLM reasoning is used where the route is unknown. Known capabilities replay without model decisions by default.
+1. **The model discovers; replay executes.** Discovery learns the contract. Replay implements the contract. MCP exposes the contract to other agents. LLM reasoning is used where the route is unknown. Known capabilities replay without model decisions by default.
 2. **A capability is a contract, not a transcript.** The artifact contains typed inputs/outputs, ordered actions, target descriptions, checkpoints, optional `possibleOutcomes`, and overall success rules.
-3. **Replay is guarded, not blind.** Every step can validate the state before and after its action. When the next locator is missing, replay classifies from that step's `possibleOutcomes`, then HTTP status and generic chrome.
-4. **Same product does not imply identical tenant UI.** A capability for a vendor/product is a candidate for reuse. Tenant compatibility is an enrolled override resolved by `CapabilityResolver`. `ReplayEngine` never branches on tenant.
+3. **Replay is guarded, not blind.** Happy-path evidence wins first. Exceptional-state classification runs only when the expected next state is absent (next locator missing, or last-step overall `success` miss). Then replay classifies from that step's `possibleOutcomes`, then HTTP status and generic chrome.
+4. **Same product does not imply identical tenant UI.** A capability for a vendor/product is a candidate for reuse. Tenant compatibility is an enrolled override resolved by `CapabilityResolver`. `ReplayEngine` never branches on tenant. Adapt stays one-step; substantial divergence rediscovers.
 5. **Safety is layered.** Prompt policy influences model proposals; runtime policy gates actual execution; redaction controls what may leave runtime memory or be persisted.
 6. **Human handoff means control transfer.** Automation can pause, cede the same live browser session to a human, capture what changed, and resume.
 7. **Surface-specific code stays behind an abstraction.** Playwright is the implemented web surface, but capability semantics should not fundamentally depend on the DOM.
@@ -306,4 +306,4 @@ See [`docs/README.md`](docs/README.md) for the detailed design notes. Reviewer h
 
 ## Status
 
-The must-have vertical slice is implemented: discover → artifact + tenant enrollment → deterministic replay, exceptional-state classification, HITL, and evidence. Stretch already in-repo: `--assist`, `icas-adapt`, MCP. Pass 4.15 (phrase embeddings) and Pass 5.22 (screenshot pixels on `generate`) are deferred on purpose.
+The system implements discover → artifact + tenant enrollment → deterministic replay, exceptional-state classification, HITL, and evidence. Also in-repo: `--assist`, `icas-adapt`, MCP. Deferred: phrase embeddings (4.15) and screenshot pixels on `generate` (5.22).

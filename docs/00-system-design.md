@@ -163,7 +163,7 @@ Same Vendor+Product is a reuse **hint**, not proof. `icas-adapt` runs guarded re
 
 `icas-play` / MCP must not silently use the bare base for an unenrolled tenant. Details: `[06-multi-tenant-and-adaptation.md](06-multi-tenant-and-adaptation.md)`.
 
-### 3.9 MCP (stretch)
+### 3.9 MCP
 
 `icas-play` is the human CLI. `icas-mcp` is the agent-facing adapter over the **same** registry, resolver, and `ReplayEngine`. Stdio transport for the local demo. One tool per saved capability; typed args from compiled `inputs`. Tenant must already be enrolled (default `icas-bank`). Details: `[11-agent-facing-mcp.md](11-agent-facing-mcp.md)`.
 
@@ -173,7 +173,7 @@ Same Vendor+Product is a reuse **hint**, not proof. `icas-adapt` runs guarded re
 
 ## 4. Scope
 
-The must-have slice is real LLM discovery, compiled artifact, enrolled tenant, deterministic replay with structured errors, same-session HITL, and redacted evidence. Stretch is in-repo by design. Do not skip the must-have slice to polish extras.
+The system implements real LLM discovery, compiled artifact, enrolled tenant, deterministic replay with structured errors, same-session HITL, and redacted evidence. `--assist`, `icas-adapt`, MCP, and browser takeover are in-repo.
 
 
 | Bucket    | What                                                                                   | Notes                                                 |
