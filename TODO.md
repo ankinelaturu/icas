@@ -1159,17 +1159,17 @@ Place a $250.00 hold on member 441122 share 01 for pending debit card authorizat
 
 - [x] Root README commands match reality; no undocumented setup
 
-Root `README.md` Demo path is the reviewer walkthrough of 8.0–8.12 (no checkboxes, no `tee`). When those commands change, update the README in the same change. Evidence/commit notes stay in this file.
+Root `README.md` Demo path is the walkthrough of 8.0–8.12 (no checkboxes, no `tee`). When those commands change, update the README in the same change. Evidence/commit notes stay in this file.
 
 ### Pass 8.14 — Optional screen recording
 
-- [ ] Short recording of discovery or HITL if it helps the reviewer
+- [ ] Short recording of discovery or HITL if it helps the demo
 
 No extra ICAS command. Record the same invocations as 8.1–8.12 as separate shorts (discover, replay `112233`, not-found, wait, HITL, `--assist` on icas-banc URL, icas-banc adapt, Loki adapt-fail, Loki rediscover, Helix share-hold `--assist`, MCP Inspector, Cursor MCP).
 
 ---
 
-## Phase 9 — Reviewer report
+## Phase 9 — Design report
 
 ### Pass 9.1 — Distill `REPORT.md`
 

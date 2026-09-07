@@ -61,7 +61,7 @@ Run-scoped proof and observability: discovery traces, replay logs, screenshots o
 
 ### `docs/`
 
-Detailed design source of truth used during development and implementation. Root `REPORT.md` remains concise and reviewer-facing.
+Detailed design source of truth used during development and implementation. Root `REPORT.md` stays short (seven headings).
 
 ### `tests/`
 
@@ -104,4 +104,4 @@ browser
 
 ## Generated files
 
-`capabilities/` and `evidence/` are intentionally runtime-generated. They remain visible at repository root because both are central artifacts in the assignment and easy for reviewers to inspect.
+`capabilities/` and `evidence/` are intentionally runtime-generated. They remain visible at repository root because both are central artifacts and easy to inspect.

@@ -186,4 +186,4 @@ The system implements real LLM discovery, compiled artifact, enrolled tenant, de
 
 Synthetic tenants `icas-bank`, `icas-banc`, `loki-bank`, and `helix-cu` are in (Phase 7). The first concrete capability is a loan payoff statement. Discovery names the compiled inputs; live `loan-payoff` uses `loanAccountNumber` and `payoffDate` (see `icas-play describe`), not the sketch name `loanAccountId`. Outputs include `totalPayoffAmount`, `principalBalance`, and `perDiemInterest`. Helix CU is a second product (share hold). Discovery learns each path from the live UI; it must not hard-code it.
 
-Reviewer-facing seven headings: `[REPORT.md](../REPORT.md)`. Demo commands: root README. Testing: `[12-testing-and-demo.md](12-testing-and-demo.md)`.
+Seven-heading write-up: `[REPORT.md](../REPORT.md)`. Demo commands: root README. Testing: `[12-testing-and-demo.md](12-testing-and-demo.md)`.

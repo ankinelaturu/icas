@@ -15,8 +15,8 @@ This directory is the detailed engineering source of truth for ICAS. The root `R
 9. [`09-evidence-observability.md`](09-evidence-observability.md) — discovery traces, replay logs, screenshots, JSONL, run history.
 10. [`10-surface-abstraction.md`](10-surface-abstraction.md) — browser implementation and future desktop/accessibility seam.
 11. [`11-agent-facing-mcp.md`](11-agent-facing-mcp.md) — `icas-mcp`, capability catalog as tools, MCP adapter design.
-12. [`12-testing-and-demo.md`](12-testing-and-demo.md) — targeted tests and the end-to-end review/demo path.
+12. [`12-testing-and-demo.md`](12-testing-and-demo.md) — targeted tests and the end-to-end demo path.
 
 ## Working rule
 
-When implementation changes an architectural decision, update the relevant design note first or in the same change. Avoid letting the code become the only source of truth for behavior that a reviewer must understand and defend.
+When implementation changes an architectural decision, update the relevant design note first or in the same change. Avoid letting the code become the only source of truth for behavior that must be understood and defended.

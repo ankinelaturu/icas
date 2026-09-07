@@ -303,7 +303,7 @@ Known-good icas-bank loans: `987654` (primary), `112233` (second active). Missin
 6. **Human handoff means control transfer.** Automation can pause, cede the same live browser session to a human, capture what changed, and resume.
 7. **Surface-specific code stays behind an abstraction.** Playwright is the implemented web surface, but capability semantics should not fundamentally depend on the DOM.
 
-See [`docs/README.md`](docs/README.md) for the detailed design notes. Reviewer headings: [`REPORT.md`](REPORT.md).
+See [`docs/README.md`](docs/README.md) for the detailed design notes. Design write-up: [`REPORT.md`](REPORT.md).
 
 ## Status
 

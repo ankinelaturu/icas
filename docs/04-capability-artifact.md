@@ -298,7 +298,7 @@ This prototype stores **one base file per `--id`**. Catalog identity is `id`. Te
 
 ## Reviewability
 
-A human reviewer and an agent/tool adapter should be able to understand:
+A human operator and an agent/tool adapter should be able to understand:
 
 - what the capability does;
 - which Vendor+Product it applies to;

@@ -112,7 +112,7 @@ tests/integration/
 - invoke it with typed args;
 - execution flows through ReplayEngine.
 
-## Reviewer demo commands
+## Demo commands
 
 Root README should contain exact reproducible commands. Avoid requiring undocumented manual setup.
 
