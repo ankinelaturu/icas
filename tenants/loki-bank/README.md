@@ -37,10 +37,10 @@ Known accounts match icas-bank (`987654`, `112233`, `555555`, plus not-found).
 
 ## Injectable overlays
 
-Same `inject` query as icas-bank. Overlay appears on **Find a Loan** (search), not loan details.
+Same `inject` query as icas-bank. **Wait** overlay appears on **Find a Loan** (search). **HITL** overlay appears on the payoff **statement** (after Calculate/Generate).
 
 | Start URL | What happens |
 |---|---|
 | `http://localhost:4102/?inject=wait` | Session warning + Continue on search |
-| `http://localhost:4102/?inject=hitl` | Manual review on search; **Release to servicing** |
+| `http://localhost:4102/?inject=hitl&message=Authorization%20required` | Manual review on the statement; dismiss **human interacted** |
 | no query | Happy path |

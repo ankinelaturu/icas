@@ -102,18 +102,34 @@ describe("loki-bank HTTP", () => {
     expect(html).not.toContain('id="loan-work" style=""');
   });
 
-  it("hides Search behind a manual-review overlay when inject=hitl", async () => {
+  it("does not overlay Find a Loan when inject=hitl (HITL is the statement)", async () => {
     const baseUrl = await listen();
     const html = await (
       await fetch(`${baseUrl}/lending/search.htm?inject=hitl`)
     ).text();
+    expect(html).toContain('value="Search"');
+    expect(html).toContain('id="inject-hitl" style="display:none"');
+    expect(html).toContain('id="loan-work" style=""');
+  });
+
+  it("hides payoff statement figures behind HITL when inject=hitl", async () => {
+    const baseUrl = await listen();
+    const statement = await fetch(`${baseUrl}/lending/payoff.htm`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        cookie: "inject=hitl; inject_msg=Authorization%20required",
+      },
+      body: "hidLn=987654&dtPayoff=2026-09-30",
+    });
+    const html = await statement.text();
     expect(html).toContain('id="inject-hitl" style=""');
-    expect(html).toContain("Manual review required");
-    expect(html).toContain("Release to servicing");
+    expect(html).toContain("Authorization required");
+    expect(html).toContain("human interacted");
     expect(html).toContain('id="loan-work" style="display:none"');
   });
 
-  it("does not overlay loan details when inject is set (search is the inject surface)", async () => {
+  it("does not overlay loan details when inject is set (search wait / statement HITL)", async () => {
     const baseUrl = await listen();
     const html = await (
       await fetch(`${baseUrl}/lending/account.htm?ln=987654&inject=wait`)
@@ -122,13 +138,13 @@ describe("loki-bank HTTP", () => {
     expect(html).not.toContain("id=\"inject-wait\"");
   });
 
-  it("refuses search POST until the overlay is cleared", async () => {
+  it("refuses search POST until the wait overlay is cleared", async () => {
     const baseUrl = await listen();
     const blocked = await fetch(`${baseUrl}/lending/search.htm`, {
       method: "POST",
       headers: {
         "content-type": "application/x-www-form-urlencoded",
-        cookie: "inject=hitl",
+        cookie: "inject=wait",
       },
       body: "txtAcct=987654",
       redirect: "manual",

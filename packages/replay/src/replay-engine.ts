@@ -186,7 +186,8 @@ export class ReplayEngine {
    * After every step succeeds, check overall `success` assertions and extract outputs.
    *
    * Per-step postconditions are not enough: a click can land on a valid screen
-   * that still is not the declared payoff result.
+   * that still is not the declared payoff result. Last-step HITL (overlay on
+   * the result page) resumes here: re-assert once, do not scan outcomes again.
    */
   private async finishRun(
     capability: CapabilityArtifact,
@@ -210,8 +211,17 @@ export class ReplayEngine {
             runId,
             capability.id,
           );
-          if (classified !== undefined) {
+          if (isStopResult(classified)) {
             return classified;
+          }
+          if (isHitlResumed(classified)) {
+            // Human dismissed the overlay. Mid-flow HITL re-probes the next
+            // locator; last-step HITL re-checks this overall success assert.
+            const okAfterHitl = await this.surface.assert(expected);
+            if (okAfterHitl) {
+              await this.record(runId, "success_check", { status: "ok", expected });
+              continue;
+            }
           }
         }
         return {
@@ -441,10 +451,11 @@ export class ReplayEngine {
    * step exists, its locator is the happy-path gate: found → postconditions;
    * missing → dismiss a known interstitial (200 overlay) then probe again;
    * still missing → this step's `possibleOutcomes`. HITL resume is not a stop
-   * result (`undefined`); probe the next locator again before failing. An
-   * unclassified miss names `stepId` as the **next** step (the missing
+   * result ({@link HITL_RESUMED}); probe the next locator again before failing.
+   * An unclassified miss names `stepId` as the **next** step (the missing
    * locator) so adapt patches that chrome, not this successful action.
-   * Last step uses postconditions then overall success (caller).
+   * Last step uses postconditions then overall success (caller). Last-step HITL
+   * re-checks those postconditions; {@link finishRun} re-checks overall success.
    *
    * @returns `undefined` to continue the step loop; otherwise a structured stop
    */
@@ -477,12 +488,11 @@ export class ReplayEngine {
         runId,
         capabilityId,
       );
-      if (classified !== undefined) {
+      if (isStopResult(classified)) {
         return classified;
       }
-      // HITL that finds the next control returns undefined (continue), same as
-      // "no phrase matched". Re-probe so a dismissed overlay is not an
-      // unclassified miss.
+      // HITL resume ({@link HITL_RESUMED}) and "no phrase matched" (`undefined`)
+      // both re-probe so a dismissed overlay is not an unclassified miss.
       if (await this.nextActionTargetPresent(nextStep)) {
         return await this.evaluatePostconditions(step, inputs, runId, capabilityId);
       }
@@ -507,6 +517,10 @@ export class ReplayEngine {
       runId,
       capabilityId,
     );
+    if (isHitlResumed(classified)) {
+      // Same hole as finishRun: last-step HITL must re-assert, not keep `post`.
+      return await this.evaluatePostconditions(step, inputs, runId, capabilityId);
+    }
     return classified ?? post;
   }
 
@@ -519,7 +533,8 @@ export class ReplayEngine {
    * phrases. 5xx retries a known interstitial then fails if still stuck.
    * Phrase matching uses the ordered matcher pipeline (cheap ranks first).
    *
-   * @returns A structured stop, or `undefined` when nothing matched
+   * @returns A structured stop, {@link HITL_RESUMED} after a successful handoff,
+   *   or `undefined` when nothing matched
    */
   private async classifyExceptionalState(
     step: CapabilityStep,
@@ -527,7 +542,7 @@ export class ReplayEngine {
     inputs: Record<string, unknown>,
     runId: string,
     capabilityId: string,
-  ): Promise<ExecutionResult | undefined> {
+  ): Promise<ExceptionalClassification> {
     const observation = await this.surface.observe();
     const httpStatus = observation.httpStatus;
     if (httpStatus === 403 || httpStatus === 404) {
@@ -606,14 +621,15 @@ export class ReplayEngine {
    * Snapshot scan through the matcher pipeline (substring, then embedding
    * stub). Not a `textVisible` wait per phrase.
    *
-   * @returns A stop result, or `undefined` after a successful HITL resume
+   * @returns A stop result, {@link HITL_RESUMED} after a successful HITL resume,
+   *   or `undefined` when no phrase matched
    */
   private async resultFromPossibleOutcomes(
     step: CapabilityStep,
     nextStep: CapabilityStep | undefined,
     runId: string,
     capabilityId: string,
-  ): Promise<ExecutionResult | undefined> {
+  ): Promise<ExceptionalClassification> {
     const hit = await matchPossibleOutcomes(this.surface, step.possibleOutcomes);
     if (hit === undefined) {
       return undefined;
@@ -623,6 +639,9 @@ export class ReplayEngine {
 
   /**
    * Map a matched catalog or runtime outcome to `business_outcome` or HITL.
+   *
+   * Successful HITL returns {@link HITL_RESUMED} so last-step callers can
+   * re-check success instead of treating resume as "nothing matched".
    */
   private async applyMatchedOutcome(
     hit: MatchedPossibleOutcome,
@@ -630,7 +649,7 @@ export class ReplayEngine {
     nextStep: CapabilityStep | undefined,
     runId: string,
     capabilityId: string,
-  ): Promise<ExecutionResult | undefined> {
+  ): Promise<ExceptionalClassification> {
     if (hit.outcome.kind === "error") {
       return this.businessOutcomeResult(capabilityId, runId, hit);
     }
@@ -664,7 +683,7 @@ export class ReplayEngine {
         runId,
       };
     }
-    return undefined;
+    return HITL_RESUMED;
   }
 
   /**
@@ -1110,6 +1129,31 @@ export class ReplayEngine {
       ...(payload === undefined ? {} : { payload }),
     });
   }
+}
+
+/**
+ * Successful HITL resume. Callers re-check the happy path. This is not a
+ * terminal {@link ExecutionResult}.
+ */
+const HITL_RESUMED = { hitlResumed: true as const };
+
+type HitlResumed = typeof HITL_RESUMED;
+
+/** Stop, continue-after-HITL, or nothing matched. */
+type ExceptionalClassification = ExecutionResult | HitlResumed | undefined;
+
+/**
+ * Whether classification is a terminal stop (not HITL continue).
+ */
+function isStopResult(value: ExceptionalClassification): value is ExecutionResult {
+  return value !== undefined && value !== HITL_RESUMED;
+}
+
+/**
+ * Whether the human returned control after a matched `kind: "hitl"` outcome.
+ */
+function isHitlResumed(value: ExceptionalClassification): value is HitlResumed {
+  return value === HITL_RESUMED;
 }
 
 /**

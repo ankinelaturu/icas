@@ -2,9 +2,10 @@
  * @file Express app for the loki-bank synthetic core-banking UI.
  *
  * Second synthetic institution of the **same** fictional Vendor+Product as
- * icas-bank (CU branding, small route drift). Overlay (`?inject=`) sits on
- * **search**, not loan details, so adaptation has a real step mismatch.
- * Same fake loan ids so capability typed inputs still apply. Does not listen.
+ * icas-bank (CU branding, small route drift). Wait overlay (`?inject=wait`)
+ * sits on **search**. HITL overlay sits on the payoff **statement** so it can
+ * match compiled `payoff-statement` hitl chrome. Same fake loan ids so
+ * capability typed inputs still apply. Does not listen.
  */
 
 import { dirname, join } from "node:path";
@@ -17,12 +18,14 @@ import {
   getLoan,
   InvalidPayoffDateError,
   type LoanRecord,
+  type PayoffQuote,
   PayoffDateInPastError,
   PayoffNotEligibleError,
   SYSTEM_DATE,
 } from "./loans.js";
 import {
   attachInjectMode,
+  injectMessageFrom,
   injectModeFrom,
   maybeDelayInjectWait,
   overlayTemplateVars,
@@ -71,9 +74,9 @@ export function createLokiBankApp(options: LokiBankAppOptions = {}): Express {
 
   app.get("/lending/search.htm", async (req, res) => {
     const mode = injectModeFrom(res);
-    if (mode !== undefined) {
-      // Inject wins over a populated `txtAcct`: the overlay must be visible
-      // before inquiry. This is the Loki-vs-icas-bank step drift.
+    // Wait stays on search (icas-bank wait is loan details). HITL is the
+    // statement page so replay can match Calculate/Generate hitl phrases.
+    if (mode === "wait") {
       await maybeDelayInjectWait(mode);
       sendHtml(
         res,
@@ -90,8 +93,7 @@ export function createLokiBankApp(options: LokiBankAppOptions = {}): Express {
   });
 
   app.post("/lending/search.htm", (req, res) => {
-    if (injectModeFrom(res) !== undefined) {
-      // Bounce to GET so a POST cannot skip the overlay and complete search.
+    if (injectModeFrom(res) === "wait") {
       res.redirect("/lending/search.htm");
       return;
     }
@@ -116,6 +118,21 @@ export function createLokiBankApp(options: LokiBankAppOptions = {}): Express {
     sendHtml(res, payoffPage(pagesDir, loan, "", ""));
   });
 
+  app.get("/lending/statement.htm", (req, res) => {
+    const loan = loanFromQuery(req);
+    if (loan === undefined) {
+      redirectNotFound(res, queryString(req, "ln"));
+      return;
+    }
+    const dateRaw = queryString(req, "dtPayoff");
+    try {
+      const quote = calculatePayoff(loan, dateRaw);
+      sendHtml(res, statementPage(pagesDir, loan, quote, res));
+    } catch {
+      redirectNotFound(res, loan.loanAccountId);
+    }
+  });
+
   app.post("/lending/payoff.htm", (req, res) => {
     // Prefer the hidden field so a dropped query string does not lose the account.
     const ln = formString(req.body, "hidLn") || queryString(req, "ln");
@@ -127,19 +144,7 @@ export function createLokiBankApp(options: LokiBankAppOptions = {}): Express {
     const dateRaw = formString(req.body, "dtPayoff");
     try {
       const quote = calculatePayoff(loan, dateRaw);
-      sendHtml(
-        res,
-        page("statement.html", {
-          ...loanVars(loan),
-          payoffDate: quote.payoffDate,
-          days: String(quote.days),
-          principalBalance: quote.principalBalance,
-          perDiemInterest: quote.perDiemInterest,
-          interestThroughPayoff: quote.interestThroughPayoff,
-          totalPayoffAmount: quote.totalPayoffAmount,
-          processingDate: SYSTEM_DATE,
-        }),
-      );
+      sendHtml(res, statementPage(pagesDir, loan, quote, res));
     } catch (error) {
       // Re-render the form with the operator's input so they can correct it.
       sendHtml(res, payoffPage(pagesDir, loan, dateRaw, payoffErrorMessage(error)));
@@ -180,6 +185,35 @@ export function createLokiBankApp(options: LokiBankAppOptions = {}): Express {
   });
 
   return app;
+}
+
+/**
+ * Render the payoff statement, with HITL overlay when `inject=hitl`.
+ *
+ * @param pagesDir - Tenant HTML root
+ * @param loan - Quoted loan
+ * @param quote - Formatted payoff fields
+ * @param res - Request locals for inject mode/message
+ */
+function statementPage(
+  pagesDir: string,
+  loan: LoanRecord,
+  quote: PayoffQuote,
+  res: Response,
+): string {
+  const mode = injectModeFrom(res) === "hitl" ? "hitl" : undefined;
+  const dismiss = `/lending/statement.htm?ln=${encodeURIComponent(loan.loanAccountId)}&dtPayoff=${encodeURIComponent(quote.payoffDate)}&inject=clear`;
+  return renderPage(pagesDir, "statement.html", {
+    ...loanVars(loan),
+    payoffDate: quote.payoffDate,
+    days: String(quote.days),
+    principalBalance: quote.principalBalance,
+    perDiemInterest: quote.perDiemInterest,
+    interestThroughPayoff: quote.interestThroughPayoff,
+    totalPayoffAmount: quote.totalPayoffAmount,
+    processingDate: SYSTEM_DATE,
+    ...overlayTemplateVars(mode, dismiss, injectMessageFrom(res)),
+  });
 }
 
 /**

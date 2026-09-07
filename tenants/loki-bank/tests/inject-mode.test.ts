@@ -8,7 +8,7 @@ import { overlayTemplateVars } from "../src/inject-mode.js";
 
 describe("overlayTemplateVars", () => {
   it("hides dialogs and shows work when inject is off", () => {
-    expect(overlayTemplateVars(undefined, "/x")).toEqual({
+    expect(overlayTemplateVars(undefined, "/x")).toMatchObject({
       waitStyle: "display:none",
       hitlStyle: "display:none",
       workStyle: "",

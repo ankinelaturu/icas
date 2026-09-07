@@ -41,7 +41,7 @@ Four synthetic **staff** UIs (no login, no real PII). Three of them are the same
 
 | Tenant | Port | Role |
 |---|---|---|
-| `icas-bank` | `:4101` | Discover `loan-payoff`. Replay, not-found, wait overlay, HITL, MCP default. |
+| `icas-bank` | `:4101` | Discover `loan-payoff`. Replay, not-found, wait overlay, MCP default. |
 | `icas-banc` | `:4104` | Same product, one rename (Inquire → Look Up). `--assist` on the icas-bank enrollment (no catalog write), then bounded `icas-adapt` success. |
 | `loki-bank` | `:4102` | Same product, several label/nav changes. Adapt of `loan-payoff` fails; rediscover as `payoff-statement`. |
 | `helix-cu` | `:4103` | Vendor/product `helix` / `helix`. Discover `share-hold` (div layout). Replay with `--assist`. |
@@ -124,13 +124,14 @@ pnpm icas-play \
 
 ### 5. HITL
 
-Same headed session. Do not click **Continue**. Click **human interacted**, then ENTER in the CLI. `message=` must match a compiled HITL phrase (this artifact: `Permission required to access loan details`).
+Requires `payoff-statement` (8.9). `loan-payoff` has no hitl outcomes. Overlay is on the Loki payoff statement; `message=` matches compiled `Authorization required`. Click **human interacted**, then ENTER in the CLI.
 
 ```bash
 pnpm icas-play \
-  run loan-payoff \
-  --url "http://localhost:4101/?inject=hitl&message=Permission%20required%20to%20access%20loan%20details" \
-  --loanAccountNumber 112233 \
+  run payoff-statement \
+  --tenant loki-bank \
+  --url "http://localhost:4102/?inject=hitl&message=Authorization%20required" \
+  --loanNumber 112233 \
   --payoffDate 2026-09-30
 ```
 

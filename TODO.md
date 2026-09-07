@@ -740,7 +740,7 @@ Discover needs `ICAS_DISCOVERY_LLM_*` in `.env`. Strict replay does not. Each IC
 - [ ] icas-bank on `:4101`, loki-bank on `:4102`, helix-cu on `:4103`, icas-banc on `:4104`
 - [ ] Confirm each responds before 8.1
 
-One tenant per terminal. Leave all four up for the rest of Phase 8. 8.1–8.5 use icas-bank (`:4101`). 8.6 uses icas-bank **enrollment** against icas-banc (`:4104`). 8.7 enrolls icas-banc. 8.8–8.9 use loki-bank (`:4102`). 8.10 uses helix-cu (`:4103`). 8.11–8.12 use icas-bank MCP.
+One tenant per terminal. Leave all four up for the rest of Phase 8. 8.1–8.4 use icas-bank (`:4101`). 8.5 HITL uses Loki `payoff-statement` (`:4102`) after 8.9. 8.6 uses icas-bank **enrollment** against icas-banc (`:4104`). 8.7 enrolls icas-banc. 8.8–8.9 use loki-bank (`:4102`). 8.10 uses helix-cu (`:4103`). 8.11–8.12 use icas-bank MCP.
 
 ```bash
 # Staff payoff UI. Discover, replay, HITL, and MCP default.
@@ -874,20 +874,21 @@ pnpm icas-play \
 - [ ] Pause, same browser, recorded human actions, resume
 - [ ] Commit handoff evidence
 
-Default `?inject=hitl` overlay copy (“Supervisor hold” / **Release to servicing**) does **not** match compiled HITL phrases, so replay would stop as `UNEXPECTED_STATE`. Pass `message=` with a substring from the **Inquire** step’s `possibleOutcomes` `kind: "hitl"` entry (this 8.1 artifact: `Permission required to access loan details`). Cookie-backed like `inject`, so the phrase survives Home → Inquire. If you rediscover, re-read that phrase from describe / the artifact and re-encode it.
+Requires `payoff-statement` from 8.9 (`loan-payoff` has no `kind: "hitl"`). Loki wait overlay is on search; HITL overlay is on the payoff **statement** so replay can match this artifact’s `click-calculate-generate` hitl phrase (`Authorization required`). Default overlay copy does not match that phrase. Pass `message=`. Cookie-backed like `inject`. Record this clip after 8.9.
 
-Do not click **Continue**. In the same headed window click **human interacted**, then press ENTER in the CLI. Same `--` input names as 8.2 / describe.
+Do not click **Continue**. In the same headed window click **human interacted**, then press ENTER in the CLI. Replay flags are 8.9 describe (`loanNumber`, `payoffDate`). `--tenant loki-bank` is required.
 
 ```bash
 export ICAS_CAPABILITIES_ROOT=$PWD/capabilities
 export ICAS_EVIDENCE_ROOT=$PWD/evidence
 
-# HITL overlay whose copy matches a compiled hitl phrase.
-# In the same headed window click "human interacted", then press ENTER here.
+# HITL on Loki payoff-statement. Overlay copy matches compiled hitl phrase.
+# After Calculate/Generate, click "human interacted", then press ENTER here.
 pnpm icas-play \
-  run loan-payoff \
-  --url "http://localhost:4101/?inject=hitl&message=Permission%20required%20to%20access%20loan%20details" \
-  --loanAccountNumber 112233 \
+  run payoff-statement \
+  --tenant loki-bank \
+  --url "http://localhost:4102/?inject=hitl&message=Authorization%20required" \
+  --loanNumber 112233 \
   --payoffDate 2026-09-30
 ```
 

@@ -476,6 +476,129 @@ describe("ReplayEngine possibleOutcomes", () => {
     expect(surface.automationResumes).toBe(1);
   });
 
+  it("re-checks overall success after last-step HITL resume", async () => {
+    const surface = new FakeSurface();
+    surface.assertHandler = (assertion) => {
+      if (assertion.type === "textVisible" && assertion.value === "Payoff Statement") {
+        // Overlay hides the statement until the human dismisses it.
+        return surface.humanTakes > 0;
+      }
+      return true;
+    };
+    surface.visibleTextContent = "Authorization required to continue.";
+    const handoff = new SessionHandoffController();
+    const engine = new ReplayEngine(surface, { handoff });
+    const run = engine.run(
+      testCapability({
+        steps: [
+          clickStep("click-calculate-generate", {
+            possibleOutcomes: [
+              {
+                kind: "hitl",
+                match: { phrases: ["Authorization required"] },
+                heading: "Authorization required",
+                summary: "A person must dismiss the review screen.",
+              },
+            ],
+          }),
+        ],
+      }),
+      {},
+      { runId: "run-hitl-last-success" },
+    );
+    await vi.waitFor(() => {
+      expect(handoff.owner()).toBe("human");
+    });
+    expect(surface.executed).toHaveLength(1);
+    surface.visibleTextContent = "Payoff Statement is ready.";
+    handoff.signalResume();
+    const result = await run;
+    expect(result.status).toBe("success");
+    expect(surface.automationResumes).toBe(1);
+  });
+
+  it("fails overall success after last-step HITL if the statement is still hidden", async () => {
+    const surface = new FakeSurface();
+    surface.assertHandler = (assertion) => {
+      if (assertion.type === "textVisible" && assertion.value === "Payoff Statement") {
+        return false;
+      }
+      return true;
+    };
+    surface.visibleTextContent = "Authorization required to continue.";
+    const handoff = new SessionHandoffController();
+    const engine = new ReplayEngine(surface, { handoff });
+    const run = engine.run(
+      testCapability({
+        steps: [
+          clickStep("click-calculate-generate", {
+            possibleOutcomes: [
+              {
+                kind: "hitl",
+                match: { phrases: ["Authorization required"] },
+                heading: "Authorization required",
+                summary: "A person must dismiss the review screen.",
+              },
+            ],
+          }),
+        ],
+      }),
+      {},
+      { runId: "run-hitl-last-still-hidden" },
+    );
+    await vi.waitFor(() => {
+      expect(handoff.owner()).toBe("human");
+    });
+    handoff.signalResume();
+    const result = await run;
+    expect(result).toMatchObject({
+      status: "failure",
+      code: "UNEXPECTED_STATE",
+      observed: false,
+      runId: "run-hitl-last-still-hidden",
+    });
+    expect(surface.humanTakes).toBe(1);
+  });
+
+  it("re-checks last-step postconditions after HITL resume", async () => {
+    const surface = new FakeSurface();
+    surface.assertHandler = (assertion) => {
+      if (assertion.type === "textVisible" && assertion.value === "Statement ready") {
+        return surface.humanTakes > 0;
+      }
+      return true;
+    };
+    surface.visibleTextContent = "Authorization required to continue.";
+    const handoff = new SessionHandoffController();
+    const engine = new ReplayEngine(surface, { handoff });
+    const run = engine.run(
+      testCapability({
+        steps: [
+          clickStep("click-calculate-generate", {
+            postconditions: [{ type: "textVisible", value: "Statement ready" }],
+            possibleOutcomes: [
+              {
+                kind: "hitl",
+                match: { phrases: ["Authorization required"] },
+                heading: "Authorization required",
+                summary: "A person must dismiss the review screen.",
+              },
+            ],
+          }),
+        ],
+      }),
+      {},
+      { runId: "run-hitl-last-post" },
+    );
+    await vi.waitFor(() => {
+      expect(handoff.owner()).toBe("human");
+    });
+    handoff.signalResume();
+    const result = await run;
+    expect(result.status).toBe("success");
+    expect(surface.humanTakes).toBe(1);
+  });
+
   it("does not classify this step's possibleOutcomes when this step's target is missing", async () => {
     const surface = new FakeSurface();
     surface.executeHandler = () => {

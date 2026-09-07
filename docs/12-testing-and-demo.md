@@ -91,7 +91,7 @@ tests/integration/
 
 ### 5. Human handoff
 
-- open `http://localhost:4101/?inject=hitl` (Loki: overlay on search, not loan details);
+- open `http://localhost:4102/?inject=hitl&message=Authorization%20required` (`payoff-statement`; overlay on the statement);
 - ambiguous/manual-review state; do not click **Continue**;
 - automation pauses;
 - operator uses same browser;
