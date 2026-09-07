@@ -132,7 +132,7 @@ Discovery evidence can contain failed branches, model decisions, human intervent
 
 ### 3. Guarded replay
 
-Replay validates that the next action’s target is present before acting. When it is not, it classifies from that capability’s `possibleOutcomes`, then ICAS-level HTTP status and generic error chrome, rather than a hardcoded product message list. See [`05-replay-engine.md`](05-replay-engine.md).
+Replay validates that the next action’s target is present before acting. When it is not, it classifies document HTTP 403/404 (fail), then 5xx (retry then fail), then that step’s `possibleOutcomes`, then runtime generic chrome — not a hardcoded product message list. See [`05-replay-engine.md`](05-replay-engine.md).
 
 ### 4. Same Vendor+Product is a reuse hint, not proof
 
