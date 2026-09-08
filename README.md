@@ -123,22 +123,7 @@ pnpm icas-play \
   --payoffDate 2026-09-30
 ```
 
-### 5. HITL
-
-Requires `payoff-statement` (8.9). `loan-payoff` has no hitl outcomes. Overlay is on the Loki payoff statement; `message=` matches compiled `Authorization required`. Click **human interacted**, then ENTER in the CLI.
-
-```bash
-pnpm icas-play \
-  run payoff-statement \
-  --tenant loki-bank \
-  --url "http://localhost:4102/?inject=hitl&message=Authorization%20required" \
-  --loanNumber 112233 \
-  --payoffDate 2026-09-30
-```
-
-HITL is control transfer of the **same** headed browser session (not a co-browsing console).
-
-### 6. Assist (icas-banc URL, no catalog write)
+### 5. Assist (icas-banc URL, no catalog write)
 
 `--tenant icas-bank` (already enrolled) plus icas-banc’s URL so Inquire misses Look Up. Needs `ICAS_ASSIST_LLM_*`. Repair is this run only; it does not persist an override. Do not use `--tenant icas-banc` here.
 
@@ -152,7 +137,7 @@ pnpm icas-play \
   --payoffDate 2026-09-30
 ```
 
-### 7. icas-banc adapt (one-step success)
+### 6. icas-banc adapt (one-step success)
 
 Same Vendor+Product; Inquire → Look Up. Needs `ICAS_ADAPT_LLM_*`. Re-verify is `ReplayEngine` with no LLM. Step 6 already repaired this miss for one run; this step persists Look Up.
 
@@ -165,7 +150,7 @@ pnpm icas-adapt \
   --payoffDate 2026-09-30
 ```
 
-### 8. Loki adapt (expected fail)
+### 7. Loki adapt (expected fail)
 
 Several label/nav renames. One-step patch, then re-verify rolls back. `loan-payoff` stays enrolled for icas-bank / icas-banc only.
 
@@ -178,7 +163,7 @@ pnpm icas-adapt \
   --payoffDate 2026-09-30
 ```
 
-### 9. Loki rediscover (`payoff-statement`)
+### 8. Loki rediscover (`payoff-statement`)
 
 New catalog id for the same goal. Pass identity explicitly. Do not reuse `--id loan-payoff`.
 
@@ -203,6 +188,21 @@ pnpm icas-play \
 ```
 
 Replay flags after this discover come from that describe (this run: `loanNumber` + `payoffDate`). Omitted `--tenant` defaults to `icas-bank`, which is not enrolled on this id.
+
+### 9. HITL
+
+Requires `payoff-statement` (8.9). `loan-payoff` has no hitl outcomes. Overlay is on the Loki payoff statement; `message=` matches compiled `Authorization required`. Click **human interacted**, then ENTER in the CLI.
+
+```bash
+pnpm icas-play \
+  run payoff-statement \
+  --tenant loki-bank \
+  --url "http://localhost:4102/?inject=hitl&message=Authorization%20required" \
+  --loanNumber 112233 \
+  --payoffDate 2026-09-30
+```
+
+HITL is control transfer of the **same** headed browser session (not a co-browsing console).
 
 ### 10. Helix CU (`share-hold`)
 
