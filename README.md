@@ -191,7 +191,7 @@ Replay flags after this discover come from that describe (this run: `loanNumber`
 
 ### 9. HITL
 
-Requires `payoff-statement` (8.9). `loan-payoff` has no hitl outcomes. Overlay is on the Loki payoff statement; `message=` matches compiled `Authorization required`. Click **human interacted**, then ENTER in the CLI.
+Overlay is on the Loki payoff statement; `message=` matches compiled `Authorization required`. Click **human interacted**, then ENTER in the CLI.
 
 ```bash
 pnpm icas-play \
